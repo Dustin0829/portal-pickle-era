@@ -10,6 +10,7 @@ import {
   AuthSubmit,
 } from "@/components/marketing/AuthLayout";
 import { useAuth } from "@/providers/AuthProvider";
+import { portalHomePath } from "@/lib/auth/portalHome";
 
 export function SignupPage() {
   const { user, signup } = useAuth();
@@ -21,7 +22,7 @@ export function SignupPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={portalHomePath(user.role)} replace />;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,8 +35,8 @@ export function SignupPage() {
 
     setPending(true);
     try {
-      await signup({ name, email, password });
-      navigate("/", { replace: true });
+      const next = await signup({ name, email, password });
+      navigate(portalHomePath(next.role), { replace: true });
     } catch (caught) {
       setError(
         caught instanceof Error

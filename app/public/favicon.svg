@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="8" fill="#107850"/>
-  <text x="10" y="30" font-family="Arial Black, sans-serif" font-style="italic" font-size="26" font-weight="800" fill="#E5C53A">P</text>
-  <text x="18" y="54" font-family="Arial Black, sans-serif" font-style="italic" font-size="26" font-weight="800" fill="#E5C53A">E</text>
-  <circle cx="46" cy="48" r="7" fill="#E5C53A"/>
-  <circle cx="46" cy="45" r="1.1" fill="#107850"/>
-  <circle cx="49.2" cy="46.6" r="1.1" fill="#107850"/>
-  <circle cx="49.2" cy="49.8" r="1.1" fill="#107850"/>
-  <circle cx="46" cy="51.2" r="1.1" fill="#107850"/>
-  <circle cx="42.8" cy="49.8" r="1.1" fill="#107850"/>
-  <circle cx="42.8" cy="46.6" r="1.1" fill="#107850"/>
+  <rect width="64" height="64" rx="8" fill="#1C7839"/>
+  <text x="10" y="30" font-family="Arial Black, sans-serif" font-style="italic" font-size="26" font-weight="800" fill="#F5ED5A">P</text>
+  <text x="18" y="54" font-family="Arial Black, sans-serif" font-style="italic" font-size="26" font-weight="800" fill="#F5ED5A">E</text>
+  <circle cx="46" cy="48" r="7" fill="#F5ED5A"/>
+  <circle cx="46" cy="45" r="1.1" fill="#1C7839"/>
+  <circle cx="49.2" cy="46.6" r="1.1" fill="#1C7839"/>
+  <circle cx="49.2" cy="49.8" r="1.1" fill="#1C7839"/>
+  <circle cx="46" cy="51.2" r="1.1" fill="#1C7839"/>
+  <circle cx="42.8" cy="49.8" r="1.1" fill="#1C7839"/>
+  <circle cx="42.8" cy="46.6" r="1.1" fill="#1C7839"/>
 </svg>

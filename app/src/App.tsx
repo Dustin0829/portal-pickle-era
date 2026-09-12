@@ -50,6 +50,11 @@ const ProfilePage = lazy(() =>
   })),
 );
 
+const AdminDashboardPage = lazy(() =>
+  import("@/pages/admin/dashboard/AdminDashboardPage").then((m) => ({
+    default: m.AdminDashboardPage,
+  })),
+);
 const AdminBookingsPage = lazy(() =>
   import("@/pages/admin/bookings/AdminBookingsPage").then((m) => ({
     default: m.AdminBookingsPage,
@@ -110,7 +115,7 @@ export default function App() {
             </Route>
 
             <Route path="admin" element={<AdminPortalLayout />}>
-              <Route index element={<AdminBookingsPage />} />
+              <Route index element={<AdminDashboardPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="calendar" element={<AdminCalendarPage />} />
               <Route path="waitlist" element={<AdminWaitlistPage />} />

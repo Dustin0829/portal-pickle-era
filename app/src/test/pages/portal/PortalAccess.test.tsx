@@ -57,7 +57,7 @@ describe("portal access gates", () => {
         screen.getByRole("heading", { name: /log in/i }),
       ).toBeInTheDocument();
     });
-    expect(screen.queryByText(/student portal/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/player portal/i)).not.toBeInTheDocument();
   });
 
   it("blocks non-admin users from /admin", async () => {
@@ -72,7 +72,7 @@ describe("portal access gates", () => {
     expect(screen.queryByText(/bookings inbox/i)).not.toBeInTheDocument();
   });
 
-  it("renders student portal for signed-in students", async () => {
+  it("renders player portal for signed-in players", async () => {
     seedSession("student");
     renderWithProviders(<App />, { route: "/app" });
 
@@ -81,7 +81,7 @@ describe("portal access gates", () => {
         screen.getByRole("heading", { name: /hi, test/i }),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText(/student portal/i)).toBeInTheDocument();
+    expect(screen.getByText(/player portal/i)).toBeInTheDocument();
   });
 });
 
@@ -95,7 +95,7 @@ describe("portal smoke", () => {
     localStorage.clear();
   });
 
-  it("renders student overview empty state", async () => {
+  it("renders player overview empty state", async () => {
     seedSession("student");
     renderWithProviders(<OverviewPage />);
 

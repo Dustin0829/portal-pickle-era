@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   ensureAdminFixture,
+  ensureStudentFixtures,
   getSession,
   loginAccount,
   logoutAccount,
@@ -16,6 +17,8 @@ import {
   signupAccount,
   type AuthUser,
 } from "@/lib/auth/auth";
+import { ensureBookingFixtures } from "@/lib/booking/booking";
+import { ensureWaitlistFixtures } from "@/lib/waitlist/waitlistStorage";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -42,6 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       await ensureAdminFixture();
+      await ensureStudentFixtures();
+      ensureBookingFixtures();
+      ensureWaitlistFixtures();
       if (cancelled) return;
       const session = getSession();
       setUser(session);

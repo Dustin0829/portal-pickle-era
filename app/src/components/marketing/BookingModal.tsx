@@ -26,33 +26,59 @@ import {
   dateKey,
   formatLongDate,
   isSlotOpen,
+  parseDateKey,
   saveBooking,
   selectedSlotLabels,
   type BookingPlan,
 } from "@/lib/booking/booking";
+import { useAuth } from "@/providers/AuthProvider";
 
 type Step = "schedule" | "pay" | "done";
 
+type BookingModalPreset = {
+  date: string;
+  courtId: string;
+  slotIds: string[];
+  step?: "schedule" | "pay";
+};
+
 type BookingModalProps = {
   plan: BookingPlan | null;
+  preset?: BookingModalPreset;
   onClose: () => void;
 };
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function BookingModal({ plan, onClose }: BookingModalProps) {
+export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const open = plan !== null;
   const lenis = useLenis();
-  const [step, setStep] = useState<Step>("schedule");
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
-  const [date, setDate] = useState(() => dateKey(new Date()));
-  const [courtId, setCourtId] = useState("");
-  const [slotIds, setSlotIds] = useState<string[]>([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const { user } = useAuth();
+  const [step, setStep] = useState<Step>(preset?.step ?? "schedule");
+  const [month, setMonth] = useState(() =>
+    startOfMonth(
+      preset?.date ? parseDateKey(preset.date) : new Date(),
+    ),
+  );
+  const [date, setDate] = useState(
+    () => preset?.date ?? dateKey(new Date()),
+  );
+  const [courtId, setCourtId] = useState(() => preset?.courtId ?? "");
+  const [slotIds, setSlotIds] = useState<string[]>(
+    () => preset?.slotIds ?? [],
+  );
+  const [name, setName] = useState(() => user?.name ?? "");
+  const [email, setEmail] = useState(() => user?.email ?? "");
   const [referenceId, setReferenceId] = useState("");
   const [receiptName, setReceiptName] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setName((current) => current || user.name);
+    setEmail((current) => current || user.email);
+  }, [user]);
 
   useEffect(() => {
     if (!open) {
@@ -107,7 +133,8 @@ export function BookingModal({ plan, onClose }: BookingModalProps) {
   }
 
   function onReceipt(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const file = event.target.files?.[0] ?? null;
+    setReceiptFile(file);
     setReceiptName(file?.name ?? "");
   }
 
@@ -126,7 +153,7 @@ export function BookingModal({ plan, onClose }: BookingModalProps) {
     setStep("pay");
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (
       !plan ||
@@ -135,9 +162,21 @@ export function BookingModal({ plan, onClose }: BookingModalProps) {
       !name.trim() ||
       !email.trim() ||
       !referenceId.trim() ||
-      !receiptName
+      !receiptName ||
+      !receiptFile
     ) {
       return;
+    }
+
+    let receiptDataUrl: string | undefined;
+    if (receiptFile.size <= 1_500_000) {
+      receiptDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(receiptFile);
+      }).catch(() => undefined);
     }
 
     saveBooking({
@@ -151,6 +190,8 @@ export function BookingModal({ plan, onClose }: BookingModalProps) {
       email: email.trim().toLowerCase(),
       referenceId: referenceId.trim(),
       receiptName,
+      receiptDataUrl: receiptDataUrl || undefined,
+      receiptMimeType: receiptFile.type || undefined,
     });
     setStep("done");
   }

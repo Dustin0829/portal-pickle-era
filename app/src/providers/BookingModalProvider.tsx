@@ -8,8 +8,23 @@ import {
 import { BookingModal } from "@/components/marketing/BookingModal";
 import type { BookingPlan } from "@/lib/booking/booking";
 
+export type BookingModalPreset = {
+  date: string;
+  courtId: string;
+  slotIds: string[];
+  step?: "schedule" | "pay";
+};
+
+type BookingModalSession = {
+  plan: BookingPlan;
+  preset?: BookingModalPreset;
+};
+
 type BookingModalContextValue = {
-  openBookingModal: (plan: BookingPlan) => void;
+  openBookingModal: (
+    plan: BookingPlan,
+    preset?: BookingModalPreset,
+  ) => void;
 };
 
 const BookingModalContext = createContext<BookingModalContextValue | null>(
@@ -17,19 +32,26 @@ const BookingModalContext = createContext<BookingModalContextValue | null>(
 );
 
 export function BookingModalProvider({ children }: { children: ReactNode }) {
-  const [plan, setPlan] = useState<BookingPlan | null>(null);
+  const [session, setSession] = useState<BookingModalSession | null>(null);
 
   const openBookingModal = useCallback(
-    (next: BookingPlan) => setPlan(next),
+    (plan: BookingPlan, preset?: BookingModalPreset) => {
+      setSession({ plan, preset });
+    },
     [],
   );
-  const closeBookingModal = useCallback(() => setPlan(null), []);
+  const closeBookingModal = useCallback(() => setSession(null), []);
 
   return (
     <BookingModalContext.Provider value={{ openBookingModal }}>
       {children}
-      {plan !== null ? (
-        <BookingModal key={plan} plan={plan} onClose={closeBookingModal} />
+      {session !== null ? (
+        <BookingModal
+          key={`${session.plan}-${session.preset?.date ?? ""}-${session.preset?.courtId ?? ""}-${session.preset?.slotIds?.join(",") ?? ""}`}
+          plan={session.plan}
+          preset={session.preset}
+          onClose={closeBookingModal}
+        />
       ) : null}
     </BookingModalContext.Provider>
   );

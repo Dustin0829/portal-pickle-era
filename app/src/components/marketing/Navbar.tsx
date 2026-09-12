@@ -1,6 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { portalHomePath } from "@/lib/auth/portalHome";
 import { useAuth } from "@/providers/AuthProvider";
 import { Logo } from "@/components/marketing/Logo";
 
@@ -16,11 +17,13 @@ const loginClass =
   "bg-yellow px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white";
 const loginMobileClass =
   "mt-2 inline-flex w-full items-center justify-center bg-yellow px-5 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-black";
+const portalLinkClass =
+  "text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70 transition hover:text-yellow";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
-  const firstName = user?.name.split(" ")[0];
+  const portalTo = portalHomePath(user?.role);
 
   return (
     <header className="sticky top-0 z-50 bg-black">
@@ -41,28 +44,10 @@ export function Navbar() {
 
         {user ? (
           <div className="hidden items-center gap-3 md:flex">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
-              {firstName}
-            </p>
-            <Link
-              to="/app"
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80 transition hover:text-yellow"
-            >
-              My portal
+            <Link to={portalTo} className={portalLinkClass}>
+              Portal
             </Link>
-            {user.role === "admin" ? (
-              <Link
-                to="/admin"
-                className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80 transition hover:text-yellow"
-              >
-                Admin
-              </Link>
-            ) : null}
-            <button
-              type="button"
-              onClick={logout}
-              className={`hidden md:inline-flex ${loginClass}`}
-            >
+            <button type="button" onClick={logout} className={loginClass}>
               Log out
             </button>
           </div>
@@ -98,21 +83,12 @@ export function Navbar() {
             {user ? (
               <>
                 <Link
-                  to="/app"
-                  className="py-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/85"
+                  to={portalTo}
+                  className="py-1 text-sm font-semibold uppercase tracking-[0.16em] text-yellow"
                   onClick={() => setOpen(false)}
                 >
-                  My portal
+                  Portal
                 </Link>
-                {user.role === "admin" ? (
-                  <Link
-                    to="/admin"
-                    className="py-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/85"
-                    onClick={() => setOpen(false)}
-                  >
-                    Admin
-                  </Link>
-                ) : null}
                 <button
                   type="button"
                   className={loginMobileClass}

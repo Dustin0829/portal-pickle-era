@@ -22,6 +22,37 @@ export const ADMIN_FIXTURE = {
   password: "password1",
 } as const;
 
+/** Demo player for local portal stress-testing (password: password1). */
+export const PLAYER_FIXTURE = {
+  name: "Demo Player",
+  email: "player@pickleera.local",
+  password: "password1",
+} as const;
+
+const DEMO_STUDENTS = [
+  PLAYER_FIXTURE,
+  {
+    name: "Maya Santos",
+    email: "maya.santos@example.com",
+    password: "password1",
+  },
+  {
+    name: "Alex Rivera",
+    email: "alex.rivera@example.com",
+    password: "password1",
+  },
+  {
+    name: "Nina Reyes",
+    email: "nina.reyes@example.com",
+    password: "password1",
+  },
+  {
+    name: "Kai Mendoza",
+    email: "kai.mendoza@example.com",
+    password: "password1",
+  },
+] as const;
+
 async function hashPassword(password: string) {
   const data = new TextEncoder().encode(password);
   const digest = await crypto.subtle.digest("SHA-256", data);
@@ -101,6 +132,32 @@ export async function ensureAdminFixture() {
   saveUsers([...users, admin]);
 }
 
+/** Ensures demo player accounts exist for local portal stress-testing. */
+export async function ensureStudentFixtures() {
+  if (import.meta.env.MODE === "test") return;
+
+  let users = listUsers().map(normalizeUser);
+  let changed = false;
+
+  for (const fixture of DEMO_STUDENTS) {
+    if (users.some((user) => user.email === fixture.email)) continue;
+    users = [
+      ...users,
+      {
+        id: crypto.randomUUID(),
+        name: fixture.name,
+        email: fixture.email,
+        role: "student",
+        passwordHash: await hashPassword(fixture.password),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    changed = true;
+  }
+
+  if (changed) saveUsers(users);
+}
+
 export async function signupAccount(input: {
   name: string;
   email: string;
@@ -178,4 +235,12 @@ export async function resetAccountPassword(input: {
     passwordHash: await hashPassword(input.password),
   };
   saveUsers(users);
+}
+
+/** Registered player accounts (excludes facility admins). */
+export function listStudents(): AuthUser[] {
+  return listUsers()
+    .map(normalizeUser)
+    .filter((user) => user.role === "student")
+    .map(toPublicUser);
 }
