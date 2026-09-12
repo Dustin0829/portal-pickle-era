@@ -4,7 +4,7 @@ import { Logo } from "@/components/marketing/Logo";
 
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-svh overflow-hidden bg-black">
+    <div className="relative min-h-svh overflow-hidden bg-[#1d1d1b]">
       <div className="absolute left-5 top-5 z-10 sm:left-8 sm:top-8">
         <Logo className="h-9 w-auto mix-blend-screen sm:h-11" />
         <p className="mt-6 hidden max-w-[14ch] text-[11px] font-semibold uppercase leading-relaxed tracking-[0.28em] text-white/70 lg:block">
@@ -14,17 +14,31 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute bottom-0 left-0 hidden h-[78%] w-[48%] lg:block">
+      {/* Bottom-left paddle — soft feather into page charcoal (matches reference) */}
+      <div
+        className="pointer-events-none absolute bottom-0 left-0 hidden h-[86%] w-[min(56%,640px)] lg:block"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(to right, #000 0%, #000 42%, transparent 96%), linear-gradient(to top, #000 0%, #000 48%, transparent 100%)",
+          WebkitMaskComposite: "source-in",
+          maskImage:
+            "linear-gradient(to right, #000 0%, #000 42%, transparent 96%), linear-gradient(to top, #000 0%, #000 48%, transparent 100%)",
+          maskComposite: "intersect",
+        }}
+      >
         <img
           src="/paddle.png"
           alt=""
-          className="h-full w-full object-cover object-[12%_80%]"
+          className="h-full w-full object-cover object-[16%_82%]"
         />
         <div
           className="absolute inset-0"
           style={{
-            background:
-              "linear-gradient(to top, rgb(29 29 27 / 0) 0%, rgb(29 29 27 / 0.08) 38%, rgb(29 29 27 / 0.55) 72%, #1d1d1b 100%), linear-gradient(to right, rgb(29 29 27 / 0.08) 0%, rgb(29 29 27 / 0.12) 28%, rgb(29 29 27 / 0.55) 62%, rgb(29 29 27 / 0.9) 82%, #1d1d1b 100%)",
+            background: [
+              "linear-gradient(90deg, rgb(29 29 27 / 0.05) 0%, rgb(29 29 27 / 0.12) 40%, rgb(29 29 27 / 0.45) 68%, rgb(29 29 27 / 0.82) 88%, #1d1d1b 100%)",
+              "linear-gradient(0deg, rgb(29 29 27 / 0.15) 0%, rgb(29 29 27 / 0.05) 22%, transparent 48%)",
+              "linear-gradient(180deg, #1d1d1b 0%, rgb(29 29 27 / 0.35) 14%, transparent 36%)",
+            ].join(", "),
           }}
         />
       </div>
