@@ -12,6 +12,8 @@ export type TimeSlot = {
   hour: number;
 };
 
+export type BookingStatus = "pending" | "approved" | "rejected";
+
 export type BookingRequest = {
   id: string;
   plan: BookingPlan;
@@ -23,7 +25,7 @@ export type BookingRequest = {
   email: string;
   referenceId: string;
   receiptName: string;
-  status: "pending";
+  status: BookingStatus;
   createdAt: string;
 };
 
@@ -156,12 +158,38 @@ function hash(value: string) {
 
 export function listBookings(): BookingRequest[] {
   try {
-    return JSON.parse(
+    const raw = JSON.parse(
       localStorage.getItem(STORAGE_KEY) ?? "[]",
     ) as BookingRequest[];
+    return raw.map((item) => ({
+      ...item,
+      status: item.status ?? "pending",
+      slotIds: item.slotIds?.length
+        ? item.slotIds
+        : item.slotId
+          ? [item.slotId]
+          : [],
+    }));
   } catch {
     return [];
   }
+}
+
+export function listBookingsByEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  return listBookings().filter((item) => item.email === normalized);
+}
+
+export function listBookingsForDate(date: string) {
+  return listBookings().filter((item) => item.date === date);
+}
+
+export function updateBookingStatus(id: string, status: BookingStatus) {
+  const next = listBookings().map((item) =>
+    item.id === id ? { ...item, status } : item,
+  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  return next.find((item) => item.id === id) ?? null;
 }
 
 export function saveBooking(

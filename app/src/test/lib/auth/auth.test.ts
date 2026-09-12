@@ -55,5 +55,14 @@ describe("auth stub", () => {
       password: "password1",
     });
     expect(user.name).toBe("Ada Lovelace");
+    expect(user.role).toBe("student");
+  });
+
+  it("seeds and logs in the demo admin fixture", async () => {
+    const user = await loginAccount({
+      email: "admin@pickleera.local",
+      password: "password1",
+    });
+    expect(user.role).toBe("admin");
   });
 });

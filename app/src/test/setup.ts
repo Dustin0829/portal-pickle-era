@@ -15,6 +15,7 @@ if (!Element.prototype.releasePointerCapture) {
 if (!HTMLElement.prototype.scrollIntoView) {
   HTMLElement.prototype.scrollIntoView = () => {};
 }
+window.scrollTo = vi.fn();
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,

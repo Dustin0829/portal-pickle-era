@@ -44,6 +44,20 @@ export function Navbar() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
               {firstName}
             </p>
+            <Link
+              to="/app"
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80 transition hover:text-yellow"
+            >
+              My portal
+            </Link>
+            {user.role === "admin" ? (
+              <Link
+                to="/admin"
+                className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80 transition hover:text-yellow"
+              >
+                Admin
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={logout}
@@ -82,16 +96,34 @@ export function Navbar() {
               </a>
             ))}
             {user ? (
-              <button
-                type="button"
-                className={loginMobileClass}
-                onClick={() => {
-                  logout();
-                  setOpen(false);
-                }}
-              >
-                Log out
-              </button>
+              <>
+                <Link
+                  to="/app"
+                  className="py-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/85"
+                  onClick={() => setOpen(false)}
+                >
+                  My portal
+                </Link>
+                {user.role === "admin" ? (
+                  <Link
+                    to="/admin"
+                    className="py-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/85"
+                    onClick={() => setOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  className={loginMobileClass}
+                  onClick={() => {
+                    logout();
+                    setOpen(false);
+                  }}
+                >
+                  Log out
+                </button>
+              </>
             ) : (
               <Link
                 to="/login"

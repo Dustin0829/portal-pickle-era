@@ -32,6 +32,8 @@ cd support && cp .env.example .env && pnpm install && pnpm dev
 | Where | URL |
 |-------|-----|
 | Product app | http://localhost:5173 |
+| Student portal | http://localhost:5173/app (signed in) |
+| Facility admin | http://localhost:5173/admin (demo: `admin@pickleera.local` / `password1`) |
 | Support app | http://localhost:5174 |
 | Product API | http://localhost:3000 |
 | Activity logs API | http://localhost:3000/admin/activity-logs |

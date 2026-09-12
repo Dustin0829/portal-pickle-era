@@ -2,11 +2,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import {
+  ensureAdminFixture,
   getSession,
   loginAccount,
   logoutAccount,
@@ -15,8 +17,11 @@ import {
   type AuthUser,
 } from "@/lib/auth/auth";
 
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
 type AuthContextValue = {
   user: AuthUser | null;
+  status: AuthStatus;
   login: (input: { email: string; password: string }) => Promise<AuthUser>;
   signup: (input: {
     name: string;
@@ -30,12 +35,28 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => getSession());
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [status, setStatus] = useState<AuthStatus>("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await ensureAdminFixture();
+      if (cancelled) return;
+      const session = getSession();
+      setUser(session);
+      setStatus(session ? "authenticated" : "unauthenticated");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = useCallback(
     async (input: { email: string; password: string }) => {
       const next = await loginAccount(input);
       setUser(next);
+      setStatus("authenticated");
       return next;
     },
     [],
@@ -45,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (input: { name: string; email: string; password: string }) => {
       const next = await signupAccount(input);
       setUser(next);
+      setStatus("authenticated");
       return next;
     },
     [],
@@ -53,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     logoutAccount();
     setUser(null);
+    setStatus("unauthenticated");
   }, []);
 
   const resetPassword = useCallback(
@@ -63,8 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, login, signup, logout, resetPassword }),
-    [user, login, signup, logout, resetPassword],
+    () => ({ user, status, login, signup, logout, resetPassword }),
+    [user, status, login, signup, logout, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
