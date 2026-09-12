@@ -1,0 +1,114 @@
+---
+description: REST API naming, HTTP methods, audience prefixes, query params, and status codes
+globs: src/modules/**/*.routes.ts,src/modules/**/*.controller.ts,src/modules/**/*.schema.ts,src/modules/**/*.openapi.ts,src/app/router.ts,contracts/openapi.json
+alwaysApply: false
+---
+
+# REST API conventions
+
+Use when creating or reviewing routes, controllers, schemas, OpenAPI, or endpoint examples.
+
+Works with `http-api.mdc` (Zod/OpenAPI), `role-based-access.mdc` (RBAC/IDOR), `response-contracts.mdc` (DTO envelopes), `search-query-guidelines.mdc`, `api-protection.mdc`.
+
+## Core principle
+
+URLs identify **resources**. HTTP methods describe the action.
+
+```http
+GET /users          POST /users
+GET /users/{userId}  PATCH /users/{userId}  DELETE /users/{userId}
+```
+
+Avoid verb routes: `/getUsers`, `/createUser`, `/users/{userId}/delete`.
+
+## Resource naming & URL formatting
+
+| Rule | Do | Don't |
+| ---- | -- | ----- |
+| Nouns, plural | `/products`, `/orders` | `/product`, `/getProducts` |
+| Lowercase + hyphens | `/email-templates` | `/emailTemplates`, `/Email_Templates` |
+| No trailing slash | `/users` | `/users/` |
+| No file extension | `Accept: application/json` | `/users.json` |
+| IDs in path | `/orders/{orderId}` | `/orders?id=123` |
+| Descriptive params | `/users/{userId}/posts/{postId}` | `/users/{id}/posts/{id}` |
+
+Nest only for clear ownership; keep nesting shallow (≤ 2 levels). Prefer `/posts/{postId}/comments` over deep org→team→project→task trees.
+
+Mount in `src/app/router.ts`. No `/api/v1` by default — `platform-patterns.mdc`.
+
+## Audience prefixes (no redundant CRUD)
+
+| Prefix | Audience | Examples |
+| ------ | -------- | -------- |
+| *(app)* | Client/customer | `GET /brands`, `POST /uploads/presign` |
+| `/me` | Current actor | `GET /me`, `PATCH /me` |
+| `/employee` | Internal staff | `GET /employee/tickets` |
+| `/admin` | Platform admins | `GET /admin/organizations` |
+
+One resource = one path per audience. Do **not** clone the same list under `/admin`, `/employee`, and app. Self data → `/me`, not `/users/{userId}`. Details: `role-based-access.mdc`.
+
+## HTTP methods
+
+| Method | Use |
+| ------ | --- |
+| `GET` | Read |
+| `POST` | Create or non-idempotent action |
+| `PUT` | Full replace |
+| `PATCH` | Partial update (preferred) |
+| `DELETE` | Delete |
+
+Non-CRUD: model as a resource (`POST /exports`, `GET /exports/{exportId}`) — not `POST /runExport`.
+
+## Common query parameters
+
+Aligned with `src/lib/pagination.schema.ts` (`paginatedQuerySchema`):
+
+| Parameter | Use | Template default |
+| --------- | --- | ---------------- |
+| `page` | 1-based page number | `1` |
+| `limit` | Page size (max 100) | `20` |
+| `sort` | Allowlisted sort field | per-resource enum |
+| `order` | `asc` \| `desc` | `desc` |
+| `search` | Free-text search | optional; prefer `min(2)` |
+| Resource fields | Filters (`status`, `createdAfter`, …) | list schema only |
+
+```http
+GET /products?category=shoes&page=2&limit=20&sort=price&order=asc&search=runner
+```
+
+**Do not use** as aliases: `pageSize`, `per_page`, `q`, `sortBy`, `direction`.  
+**Do not expose** `offset` or `cursor` as public query params — offset is computed via `pageToOffset` inside services. Cursor pagination only if a product explicitly adopts it later.
+
+Lists return `{ items, meta }` via `buildPaginationMeta` — `http-api.mdc`.
+
+## Status codes
+
+| Status | Use |
+| ------ | --- |
+| `200` | Read/update with body |
+| `201` | Created |
+| `202` | Accepted (async job) |
+| `204` | Success, no body |
+| `400` | Malformed request |
+| `401` | Missing/invalid auth |
+| `403` | Authenticated but not allowed |
+| `404` | Missing or not visible (incl. wrong tenant/owner) |
+| `409` | Conflict |
+| `422` | Validation failed (`VALIDATION_ERROR`) |
+| `429` | Rate limited |
+| `500` | Unexpected server error |
+
+## Response & security
+
+Envelope and errors: `response-contracts.mdc`, `docs/api-response-samples.md` — `{ success, message, data?, meta?, code?, errors? }`. Do not invent a second envelope.
+
+AuthZ: authenticate protected routes; authorize by role, ownership, and tenant (`role-based-access.mdc`, `multi-tenant-safety.mdc`). Validate all input (`http-api.mdc`). Rate-limit sensitive endpoints (`api-protection.mdc`).
+
+## Agent checklist
+
+- [ ] Nouns, plural, lowercase, hyphenated; no trailing slash or `.json`
+- [ ] Correct audience prefix; no duplicate role CRUD
+- [ ] Methods match operation; non-CRUD modeled as resources
+- [ ] List query uses `page`/`limit`/`sort`/`order`/`search`
+- [ ] Status codes + project response envelope
+- [ ] AuthN/AuthZ + object scope; OpenAPI regenerated

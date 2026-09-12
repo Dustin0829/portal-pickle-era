@@ -1,0 +1,138 @@
+---
+description: Offline, sleep, reconnect, and tab resume — never assume the network is always on
+globs: src/providers/**/*.{ts,tsx},src/components/OfflineBanner.tsx,src/lib/hooks/use-online-status.ts,src/api/**/*
+alwaysApply: false
+---
+
+# Offline & reconnect
+
+See also: **`error-handling.mdc`**, **`async-ui.mdc`**, **`interaction-polish.mdc`**, **`forms-and-drafts.mdc`**.
+
+Browsers suspend tabs, laptops sleep, Wi‑Fi drops, and VPNs flap. **Do not assume the internet always works.** Design for **cached reads**, **visible offline state**, and **safe recovery on reconnect**.
+
+## Core rules
+
+1. **Show cached data when offline** when TanStack Query has it — plus an offline indicator, not a blank screen.
+2. **Refetch on reconnect** — rely on Query defaults; do not disable without reason.
+3. **Failed mutations stay recoverable** — preserve form/draft input; offer retry (`forms-and-drafts.mdc`).
+4. **One global online signal** — app-wide banner or status chip; avoid per-page ad-hoc `navigator.onLine` checks.
+
+## TanStack Query defaults (`QueryProvider`)
+
+Configure once in `src/providers/QueryProvider.tsx`:
+
+```typescript
+new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      retry: 1,
+      refetchOnReconnect: true,   // default in v5 — keep enabled
+      refetchOnWindowFocus: true,   // tab wake / return from sleep
+      networkMode: "online",        // pause fetches while offline; use cache
+    },
+    mutations: {
+      retry: 0,
+      networkMode: "online",
+    },
+  },
+});
+```
+
+- **`networkMode: 'online'`** — queries pause offline; show cached `data` + offline UI when available.
+- **`refetchOnWindowFocus`** — user returns after sleep; stale queries refetch (pair with `staleTime`).
+- Per-query overrides only when product requires (`networkMode: 'always'` for critical freshness).
+
+## Online status (app-wide)
+
+Centralize in `src/lib/hooks/use-online-status.ts` (or provider):
+
+```typescript
+import { onlineManager } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
+
+export function useOnlineStatus() {
+  return useSyncExternalStore(
+    (onChange) => onlineManager.subscribe(onChange),
+    () => onlineManager.isOnline(),
+    () => true,
+  );
+}
+```
+
+Use in a root layout banner:
+
+```tsx
+const isOnline = useOnlineStatus();
+if (!isOnline) return <OfflineBanner />; // non-blocking strip, not full-page unless no cache
+```
+
+**Do not** sprinkle `window.addEventListener('online')` in individual pages.
+
+## Scenarios
+
+| Event | Expected UX |
+| ----- | ----------- |
+| **Laptop sleep → wake** | `refetchOnWindowFocus` refreshes stale data; brief `isFetching` indicator |
+| **Tab backgrounded / discarded** | Remount refetches or serves cache; no silent `return null` |
+| **Wi‑Fi drop mid-request** | Query `isError` or retry; mutation error + retry; drafts preserved |
+| **Reconnect** | `refetchOnReconnect`; dismiss offline banner; no full-page reload required |
+| **Hard refresh offline** | Cached Query data if persisted (optional); else honest offline error state |
+
+## Reads while offline
+
+```tsx
+const { data, isPending, isError, isFetching, error } = useItems();
+const isOnline = useOnlineStatus();
+
+if (isPending) return /* loading branch — error-handling.mdc + boneyard-skeletons.mdc */;
+if (isError && !data) {
+  return <ItemsError error={error} offline={!isOnline} onRetry={refetch} />;
+}
+
+return (
+  <>
+    {!isOnline && <StaleDataBanner label="Offline — showing saved data" />}
+    <ItemsTable rows={data ?? []} isRefreshing={isFetching && isOnline} />
+  </>
+);
+```
+
+- **Error + cached data** — prefer showing cache with a warning over wiping the UI.
+- **Empty vs offline** — “No items yet” ≠ “You’re offline” (`error-handling.mdc`).
+
+## Mutations while offline
+
+- **Do not** fire mutations that will obviously fail without feedback.
+- Show **“You’re offline”** on save; keep local edits (`forms-and-drafts.mdc`).
+- On reconnect, offer **Retry sync** or auto-retry debounced autosave — document per feature.
+
+Optional: disable primary submit when offline; always explain why.
+
+## Auth + reconnect
+
+After long offline periods, session may expire:
+
+- Central `401` handler clears auth and redirects (`route-protection.mdc`, `frontend-security.mdc`).
+- Do not loop failed refetches silently — surface login once.
+
+## Anti-patterns
+
+```tsx
+// Bad — assumes network
+useEffect(() => { fetchData(); }, []);
+
+// Bad — full page reload on reconnect
+window.addEventListener("online", () => location.reload());
+
+// Bad — hides everything when offline despite cache
+if (!navigator.onLine) return <OfflinePage />;
+```
+
+## Checklist
+
+- [ ] `QueryProvider` keeps `refetchOnReconnect` and sensible `networkMode`.
+- [ ] App has one online-status source for banners.
+- [ ] Lists/details show cached data with offline indicator when applicable.
+- [ ] Mutations preserve input and offer retry after reconnect.
+- [ ] Offline copy is distinct from empty and error states.

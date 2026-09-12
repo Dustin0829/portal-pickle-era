@@ -1,0 +1,101 @@
+---
+description: In-app UI copy — labels, buttons, errors, toasts, empty states; no AI filler
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# UI microcopy
+
+See also: **`forms/accessibility.mdc`** (labels ≠ headings), **`state/error-handling.mdc`** (empty/error branches), **`api/api-error-routing.mdc`** (form vs toast).  
+Audit checklist: [ai-slop-check](../../skills/ai-slop-check/SKILL.md) (`catalog.md` § Copy — UI microcopy). **Authoring** rules live here; **audit** IDs and severity live in the skill only. Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+**Purpose:** Write copy agents and humans can scan in one pass. Operational tone — not marketing voice inside the product.
+
+## Defaults
+
+| Surface | Rule |
+| ------- | ---- |
+| **Case** | Sentence case for labels, helpers, descriptions, buttons (product names excepted) |
+| **Buttons** | Verb + object: `Save draft`, `Create project`, `Try again` — not `Get started` or `Submit` alone when ambiguous |
+| **Errors** | What failed + what to do: `Couldn’t save draft. Check your connection and retry.` |
+| **Empty states** | Current situation + one primary action — no pep talk or metaphor |
+| **Helpers** | One line max under a simple field; link to docs for long explanations |
+| **Placeholders** | Format or example value — never repeat the label |
+
+## Forbidden in product UI
+
+Do **not** ship these patterns (maps to ai-slop catalog IDs):
+
+```tsx
+// Bad — em dash in short UI chrome (slop-em-dash-ui)
+<Button>Save changes — confirm</Button>
+
+// Bad — vague error, no recovery (slop-vague-error)
+toast.error("Oops! Something went wrong");
+
+// Bad — filler CTA (slop-filler-cta)
+<Button>Get started</Button>  // on empty project list — say Create project
+
+// Bad — click-here phrasing (slop-click-here)
+<p>Click here to upload your file</p>
+
+// Bad — label echo (slop-label-echo, quality-redundant-ux-copy)
+<Label>Email</Label>
+<Input placeholder="Email" />
+<p className="text-muted-foreground">Enter your email address</p>
+
+// Bad — ellipsis on static control (slop-ellipsis-ui)
+<Button>Save…</Button>  // when not loading
+
+// Bad — apologetic filler on routine validation (slop-sorry-wall)
+<p>We're sorry, but this field is required</p>
+// Good
+<p>Brand name is required</p>
+```
+
+Also avoid: **hype verbs** (`seamless`, `leverage`, `unlock`, `empower`), **anthropomorphic** errors (`Your data is happy`), **exclamation spam** in labels/toasts, **Title Case** on every helper line.
+
+## By surface
+
+### Buttons & links
+
+- Primary action names the outcome: `Delete project`, not `Yes` / `OK` in isolation (use `AlertDialog` title for context).
+- Destructive: name the thing being destroyed when space allows.
+- Loading: disable + spinner or `Saving…` — ellipsis **only** while pending.
+- Links in body copy: link text = destination (`View invoice`), not `Click here`.
+
+### Forms
+
+- Every control has a **visible or sr-only `<Label>`** — see `accessibility.mdc`.
+- Inline validation: field name + constraint (`URL must start with https://`).
+- API field errors: map server messages; don’t wrap in “Unfortunately…”
+
+### Toasts & banners
+
+- Success: past tense + outcome (`Draft saved`).
+- Failure: failure + next step; include support/error id when available.
+- One sentence when possible; two max.
+
+### Empty & error panels
+
+Align with `error-handling.mdc` state matrix:
+
+| State | Copy shape |
+| ----- | ---------- |
+| **Empty** | `No projects yet` + `Create project` button |
+| **Error** | What we couldn’t load + `Try again` |
+| **Offline** | Factual (`You’re offline`) — see `offline-reconnect.mdc` |
+
+No jokes, mascots, or “Nothing to see here!” unless documented in project `exceptions.md` for ai-slop-check.
+
+## Marketing vs product
+
+Landing pages, pricing, and hero sections → **`marketing-copy.mdc`**.  
+In-app chrome, settings, tables, dialogs → **this file**.
+
+## Before shipping new strings
+
+1. Read aloud — if it sounds like a SaaS template, rewrite.
+2. Remove em dashes from buttons, labels, and toasts.
+3. Check label / placeholder / helper don’t repeat the same words.
+4. Optional full audit: `@ai-slop-check` on the touched page.

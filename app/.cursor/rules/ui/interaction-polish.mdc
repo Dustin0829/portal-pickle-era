@@ -1,0 +1,94 @@
+---
+description: Interaction polish — feedback, motion intent, keyboard, selection; not visual theming
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx},src/providers/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Interaction polish
+
+See also: **`accessibility.mdc`**, **`error-handling.mdc`**, **`async-ui.mdc`**, **`design-tokens.mdc`**, **`delight-ux.mdc`**, **`boneyard-skeletons.mdc`**, [ai-slop-check](../../skills/ai-slop-check/SKILL.md) (visual slop audit). Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+Premium UIs acknowledge **every action immediately** (target under 100ms when possible). This rule covers **motion, feedback, keyboard, and selection** — not colors or tokens (`design-tokens.mdc`).
+
+**Data surface states** (loading / empty / error / ready) → **`error-handling.mdc`**. **Optimistic UI & races** → **`async-ui.mdc`**. **Offline & drafts** → **`offline-reconnect.mdc`**, **`forms-and-drafts.mdc`**. **Empty/error copy** → **`copy/ui-microcopy.mdc`**.
+
+## Philosophy
+
+Acknowledge clicks, submits, toggles, and navigation — via focus move, loading on control, optimistic update, or state change. Never leave an action unacknowledged.
+
+If work may exceed **~300ms**, show skeleton, progress, or optimistic state — never silent wait.
+
+## State-driven controls
+
+For **data surfaces**, follow **`error-handling.mdc`**. For **controls**, define: idle, hover, pressed, loading, disabled, success on buttons; focus/error on inputs; hover/focus/selected on rows. Use shadcn variants + `aria-*`.
+
+## Micro-feedback
+
+| Action | Feedback |
+| ------ | -------- |
+| Save | Brief success or checkmark |
+| Copy | “Copied” toast or inline |
+| Submit | Loading → success/error on control |
+| Delete | Animate out or undo toast |
+
+Users should never wonder: “Did it work?”
+
+## Selection
+
+Hover, focus, and selected states on every selectable element. Selection **not color alone** — background, border/ring, icon/weight, `aria-selected`.
+
+## Motion
+
+Every animation answers: **what changed? why? where did it go?**
+
+- Prefer **`transform` and `opacity`** — not width/height/shadow on large lists.
+- Preserve spatial memory — animate moves, don’t teleport content.
+- Expand/collapse: grid `0fr`/`1fr` — not `max-height` hacks.
+- **Metric animation** only on high-signal KPIs — not every table cell.
+- Respect **`prefers-reduced-motion`** — global CSS in `index.css`; no decorative loops.
+
+## Progressive rendering & layout stability
+
+Render shell first; load regions independently — never block full page on slowest query (`error-handling.mdc`). Reserve space with skeletons matching final dimensions; avoid layout jump when data arrives.
+
+## Skeletons
+
+Loading skeleton policy → **`boneyard-skeletons.mdc`** only. Inline refresh: stale content + subtle progress. Button actions: loading state on the control.
+
+## Undo over confirm
+
+Reversible actions → act + **undo toast**. Confirm dialogs only for destructive/irreversible/high-stakes.
+
+## Contextual & progressive disclosure
+
+Reveal row actions on hover/selection/focus. Essential controls first; advanced behind expand/tabs/“More”.
+
+## Density (desktop dashboards)
+
+Compact tables and purposeful padding on data-heavy screens — not oversized marketing-style cards on admin surfaces.
+
+## Visual slop
+
+Section eyebrows, gradient heroes, nested cards, glassmorphism, etc. → audit with **[ai-slop-check](../../skills/ai-slop-check/SKILL.md)** (`catalog.md`). Do not duplicate slop catalogs in this rule.
+
+## Keyboard & focus
+
+- **Enter** confirms; **Esc** closes overlays; **Tab** logical order; arrows in lists/menus/tabs.
+- After create → focus new item field; after close modal → return to trigger; after delete → next row or container.
+- Command palette (`Cmd+K`) for search-heavy apps — but never hide **critical** flows behind shortcuts alone.
+
+## Consistency
+
+Similar components must behave the same across lists, forms, modals, and empty states.
+
+## Checklist
+
+- [ ] Actions acknowledged immediately; slow work shows progress/skeleton/optimistic state.
+- [ ] Page regions render progressively; layouts stable when data arrives.
+- [ ] Hover, focus, pressed, disabled, loading defined on composed UI.
+- [ ] Selection obvious without color alone.
+- [ ] Motion has intent; `prefers-reduced-motion` respected.
+- [ ] No visual slop on changed surfaces (`@ai-slop-check` when reviewing marketing or dense UI).
+- [ ] Keyboard path exists; focus moves sensibly after actions.
+- [ ] Reversible deletes use undo where appropriate.
+- [ ] Primitives use shadcn preset — no conflicting custom press/hover overrides.

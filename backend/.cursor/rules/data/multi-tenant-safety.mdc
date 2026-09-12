@@ -1,0 +1,106 @@
+---
+description: Tenant isolation — every query scoped; never trust organizationId from the client body
+globs: src/modules/**,prisma/**
+alwaysApply: false
+---
+
+# Multi-tenant safety
+
+Golden reference: `platform-patterns.mdc` (auth wiring). **Cross-tenant data access is a severity-1 bug.**
+
+## Purpose
+
+Organizations, teams, and workspaces mean **every row belongs to a tenant**. One missing `where: { organizationId }` exposes another customer's data.
+
+## The rule
+
+1. **Resolve actor context first** — middleware / session → `req.organization.id` (future) or explicit service arg from controller
+2. **Never trust `organizationId` from request body or query** — clients can send any UUID
+3. **Every read and write** on tenant-owned models includes tenant scope in Prisma `where`
+4. **Member lookups** verify membership before returning child resources
+
+```txt
+auth middleware → controller passes organizationId → service scopes ALL queries
+```
+
+## Service signatures
+
+```ts
+// ✅ tenant from controller context — not from body
+export async function listCampaigns(input: {
+  organizationId: string;
+  userId: string;
+  query: ListCampaignsQuery;
+}) {
+  const where = {
+    organizationId: input.organizationId,
+    ...buildFilters(input.query),
+  };
+  return prisma.campaign.findMany({ where, ... });
+}
+
+// ❌ tenant from client body
+export async function createCampaign(body: { organizationId: string; name: string }) {
+  return prisma.campaign.create({ data: body });
+}
+```
+
+## Read by ID
+
+Fetching `:id` without tenant scope allows ID enumeration across tenants.
+
+```ts
+// ❌ cross-tenant IDOR
+const row = await prisma.campaign.findUnique({ where: { id } });
+
+// ✅ always scope
+const row = await prisma.campaign.findFirst({
+  where: { id, organizationId },
+});
+if (!row) throw new NotFoundError("Campaign not found");
+```
+
+Use `NotFoundError` for missing **or** wrong-tenant rows — do not reveal existence.
+
+## Writes
+
+```ts
+await prisma.campaign.updateMany({
+  where: { id, organizationId },
+  data: { name },
+});
+// check count === 1
+```
+
+Creates: set `organizationId` from service input (from controller), never from unvalidated body field.
+
+## Nested resources
+
+`GET /organizations/:orgId/campaigns/:id` — still scope by `organizationId` from session, not URL alone (URL must match session org or return 404).
+
+## Before auth ships
+
+Template has no auth yet — **still** design services with `{ organizationId }` parameters and scoped queries so wiring auth does not require retrofitting every query.
+
+## User-owned rows (IDOR)
+
+Same pattern for **user**-scoped data: never authorize with a client-supplied `userId`. Prefer `/me` + `req.user.id`. Cross-user admin/employee access only on `/admin` or `/employee` mounts with explicit permission — `role-based-access.mdc`.
+
+## Related rules
+
+- Auth middleware shape: `platform-patterns.mdc`
+- Role surfaces + object auth: `role-based-access.mdc`
+- Path prefixes: `rest-api-convention.mdc`
+- Layer boundaries: `module-boundaries.mdc`
+- Response leakage: `response-contracts.mdc`
+
+## Explicit prohibitions
+
+- No `findUnique({ where: { id } })` on tenant-owned tables without `organizationId`.
+- No `organizationId` or `userId` from `req.body` / `req.query` as authority.
+- No global `findMany()` on tenant tables.
+- No revealing “exists in another org” via different error messages.
+
+## AI guidance
+
+New module with org/workspace? Every service function takes `organizationId` from controller. Every Prisma call includes it in `where`. User-private resources? Scope by actor id from token (`role-based-access.mdc`). Review diff for any query missing tenant/owner scope before merge.

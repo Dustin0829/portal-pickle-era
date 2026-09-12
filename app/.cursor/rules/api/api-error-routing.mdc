@@ -1,0 +1,141 @@
+---
+description: Route API errors to form fields or toasts — validation, business, and system
+globs: src/api/**/*
+alwaysApply: false
+---
+
+# API error routing
+
+See also: **`api-layer.mdc`**, **`forms-and-drafts.mdc`**, **`accessibility.mdc`**, **`error-handling.mdc`** (async read UX only). Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+API failures have **two audiences** with different needs:
+
+| Audience | Channel | Purpose |
+| -------- | ------- | ------- |
+| Forms | RHF `setError` on fields | Tell the user what to fix |
+| Humans | Toast / inline alert | Non-field failures |
+
+**Do not** use one channel for both. `message` and field copy are different concepts.
+
+## Two layers of validation (client first)
+
+Forms use **both** client and server validation. They are not alternatives.
+
+| Layer | When | How | Network? |
+| ----- | ---- | --- | :------: |
+| **Client** | On submit (and optionally blur) | RHF + `zodResolver` from `@/api/features/<domain>/*.schema` | No — blocks `mutate` |
+| **Server** | After request, if backend rejects input | `applyFieldErrorsToForm` on `VALIDATION_ERROR` | Yes — safety net |
+
+```tsx
+const form = useForm<ItemFormValues>({
+  resolver: zodResolver(itemFormSchema), // client — instant field errors
+  defaultValues,
+});
+
+// mutate only runs when Zod passes; server errors handled in onError
+form.handleSubmit((values) => mutate(values, { onError: ... }));
+```
+
+**Client** catches shape/range/required errors immediately — e.g. "Number must be greater than 0" — with no round trip. Use the **same Zod schema** (or equivalent rules) as the API body when possible (`zod-validation.mdc`).
+
+**Server** validation still matters for: rules the client cannot know (unique constraints, cross-field rules), tampered requests, schema drift, and authorization. Map those `fieldErrors` with `applyFieldErrorsToForm` — still no toast.
+
+`applyFieldErrorsToForm` is only for **server-returned** `VALIDATION_ERROR`. RHF + Zod handle client-side errors automatically via the resolver.
+
+## Error types
+
+| Type | `code` examples | Toast | Form mapping |
+| ---- | --------------- | :---: | :----------: |
+| **Validation** | `VALIDATION_ERROR` | No | Yes — `errors.fieldErrors` |
+| **Business rule** | `CONFLICT`, `FORBIDDEN`, `NOT_FOUND`, or domain `code` | Yes | Optional |
+| **System** | `5xx`, network timeout | Yes | No |
+
+`message` is the **summary** for toasts and logs — not per-field copy.
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "errors": {
+    "formErrors": [],
+    "fieldErrors": {
+      "userLimit": ["Number must be greater than 0"]
+    }
+  }
+}
+```
+
+For validation, **never** put field text in `message`. Map `fieldErrors` only.
+
+## Frontend patterns
+
+Use `@/api/lib/apply-field-errors-to-form.ts` and `@/api/lib/api-error-message.ts`:
+
+```ts
+import {
+  applyFieldErrorsToForm,
+  isApiValidationError,
+} from "@/api/lib/apply-field-errors-to-form";
+import {
+  getUserFacingApiErrorMessage,
+  handleApiMutationError,
+} from "@/api/lib/api-error-message";
+
+// Form submit — prefer handleApiMutationError (validation → fields, no toast)
+onError: (error) => {
+  handleApiMutationError(error, { setError, toastError: toast.error });
+};
+```
+
+```ts
+// Inline / read surfaces (no form)
+getUserFacingApiErrorMessage(error); // never raw ZodError JSON
+```
+
+Nested server keys use dot paths (`identitySummary.builds`) — pass through to RHF `setError` unchanged.
+
+```ts
+// Mutation hook — no form context
+onError: (error) => {
+  if (isApiValidationError(error)) return; // page maps fieldErrors
+  toast.error(getUserFacingApiErrorMessage(error));
+};
+```
+
+Client-side Zod failures (resolver): inline on fields via RHF — no toast, no `applyFieldErrorsToForm`, no request.
+
+**Accessibility:** each field error needs `aria-invalid` and `aria-describedby` pointing at the error element `id` (`accessibility.mdc`). With shadcn `Form` + `FormMessage`, use the Form primitives.
+
+## Examples
+
+| Backend | Frontend |
+| ------- | -------- |
+| `VALIDATION_ERROR` + `fieldErrors.userLimit` | `setError("userLimit", { message: "…" })` — no toast |
+| `CONFLICT` — "Resource conflict" | Toast with `message` |
+| `5xx` / network — "Service temporarily unavailable" | Toast with `message` |
+
+## Anti-patterns
+
+```ts
+// Bad — toasts field-level validation or raw Zod dump
+onError: (e) => toast.error(e.message);
+
+// Bad — raw error.message on non-form surfaces
+<Alert>{error?.message}</Alert>
+
+// Bad — maps infra errors to a random field
+setError("email", { message: "Database unavailable" });
+
+// Bad — collapses field copy into message on the backend
+throw new ValidationError("Number must be greater than 0");
+```
+
+## Checklist
+
+- [ ] Forms use `zodResolver` + domain schema — client validates before `mutate`.
+- [ ] `VALIDATION_ERROR` → `applyFieldErrorsToForm`; no toast.
+- [ ] Business / system errors → toast (or inline alert on non-form surfaces).
+- [ ] Mutation hooks skip toast when `isApiValidationError`; use `getUserFacingApiErrorMessage` for toasts and inline alerts.
+- [ ] Server field errors set `aria-describedby` / `aria-invalid` on affected fields.
+- [ ] Backend keeps `message: "Validation failed"` separate from `fieldErrors`.

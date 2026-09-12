@@ -1,0 +1,257 @@
+---
+description: API services, schemas, query hooks, and frontend/backend integration patterns
+globs: src/api/**/*
+alwaysApply: false
+---
+
+# API layer & backend integration
+
+See also: **`api-error-routing.mdc`**, **`response-mapping.mdc`**, **`async-ui.mdc`**, **`frontend-security.mdc`**, **`route-protection.mdc`**, **`data-ownership.mdc`**, **`frontend-feature-boundaries.mdc`**.
+
+Use this flow whenever you add or change REST endpoints consumed by the web app.
+
+## Folder layout (`src/api/`)
+
+**Feature-first** — each backend domain owns its HTTP slice in one folder. Shared infra and cross-cutting contracts stay at the **root**.
+
+```
+src/api/
+├── client.ts
+├── config.ts
+├── schema/
+│   └── primitives.schema.ts      # shared Zod only
+├── types/
+│   └── global.types.ts           # ApiSuccess, pagination, shared wrappers
+├── lib/                          # optional: useAuthenticatedQuery, query helpers
+└── features/
+    ├── examples/
+    │   ├── examples.service.ts
+    │   ├── examples.schema.ts
+    │   ├── examples.types.ts
+    │   └── use-examples.ts
+    ├── items/
+    └── auth/                     # cross-cutting modules use the same shape
+```
+
+| Location | Purpose |
+| -------- | ------- |
+| `src/api/client.ts` | Shared HTTP client (Axios: base URL, JSON, auth header, error unwrap). **Do not** add per-request `Authorization` in random call sites if the client already reads the token from your auth layer. |
+| `src/api/config.ts` | Env-based URLs. Parse `VITE_*` with Zod at module load — see `zod-validation.mdc`. |
+| `src/api/schema/` | **Shared Zod only** — `primitives.schema.ts`. Domain schemas live in **`features/<domain>/`**. |
+| `src/api/types/` | **Shared TypeScript only** — `global.types.ts`, wrappers used across features. Domain DTO types live in **`features/<domain>/`**. |
+| `src/api/lib/` | Optional cross-feature query helpers (`use-authenticated-query.ts`). No domain HTTP. |
+| `src/api/features/<domain>/` | **One folder per backend module** — service, schema, types, TanStack hooks together. |
+| `src/api/generated/` | Optional OpenAPI codegen output — thin; app behavior stays in `features/`. |
+| `src/lib/<domain>/` | **Pure** UI mappers, formatters, mutation copy — not HTTP. See `response-mapping.mdc`. |
+
+### Surface segments (admin / app)
+
+When the backend namespaces by surface, nest under `features/`:
+
+```
+src/api/features/admin/items/
+src/api/features/app/orders/
+```
+
+Pick **one** convention (flat domain vs surface prefix) and match the backend OpenAPI tags/modules.
+
+General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/components/` — see `naming-conventions.mdc`.
+
+## Standard pipeline (new backend feature)
+
+1. **Folder** — Create `src/api/features/<domain>/` (or `features/<segment>/<domain>/`).
+2. **Schema** — Add `<domain>.schema.ts` (Zod + `z.infer` types for that module).
+3. **Types** — Add `<domain>.types.ts` when you want a stable DTO import path separate from schema exports.
+4. **Service** — Add `<domain>.service.ts`; thin functions on the shared client; return parsed/unwrapped data.
+5. **Queries** — Add `use-<domain>.ts` with stable query keys, mutations, cache logic, and toasts.
+6. **UI** — Pages import hooks from `@/api/features/<domain>/use-<domain>`; prefer hooks over calling services directly.
+
+Example: `GET /items`, `POST /items`, `PATCH /items/:id` → all files under `src/api/features/items/`.
+
+## Feature module files
+
+### Service (`<domain>.service.ts`)
+
+- **Naming:** `camelCase` functions: `getItems`, `postItem`, `patchItem`.
+- **Imports:** `import api from '@/api/client'`.
+- **No React** — framework-agnostic for tests and reuse.
+- **Paths:** Match the backend; forward `AbortSignal` when callers support cancellation (`async-ui.mdc`).
+- **Parse:** Use domain Zod schema at the boundary when runtime validation matters.
+
+### Schema (`<domain>.schema.ts`)
+
+- Zod for request bodies, response DTOs, and forms. Import shared primitives from `@/api/schema/primitives.schema.ts`.
+- **Defaults**, **payload builders**, **UI mappers** live under **`src/lib/<domain>/`** — not in schema files.
+- Pages import from `@/api/features/<domain>/<domain>.schema` — do not define schemas under `pages/`.
+
+### Types (`<domain>.types.ts`)
+
+- Optional re-exports from schema or thin aliases for DTOs.
+- Shared wrappers (`ApiSuccess<T>`) stay in `src/api/types/global.types.ts`.
+
+### Query hooks (`use-<domain>.ts`)
+
+- **Exports:** camelCase, `use` prefix; name by **intent** (`useItems`, not `useItemsQuery`).
+- **Query keys:** Colocate key factories in the hook file; export for invalidation / optimistic updates.
+- **Auth-gated queries:** `enabled: status === 'authenticated'` or shared helper in `src/api/lib/` (`route-protection.mdc`).
+- **Mutations:** Define **`useMutation`** here (not in pages). `useQueryClient`, cache updates, and API toasts belong in this file.
+  - Put user-facing copy in **`src/lib/<domain>/`** when messages depend on payload shape.
+  - **Toasts:** business and system errors only — **`isApiValidationError`** → no toast; the form maps `fieldErrors` (`api-error-routing.mdc`).
+  - **Orchestration hooks** (e.g. `useSubmitItemCreate`) — validation, navigation, `isSubmitting` live in the feature query module.
+  - Pages may pass **`mutate(..., { onSuccess })`** only for **local UI** — not for API toasts.
+  - **Do not** wrap **`mutateAsync`** in try/catch solely for toasts.
+
+## Async I/O and waterfalls
+
+Applies to **`*.service.ts`**, TanStack **`queryFn`** / mutation functions, and any async code that composes network I/O.
+
+- **Parallelize independent work** — `Promise.all([...])` when results do not depend on each other.
+- **Defer `await`** to the branch that needs it on early returns.
+- **Forward `signal`** from `queryFn` to Axios for cancellable reads (`async-ui.mdc`).
+
+## OpenAPI / generated clients
+
+When you add codegen:
+
+```
+src/api/generated/          # types + fetch client from OpenAPI
+src/api/features/items/
+    items.schema.ts     # UI/form Zod where runtime validation matters
+    use-items.ts        # TanStack keys, cache, toasts, enabled: auth
+```
+
+Generated code stays dumb; **feature folders own app behavior** (Query, invalidation, optimistic updates).
+
+## Pages & components
+
+**Destructure TanStack hooks at the call site** — queries and mutations. Pull flags and handlers from the return value. Do not keep a whole hook result in one variable and branch on `.isPending`.
+
+### Query hooks (reads)
+
+Do not assign `const query = useX()` or name the whole result after the data (`const items = useItems()` reads like `Item[]`, not a query result).
+
+```tsx
+// Bad — query object; inline pending branch (use status union — error-handling.mdc)
+const query = useItems();
+if (query.isPending) return ...;
+
+// Bad — whole result named like data
+const items = useItems();
+if (items.isPending) ...
+```
+
+```tsx
+// Good — single hook (plain names, or alias data for readability)
+const { data, isPending, isError, refetch, isFetching, error } = useItems();
+// or: const { data: post, isPending, ... } = useDemoPost();
+```
+
+**Multiple query hooks on one page** — alias overlapping names:
+
+```tsx
+const {
+  data: items,
+  isPending: isItemsPending,
+  isError: isItemsError,
+  refetch: refetchItems,
+  isFetching: isItemsFetching,
+  error: itemsError,
+} = useItems();
+
+const {
+  data: profile,
+  isPending: isProfilePending,
+  refetch: refetchProfile,
+} = useProfile();
+```
+
+Branching on read flags (loading / error / empty / success) → **`error-handling.mdc`**. Status unions from slices → **`error-handling.mdc`**.
+
+### Mutation hooks (writes)
+
+Same rules: **destructure** from the feature hook return. Do not use `const save = useSaveItem()` then `save.isPending` — `save` reads like an action, not the hook result.
+
+```tsx
+// Bad — whole hook result with action-like name
+const save = useSaveItem();
+<Button disabled={save.isPending}>...</Button>
+
+// Bad — mutation object
+const mutation = useCreateItem();
+mutation.mutate(values);
+```
+
+```tsx
+// Good — destructure mutate + flags (or use orchestration hook below)
+const {
+  mutate: saveItem,
+  isPending: isSavingItem,
+  isError: isSaveError,
+  error: saveError,
+} = useSaveItem();
+
+<Button
+  disabled={isSavingItem}
+  aria-busy={isSavingItem}
+  onClick={() => saveItem(getValues())}
+>
+  {isSavingItem ? "Saving…" : "Save"}
+</Button>
+```
+
+**Multiple mutations on one page** — alias every overlapping field:
+
+```tsx
+const { mutate: createItem, isPending: isCreatingItem } = useCreateItem();
+const { mutate: deleteItem, isPending: isDeletingItem } = useDeleteItem();
+
+<Button disabled={isCreatingItem}>Create</Button>
+<Button disabled={isDeletingItem}>Delete</Button>
+```
+
+**Orchestration hooks** (`useSubmitItem`, `useSaveItemDraft`) may expose a derived **`submitStatus`** union — pages destructure that hook the same way:
+
+```tsx
+const { submit, submitStatus } = useSubmitItem();
+// not: const submitItem = useSubmitItem(); submitItem.submitStatus
+```
+
+Inside **`use-<domain>.ts`**, destructure `useMutation` before building the return object — do not pass through a raw `mutation` object to pages:
+
+```typescript
+const { mutate, isPending, isError, isSuccess } = useMutation({ ... });
+
+const submitStatus: SubmitStatus = isPending
+  ? "submitting"
+  : isSuccess
+    ? "success"
+    : isError
+      ? "error"
+      : "idle";
+
+return { submit: mutate, submitStatus, isPending, isError };
+```
+
+Form submit + server `fieldErrors` → **`api-error-routing.mdc`**. One `submitStatus` per surface → **`error-handling.mdc`**.
+
+- **Do not** call **`useQueryClient()`** in **`src/pages/`** or **`src/components/`** — cache logic lives in **`src/api/features/**`**.
+- Client-side validation toasts (Zod before submit) may stay in the page.
+- Local UI state stays in component state or `src/lib/hooks/` — not in services.
+
+## Exceptions
+
+- Mock services during early UI work live in **`features/<domain>/<domain>.service.ts`**; switch to real HTTP without changing hook exports when possible.
+- **Zustand** — client state only; do not mirror server lists — see `data-ownership.mdc`.
+
+## Checklist before opening a PR
+
+- [ ] New endpoints live under **`src/api/features/<domain>/`** with service, schema, and `use-<domain>.ts`.
+- [ ] Shared Zod primitives use `src/api/schema/primitives.schema.ts`; shared wrappers use `src/api/types/global.types.ts`.
+- [ ] Mappers and non-schema helpers live under **`src/lib/<domain>/`**.
+- [ ] Service functions use the shared **`client`**; hooks are what pages/components import.
+- [ ] Pages **destructure** query and mutation hooks at the call site; alias when multiple hooks share a page (see **Pages & components** above).
+- [ ] Pages and **`src/components/`** do not use **`useQueryClient`** for domain cache logic.
+- [ ] Mutation hooks own API success toasts and non-validation error toasts; `VALIDATION_ERROR` is mapped in the form (`api-error-routing.mdc`).
+- [ ] Query keys are exported for invalidation.
+- [ ] Independent async work is not serialized into avoidable waterfalls; cancellable reads forward **`signal`**.
+- [ ] No secrets in the frontend; only `VITE_*` env vars as documented in `.env.example`.

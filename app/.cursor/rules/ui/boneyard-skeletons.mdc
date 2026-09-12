@@ -1,0 +1,80 @@
+---
+description: Layout-accurate loading skeletons via Boneyard — auto-captured from real UI
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx},vite.config.ts,boneyard.config.json,src/bones/**/*
+alwaysApply: false
+---
+
+# Boneyard layout skeletons
+
+**Canonical home** for skeleton policy — other rules link here; do not duplicate loading-skeleton guidance elsewhere.
+
+See also: **`error-handling.mdc`**, **`async-ui.mdc`**, **`page-layout.mdc`**, **`design-tokens.mdc`**. Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+**Default:** use **shadcn `Skeleton`** (`@/components/ui/skeleton`) unless layout fidelity is worth the extra setup.
+
+**`LayoutSkeleton`** (`@/components/ui/layout-skeleton`) wraps real UI and shows auto-captured bones. Use it on **primary data surfaces** where a polished loading state matters (main list on a page, hero card block) — not every spinner in the app.
+
+## When to use which
+
+| Case | Use |
+| ---- | --- |
+| Main list / card on a page | `LayoutSkeleton` + `fixture` |
+| Nested tab, refetch shimmer, one-off block | shadcn `Skeleton` — **simpler** |
+| Tiny chip / single line | shadcn `Skeleton` |
+| Capture path is awkward (deep route, many states) | shadcn `Skeleton` — don't add dev-only pages or extra infra |
+
+**Do not** hand-stack shadcn blocks to fake a complex list — either use `LayoutSkeleton` or one shadcn block as a coarse placeholder.
+
+## Setup (template defaults)
+
+1. `boneyard-js` in `dependencies`
+2. `boneyardPlugin({ out: "./src/bones" })` in `vite.config.ts` — **dev only** (`command === "serve"`)
+3. `import "./bones/registry"` in `src/main.tsx` and `src/test/setup.ts`
+4. `boneyard.config.json` at repo root
+5. `@/components/ui/layout-skeleton` wrapper
+
+Commit `src/bones/*.bones.json` + `registry.ts`. Production never runs Playwright.
+
+## Component pattern
+
+Put `fixture` on the **same component** as the real children — inline mock data is fine; no separate dev routes or fixture pages.
+
+```tsx
+const LIST_FIXTURE = [{ id: "1", label: "Row one" }, { id: "2", label: "Row two" }];
+
+<LayoutSkeleton
+  name="examples-list"
+  loading={listStatus === "loading"}
+  ariaLabel="Loading examples"
+  fixture={<ExamplesList items={LIST_FIXTURE} />}
+>
+  {listStatus === "ready" ? <ExamplesList items={data!.items} /> : null}
+</LayoutSkeleton>
+```
+
+Keep **error** / **empty** as siblings — not inside `loading={true}`.
+
+## Capture
+
+- Vite plugin captures from **`/`** on dev start and HMR — skeleton must mount on a route the crawler hits.
+- Off-home skeletons: run `pnpm exec boneyard-js build http://localhost:5173` while that page is reachable, **or** use shadcn there instead.
+- Missing bones → `LayoutSkeleton` shows its `fallback` (muted pulse block) — acceptable in dev.
+
+## Anti-patterns
+
+```tsx
+// Bad — dev-only BonesPage / fixture routes just for capture
+<Route path="dev/bones" element={<AllSkeletonsFixture />} />
+
+// Bad — Boneyard for a single gray bar
+<LayoutSkeleton name="x" loading fixture={...}><div className="h-8" /></LayoutSkeleton>
+// Good
+<Skeleton className="h-8 w-full" />
+```
+
+## Checklist
+
+- [ ] Only primary surfaces use `LayoutSkeleton`; rest stay shadcn.
+- [ ] `fixture` lives next to the component — no extra pages.
+- [ ] `src/bones/registry` imported in `main.tsx` + test setup.
+- [ ] Bone JSON committed when capture is done.

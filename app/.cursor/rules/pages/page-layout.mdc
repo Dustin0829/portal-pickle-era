@@ -1,0 +1,148 @@
+---
+description: Page shell rhythm, responsive reflow, touch targets, hierarchy, mobile CTAs
+globs: src/pages/**/*.{ts,tsx},src/layouts/**/*.{ts,tsx},src/components/layout/**/*
+alwaysApply: false
+---
+
+# Page layout
+
+See also: **`page-composition.mdc`**, **`design-tokens.mdc`**, **`interaction-polish.mdc`**, **`error-handling.mdc`**, **`accessibility.mdc`**. Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+**File splitting** → `page-composition.mdc`. Cross-feature imports → **`frontend-feature-boundaries.mdc`** (auto-loads on `src/api/**`, `src/lib/**`). This rule owns **spacing rhythm, column alignment, responsive reflow, and visual hierarchy**.
+
+Golden reference: `src/components/layout/`, `src/pages/home/HomePage.tsx`.
+
+Ship for **320px–375px** first. Horizontal overflow on phones is a release blocker.
+
+## When to use `AppPageShell`
+
+| Page type | Layout approach |
+| --------- | --------------- |
+| **App / dashboard / settings** | `AppPageShell` + `PageHeader` — consistent padding and zone rhythm |
+| **Marketing / landing** | Often **full-bleed** sections — `width="full"` or custom layout **without** global `max-w-3xl` |
+| **Auth card** | `width="narrow"` or centered card outside the shell |
+
+**Pick width per route** — do not force every page through `max-w-3xl`. Adjust presets in `layout.constants.ts`.
+
+## Layout primitives
+
+| Component | Purpose |
+| --------- | ------- |
+| **`AppPageShell`** | Shared page padding, vertical zone rhythm (`gap-8`), optional max-width |
+| **`PageHeader`** | Title + description (`gap-1`) + optional action slot |
+| **`PageSection`** | Major page zones; optional `border-t pt-8` for phase changes |
+
+```tsx
+<AppPageShell width="default">
+  <PageHeader title="Items" description="Manage your workspace." action={<Actions />} />
+  <PageSection>{/* status / alerts */}</PageSection>
+  <PageSection bordered>{/* primary workspace */}</PageSection>
+</AppPageShell>
+```
+
+When a route needs full width:
+
+```tsx
+<AppPageShell width="full">
+  <section className="…">{/* hero */}</section>
+  <section className="mx-auto max-w-5xl …">{/* optional inner cap */}</section>
+</AppPageShell>
+```
+
+**Do not** hand-roll `py-8` + `max-w-*` on every app page.
+
+### Width presets (`AppPageShell`)
+
+| `width` | Default class | Typical intent |
+| ------- | ------------- | -------------- |
+| `default` | `max-w-3xl` | Standard app content column |
+| `profile` | `max-w-2xl` | Focused forms, account settings |
+| `narrow` | `max-w-lg` | Auth, compact panels |
+| `full` | `max-w-none` | Landing pages, wide layouts |
+
+When app chrome and page body share a column, use the **same** `appContentWidthClass` + `appContentPaddingClass` from `@/components/layout`.
+
+## Spacing rhythm
+
+| Level | Gap | Use |
+| ----- | --- | --- |
+| Page zones | `gap-8` | Between header, alerts, main workspace |
+| Section interior | `gap-4`–`gap-6` | Tabs → toolbar → card |
+| Status / alerts stack | `gap-3` | Multiple alerts |
+| Title block | `gap-1` | `PageHeader` title + description |
+| Dense lists | `gap-2` | Rows, metadata lines |
+
+## Shell alignment
+
+- **`RootLayout` `<main>`** — `pb-10`; skip link + `#main` (`accessibility.mdc`).
+- **Chrome vs body** — same max-width when both constrained.
+- **Padding** — `px-4 sm:px-6`, `py-8 sm:py-10` via `AppPageShell`.
+
+## Visual hierarchy
+
+| Element | Weight |
+| ------- | ------ |
+| Page title | `PageHeader` `h1` |
+| Status / alerts | `Alert` above workspace, `gap-3` stack |
+| Primary workspace | `border-t pt-8` separation |
+| Secondary lists | Flat rows — `gap-2`; avoid nested `CardContent` for one metadata line |
+
+- **Long copy** — `text-pretty` on descriptions.
+- **Tinted panels** — semantic tokens, not `text-muted-foreground` on strong washes (`design-tokens.mdc`).
+
+## Responsive & mobile
+
+Every layout must **reflow without horizontal scroll** at narrow widths.
+
+### App shell navigation
+
+**Do not** put unbounded horizontal link rows in the header.
+
+| Viewport | Pattern |
+| -------- | ------- |
+| `< md` | `Sheet` / hamburger, bottom tabs, or scrollable tabs — pick one per app |
+| `≥ md` | Full horizontal nav OK |
+
+Test at **320px and 375px** before merge.
+
+### Touch targets (WCAG 2.5.5)
+
+Minimum **44×44 CSS px** hit area on touch devices.
+
+| Control | Pattern |
+| ------- | ------- |
+| Primary actions | shadcn `Button` (`size="default"` / `size="icon"`) |
+| Pager dots, tiny icons | `min-h-11 min-w-11` wrapper — not `size-2` alone |
+| List icon actions | `Button variant="ghost" size="icon"` — not `h-7 w-7` raw `<button>` |
+
+### Primary CTAs on mobile
+
+Main actions (Save, Generate, Submit): **`w-full sm:w-auto`**. Use `PageFooterActions` or `border-t pt-6` + stacked buttons below `sm`.
+
+### Layout patterns
+
+- **`flex` + `gap-*`** and **`min-w-0`** on flex children that truncate.
+- Tables on mobile → card list, horizontal scroll with affordance, or column hiding.
+- Grids: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` — not fixed `grid-cols-4` on all viewports.
+- Breakpoints: Tailwind `sm`, `md`, `lg`; `hidden md:flex` — not JS width checks unless necessary.
+
+## Loading & empty
+
+- Loading skeletons → **`boneyard-skeletons.mdc`** (status branches → **`error-handling.mdc`**).
+- Empty states **teach** — dashed border + hint; not bare alert text.
+
+## Interaction on actions
+
+- Async buttons: `aria-busy`, disabled while pending, label changes (`Saving…`, `Loading…`).
+- Disable when preconditions fail.
+
+## Checklist
+
+- [ ] App routes use `AppPageShell` + `PageHeader` or documented full-bleed layout.
+- [ ] Width preset matches route intent; landing pages not forced into `max-w-3xl`.
+- [ ] Chrome and body columns align when both constrained.
+- [ ] Major phases separated (`gap-8`, `border-t pt-8`).
+- [ ] No horizontal scroll at 320px on changed routes.
+- [ ] App nav collapses or adapts below `md`.
+- [ ] Primary mobile CTAs full-width; custom icon buttons meet 44×44 (or shadcn `Button size="icon"`).
+- [ ] Lists stay flat; skeletons and empty states match structure.

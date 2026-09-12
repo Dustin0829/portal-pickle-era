@@ -1,0 +1,50 @@
+---
+description: Activity log capture hygiene — partial mutations, PII redaction keys, envelope paths
+globs: src/lib/activity-logs/**/*.ts,src/modules/**/*.routes.ts,src/modules/**/*.controller.ts,src/modules/**/*.service.ts
+alwaysApply: false
+---
+
+# Activity logs (capture hygiene)
+
+Golden reference: `src/lib/activity-logs/redact.ts`, `http-capture.ts`, `sampling.ts`.
+
+## Purpose
+
+Persisted activity bodies are operator-visible in the support SPA. Mutations should send **partial** request bodies; high-PII success responses should be **enveloped** in the store; new sensitive fields must join redaction allowlists. Support UI contracts stay metadata-on-list / redacted-on-detail.
+
+## Required patterns
+
+| Concern | Rule |
+| ------- | ---- |
+| Mutation body | Prefer optional fields / partial PUT-PATCH semantics — do not require clients to resend the full resource to change one field |
+| Response contract | Public API may still return full DTOs when product needs cache refresh; **activity store** must envelope high-PII 2xx paths (`isActivityEnvelopePath`) |
+| New PII field | Add key to activity `PII_KEYS` (and secret sets if needed) + unit test in `src/lib/activity-logs/redact.test.ts` |
+| Bulky nests | Prefer `OMITTED_OBJECT_KEYS` / compact — not a substitute for PII key redaction |
+| Fail-open | Capture/writer failures must not fail user HTTP or background jobs |
+
+## Good examples
+
+```ts
+// Partial write — only changed keys
+await updateExample({ title: "New title" });
+
+// After adding a PII field to the API, extend PII_KEYS and tests
+```
+
+## Bad examples
+
+```ts
+// Forcing full resource in every PUT body
+// Persisting full auth 2xx DTO without envelope
+// Relying on compactActivityJson alone to hide streetAddress
+```
+
+## Explicit prohibitions
+
+- No logging cleartext passwords, tokens, OTP, account numbers, or personal contact fields in activity JSON.
+- No requiring Discord posts from merge-readiness when touching these files.
+- Do not fail-close the API if Timescale is down.
+
+## AI guidance
+
+Touching auth routes or `activity-logs/`? Check envelope list + `PII_KEYS`. Scheduled anomaly detection: `activity-logs-hunter` skill — do not invent tickets during normal feature work.

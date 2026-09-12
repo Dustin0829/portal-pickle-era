@@ -1,0 +1,60 @@
+---
+description: Marketing and landing copy — headlines, hero, pricing; specific over buzzword
+globs: src/pages/marketing/**/*.{ts,tsx},src/components/marketing/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Marketing copy
+
+See also: **`pages/page-layout.mdc`**. Visual layout slop (gradients, card grids, eyebrows) → **[ai-slop-check](../../skills/ai-slop-check/SKILL.md)** (`catalog.md` § Visual).  
+In-app settings, forms, tables → **`ui-microcopy.mdc`**.  
+Audit: [ai-slop-check](../../skills/ai-slop-check/SKILL.md) (`catalog.md` § Copy — marketing). Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+**Purpose:** Landing and marketing **copy** — specific over buzzword. Visual slop detection lives in ai-slop-check, not here.
+
+## Headlines & sections
+
+- **Headline:** short claim or outcome — not a long sentence at display size (`slop-oversized-hero-headline`).
+- **Subhead:** one concrete benefit or how it works — not a second headline.
+- Drop **section kickers** (`INTRODUCING`, `WHY US`) unless the design system requires them (`slop-section-kicker`, `slop-hero-eyebrow`).
+- Avoid **aphorism cadence** repeated every section: “Not spreadsheets. Insights.” → explain plainly (`slop-aphorism`).
+
+## Body copy
+
+- Prefer **concrete nouns and verbs** over abstractions.
+- **Em dashes:** max **2 per screen** of body copy; prefer commas or periods (`slop-em-dash`).
+- No **buzzword clusters**: streamline, empower, supercharge, world-class, enterprise-grade, seamless, leverage (`slop-buzzword`, `slop-hype-verb`).
+- No **theater framing** (“growth theater”, performative dismissals) — say what the product does (`slop-theater`).
+
+## CTAs
+
+Same specificity as product UI, but tone can be slightly bolder:
+
+```tsx
+// Bad
+<Button>Get started</Button>
+<Button>Learn more</Button>
+
+// Good — names the action or destination
+<Button>Start free trial</Button>
+<Button>See pricing</Button>
+```
+
+Secondary CTAs must differ in **intent**, not duplicate “Learn more” three times on one page.
+
+## Social proof & metrics
+
+- Only show **real** numbers and logos (`slop-hero-metrics`).
+- No fabricated “10,000+ teams trust us” without a source.
+
+## Feature grids
+
+Identical icon + title + blurb cards — vary copy length and structure when you can’t vary layout yet. Layout audit: ai-slop-check `slop-identical-card-grid`. Each blurb: **one capability + one outcome**, not three adjectives.
+
+## Handoff to product UI
+
+Marketing promises must match in-app language. If the hero says “Instant exports”, the button inside should say `Export CSV`, not `Unlock powerful exports`.
+
+## Audit
+
+For landing-page reviews, run **`@ai-slop-check`** on the route — it covers visual slop and copy IDs together.

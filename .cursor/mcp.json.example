@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "workspace": {
+      "url": "https://YOUR-WORKSPACE-API/mcp",
+      "headers": {
+        "Authorization": "Bearer ws_YOUR_SECRET"
+      }
+    }
+  }
+}

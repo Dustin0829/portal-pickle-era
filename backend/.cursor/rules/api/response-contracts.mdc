@@ -1,0 +1,97 @@
+---
+description: Every API response uses a DTO, mapper, serializer, or explicit select — never raw Prisma
+globs: src/modules/**/*.service.ts,src/modules/**/*.mapper.ts,src/modules/**/*.controller.ts,src/modules/**/*.schema.ts,src/modules/**/*.openapi.ts
+alwaysApply: false
+---
+
+# Response contracts
+
+Golden reference: `src/modules/examples/examples.schema.ts`, `examples.mapper.ts`.
+
+## Purpose
+
+`return user` returns **every column Prisma has today and every column someone adds in six months** — `passwordHash`, `internalNotes`, `billingMetadata`.
+
+API responses are a **deliberate, named contract** — not database rows.
+
+## The rule
+
+**Never return a Prisma model directly from a service to the HTTP layer.**
+
+Every response must use exactly one of:
+
+| Approach | When |
+| -------- | ---- |
+| **Explicit `select`** | DB columns match the public DTO 1:1 — `select` lists only those fields |
+| **Mapper** | `toUserPublic(row)` — shape differs from DB or combines fields |
+| **Serializer** | `serializeCampaign(row)` — same as mapper; lives in `*.service.ts` or `*.mapper.ts` beside the module |
+| **DTO + parse** | Build object, validate with response Zod schema before return (strict modules) |
+
+```ts
+// ✅ examples.mapper.ts — select + mapper (golden reference)
+const row = await prisma.example.findUnique({
+  where: { id },
+  select: examplePublicSelect,
+});
+if (!row) throw new NotFoundError("Example not found");
+return toExampleDto(row);
+
+// ✅ 2 — mapper when shape differs
+function toCampaignPublic(row: Campaign) {
+  return {
+    id: row.id,
+    name: row.name,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+// ✅ 3 — list: map every item
+const rows = await prisma.campaign.findMany({ where, select: { ... } });
+return { items: rows.map(toCampaignPublic), meta };
+```
+
+```ts
+// ❌ raw model — leaks future columns
+return prisma.user.findUnique({ where: { id } });
+
+// ❌ shorthand that bypasses contract
+const user = await prisma.user.findUnique({ where: { id } });
+return user;
+
+// ❌ spread does not help
+return { ...user };
+```
+
+## Workflow for new endpoints
+
+1. Define **response Zod schema** in `*.schema.ts` (e.g. `campaignPublicSchema`)
+2. Register in `*.openapi.ts`
+3. Implement service with `select` or mapper that **only** produces fields in that schema
+4. Controller calls service → `sendSuccess(res, data)` — no reshaping in controller
+
+Response schema is the source of truth. OpenAPI and frontend types derive from it (`http-api.mdc`, `api-evolution.mdc`).
+
+## Lists and relations
+
+- Same projection for **every** item in `items[]`
+- `include: { user: true }` is almost always wrong — `select` nested fields explicitly
+- Admin-only fields → separate `campaignAdminSchema` and admin route — not “extra fields on public DTO”
+
+## Never expose
+
+Password hashes, refresh tokens, API keys, MFA secrets, internal notes, fraud scores, raw `metadata` JSON, other tenants' rows, stack traces, SQL errors.
+
+Secrets in logs: `security-secrets.mdc`. Tenant scope: `multi-tenant-safety.mdc`.
+
+## Explicit prohibitions
+
+- No `return prisma.*` without `select` limited to the public contract.
+- No returning `findMany()` results directly to clients.
+- No adding DB columns to API responses without updating `*.schema.ts` and OpenAPI.
+- No response shaping only in the controller — contract belongs in service + schema.
+- No `as UserDto` casts instead of mapping.
+
+## AI guidance
+
+Tempted to `return row`? Stop — name the response schema first, then `select` or `toXxx()`. New column on model ≠ new column on API. Incident log if this leaks in review: `docs/incident-log.md`.

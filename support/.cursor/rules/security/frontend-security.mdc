@@ -1,0 +1,78 @@
+---
+description: Frontend security boundaries — permissions are UX only; backend is source of truth
+globs: src/components/guards/**/*.{ts,tsx},src/providers/**/*.{ts,tsx},src/lib/stores/**/*.{ts,tsx},src/api/features/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend security
+
+See also: **`route-protection.mdc`**, **`zod-validation.mdc`**, **`api-layer.mdc`**.
+
+**Loads on:** guards, providers, client stores, and `src/api/features/**` (auth, mutations, privileged endpoints). For role-gated UI in pages, read this when adding `role`, `permission`, or admin-only actions — even if the rule did not auto-load.
+
+## Core rule
+
+**Frontend permissions are UX only. Backend authorization is the source of truth.**
+
+The browser is fully controlled by the user. Anything in client code — role checks, hidden buttons, route guards, Zod validation — can be bypassed. Design UI to guide legitimate users; **never** treat client checks as security.
+
+| Client check              | Purpose                          | Not a substitute for        |
+| ------------------------- | -------------------------------- | ----------------------------- |
+| Hide admin actions        | Reduce clutter, prevent mistakes | Server `403` on the mutation  |
+| `ProtectedRoute`          | Navigation UX                    | API rejecting unauthenticated requests |
+| Zod / form validation     | Fast feedback, fewer round trips | Server-side validation        |
+| `disabled` on submit      | Prevent double-submit UX         | Idempotency + server rules    |
+
+## Never trust
+
+### Frontend authorization
+
+```tsx
+// Bad — security theater; anyone can call the API or patch React state
+if (user.role === "admin") {
+  return <DeleteButton onClick={deleteUser} />;
+}
+```
+
+```tsx
+// Good — UX gate only; server enforces on DELETE /users/:id
+const canManageUsers = user?.role === "admin";
+return canManageUsers ? <DeleteButton onClick={() => mutate(id)} /> : null;
+// Service still runs; API returns 403 if unauthorized — handle in mutation onError
+```
+
+### Hidden UI
+
+CSS `hidden`, `display: none`, or conditional render **does not remove** capability. Assume attackers can invoke services, replay requests, and hit routes directly.
+
+### Route guards
+
+`ProtectedRoute` and layout-level redirects **do not protect data**. They only control what React Router renders. Protected endpoints must still return `401` / `403` when called without valid credentials.
+
+### Client validation
+
+Zod and HTML `required` improve UX. **Always** validate and authorize on the server. Client schemas should mirror API contracts where practical (`zod-validation.mdc`) — not replace server enforcement.
+
+## Secrets and sensitive data
+
+- **No secrets in the frontend** — only `VITE_*` (or your bundler’s public env) as documented in `.env.example`.
+- **Do not** log tokens, passwords, or full PII to the console in production paths.
+- **Do not** embed service keys, admin tokens, or bypass headers in client code “for convenience.”
+- Treat API responses as **untrusted input** until parsed; optional Zod `safeParse` on critical payloads (`zod-validation.mdc`).
+
+## Mutations and destructive actions
+
+- Destructive mutations (`delete`, `transfer`, `publish`) must **fail safely** when the API returns `403` / `401` — show error, do not assume success from optimistic UI.
+- **Do not** rely on “only admins see this page” before calling a privileged endpoint.
+- Prefer **idempotent** server handlers where retries are possible.
+
+## Auth mirror (Zustand / context)
+
+A client auth store (`authStore`, session context) is a **cache of identity for UX** — not proof of permission. Refresh from `/me` or your auth provider; on `401`, clear client session and redirect. Server session invalidation must win.
+
+## Checklist
+
+- [ ] Privileged actions are gated in the UI for UX **and** enforced by the API (expect `401` / `403`).
+- [ ] No secrets or private keys in `src/` or committed env files.
+- [ ] Route guards do not replace API auth; protected queries use auth-gated hooks (`route-protection.mdc`).
+- [ ] Client validation is paired with server validation — not used as the only gate.

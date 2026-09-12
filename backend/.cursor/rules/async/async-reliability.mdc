@@ -1,0 +1,90 @@
+---
+description: BullMQ jobs and idempotency for HTTP, webhooks, and retried operations
+globs: src/modules/**/*.service.ts,src/modules/**/*.job.ts,src/modules/**/*.queue.ts,src/queues/**,src/worker/**
+alwaysApply: false
+---
+
+# Async & reliability
+
+Golden reference: `src/modules/examples/examples.queue.ts`, `examples.job.ts`, `src/queues/queue.ts`.
+
+## Purpose
+
+Background work is optional. Requests, webhooks, and jobs may run more than once — side effects must be safe on duplicate delivery.
+
+Outbound vendors (Stripe, OpenAI, R2, email): `external-dependencies.mdc`. Billable endpoints: `api-protection.mdc`.
+
+## Worker jobs & queues
+
+File layout and import boundaries: **`worker-jobs.mdc`**. When to move work off HTTP: **`reliability-workers-deps.mdc`**.
+
+- `REDIS_URL` unset → producers no-op; CRUD still works.
+- Async mode: `docker compose up -d` (includes `backend-redis` and `backend-worker`).
+- Register queues in `src/queues/register-queues.ts` for Bull Board.
+- Enqueue after DB success, never inside `prisma.$transaction`.
+
+| Step | Pattern |
+| ---- | ------- |
+| Producer | `createOptionalQueue` in `<feature>.queue.ts` |
+| Enqueue | After `create` / `$transaction` in service |
+| Worker | `register*Worker()` in `<feature>.job.ts`, wire in `src/worker/index.ts` |
+| Bull Board | `registerQueueForBoard("queue-name")` in `register-queues.ts` |
+
+```ts
+const example = await prisma.example.create({ data });
+await exampleQueue.add("created", { exampleId: example.id });
+```
+
+## Idempotency
+
+- **Assume at-least-once** — not exactly-once — for HTTP retries, webhooks, and BullMQ.
+- Enforce idempotency in **services** (state checks, constraints), not by hoping clients behave.
+
+| Surface | Pattern |
+| ------- | ------- |
+| Client POST retry | `Idempotency-Key` header → store key + result; return same response on replay |
+| Webhook inbound | Verify signature, then upsert / unique constraint / `processedAt` marker before side effects |
+| Payment / billing | Provider idempotency key on outbound; unique constraint on provider event ID inbound |
+| Queue job | Check state / processed marker before writes; safe no-op if already done |
+| DB write | `@@unique` + `upsert`, or status transition guards (`pending` → `paid` only once) |
+
+```ts
+const existing = await prisma.webhookEvent.findUnique({ where: { providerEventId } });
+if (existing?.processedAt) return;
+
+const row = await prisma.import.findUnique({ where: { id: job.data.importId } });
+if (row?.status === "completed") return;
+```
+
+## Good examples
+
+```ts
+async (job) => {
+  const existing = await prisma.example.findUnique({ where: { id: job.data.exampleId } });
+  if (!existing) return;
+  logger.info("example_job_processed", { jobId: job.id, exampleId: job.data.exampleId });
+},
+```
+
+## Bad examples
+
+```ts
+await prisma.$transaction(async (tx) => {
+  await tx.order.create({ data });
+  await queue.add("created", payload); // inside transaction
+});
+await prisma.payment.create({ data }); // blind insert on webhook retry
+await stripe.charges.create(...); // no idempotency key — see external-dependencies.mdc
+```
+
+## Explicit prohibitions
+
+- No hard dependency on Redis for synchronous API paths.
+- No BullMQ/Redis inside `$transaction`.
+- No assuming exactly-once delivery.
+- No unregistered queues if Bull Board should list them.
+- No side effects before deduplication check on webhooks.
+
+## AI guidance
+
+Register new queues in `register-queues.ts`. Worker concurrency and chunking: `worker-scaling.mdc`. For every webhook, payment callback, or `POST` that creates billable state: name the dedup key and add a unique constraint or marker table.

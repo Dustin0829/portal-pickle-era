@@ -1,0 +1,150 @@
+---
+description: Async surfaces — status unions, loading, empty, error, success; never silent blank UI
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Error handling & async surfaces
+
+See also: **`interaction-polish.mdc`**, **`async-ui.mdc`**, **`accessibility.mdc`**, **`api-layer.mdc`**, **`api-error-routing.mdc`**, **`data-ownership.mdc`**, **`page-layout.mdc`**, **`boneyard-skeletons.mdc`**. Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+Every **data-driven surface** must implement **loading**, **empty**, **error**, and **success** (content ready). Each surface exposes **one derived `status` union** — not boolean spaghetti in JSX.
+
+**Loading UI** (`LayoutSkeleton` vs shadcn `Skeleton`, fixtures, capture) → **`boneyard-skeletons.mdc`** only.
+
+## Core rules
+
+1. **Never ship a silent blank UI** — skeleton, empty guidance, error recovery, or content.
+2. **Pages render `status`** — they do not combine five TanStack flags inline.
+
+| Layer | Owns |
+| ----- | ---- |
+| TanStack Query / mutations | Raw fetch/mutation flags |
+| Feature hook or `getXxxStatus()` | **Single `status` union** per surface |
+| Page / component | `switch (status)` or status-driven subcomponents |
+
+## Forbidden patterns
+
+```tsx
+// Bad
+if (!data) return null;
+if (!data) return <p>No data</p>;
+
+// Good — explicit branches
+const { data, isPending, isError, refetch, isFetching } = useItems();
+const status = getItemListStatus({ isPending, isError, data });
+
+switch (status) {
+  case "loading":
+    return (
+      <LayoutSkeleton name="items-list" loading ariaLabel="Loading items" fixture={<ItemTable rows={ITEMS_FIXTURE} />} />
+    );
+  case "error": return <ItemsError onRetry={() => void refetch()} />;
+  case "empty": return <ItemsEmpty />;
+  case "ready": return <ItemTable rows={data!} isRefreshing={isFetching} />;
+}
+```
+
+## Status unions
+
+### Read surfaces
+
+```typescript
+// src/lib/items/itemListStatus.ts
+export type ItemListStatus = "loading" | "error" | "empty" | "ready";
+
+export function getItemListStatus({ isPending, isError, data }: {
+  isPending: boolean; isError: boolean; data: Item[] | undefined;
+}): ItemListStatus {
+  if (isPending) return "loading";
+  if (isError) return "error";
+  if (!data?.length) return "empty";
+  return "ready";
+}
+```
+
+Prefer `ready` over `success` for populated reads; reserve `success` for completed **actions**.
+
+### Write surfaces
+
+```typescript
+export type SubmitStatus = "idle" | "submitting" | "success" | "error";
+```
+
+One `submitStatus` — not parallel `isSaving`, `isUpdating`, `isSubmitting`. Reset `success` → `idle` after toast/navigation when needed.
+
+### Optional: `thinking` (streaming / AI)
+
+Extend union only where product has visible in-progress cognition: `"idle" | "thinking" | "streaming" | "error"`.
+
+### Multiple regions
+
+Each **region** gets its own status — not one global boolean:
+
+```tsx
+<ItemsSummary status={summaryStatus} />
+<ActivityPanel status={activityStatus} />
+```
+
+### Background refresh
+
+`isFetching` while `status === "ready"` → pass `isRefreshing` as prop, not a conflicting status.
+
+**Do not** derive status in JSX with compound conditions. Unit-test `getXxxStatus` table-driven (`vitest-testing.mdc`).
+
+## State matrix (what to show)
+
+| State | When | UI |
+| ----- | ---- | -- |
+| **Loading** | Initial fetch (`isPending`) | See **`boneyard-skeletons.mdc`** |
+| **Error** | `isError` | What happened + retry |
+| **Empty** | Success + zero items | Teach + primary action |
+| **Success** | Data present | Content; subtle `isFetching` for background refetch |
+
+**Empty ≠ error ≠ loading.** Never use the same copy for all three.
+
+## TanStack Query conventions
+
+**Destructure at the call site** before branching — see **`api-layer.mdc`**.
+
+- **`isPending`** — no data yet → skeleton.
+- **`isError`** — recovery UI; use `error` for copy when useful.
+- **`isFetching` + cached data** — keep content; inline refresh (`async-ui.mdc`).
+- **Do not** clear list to `[]` on every refetch unless product requires it.
+
+## Errors: what to show
+
+Every error answers (`copy/ui-microcopy.mdc`):
+
+1. **What happened?** — plain language
+2. **Why?** — when it helps (offline, permissions)
+3. **What now?** — retry, go back, edit input
+
+API mutation errors: non-validation → toast + rollback in query hooks. Validation → `fieldErrors` in form; no toast.
+
+## Generating & in-progress
+
+Long-running work needs **visible progress** + **`role="status"` / `aria-live="polite"`**. Toasts may supplement — not alone (`accessibility.mdc`).
+
+## Empty states
+
+Never bare “No data”. Include what this is, why empty, primary action. Optional warmth on milestones → **`delight-ux.mdc`** — teach first.
+
+## Partial / multi-region pages
+
+Do not gate the **entire page** on the slowest query. Each region owns its states (`interaction-polish.mdc`).
+
+## Accessibility
+
+- Loading: `aria-busy="true"` when appropriate.
+- Errors: visible text + retry; `role="alert"` for critical inline errors.
+- Do not rely on color alone.
+
+## Checklist
+
+- [ ] Query/mutation hooks **destructured** at call site (`api-layer.mdc`).
+- [ ] One read `status` union per data surface; one `submitStatus` per write flow.
+- [ ] No `if (!data) return null` on user-facing surfaces.
+- [ ] Loading uses skeleton; empty teaches; error offers retry.
+- [ ] Multi-query pages handle each region independently.
+- [ ] `empty` / `error` / `loading` / `ready` mutually exclusive for reads.

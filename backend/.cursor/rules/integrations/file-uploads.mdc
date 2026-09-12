@@ -1,0 +1,83 @@
+---
+description: Presigned uploads, MIME validation, size limits, and object key safety
+globs: src/modules/uploads/**,src/lib/storage/**,src/modules/**/*.schema.ts
+alwaysApply: false
+---
+
+# File uploads
+
+Golden reference: `src/modules/uploads/uploads.schema.ts`, `uploads.service.ts`, `src/lib/storage/r2.ts`.
+
+## Purpose
+
+Uploads are abuse and cost vectors. **Never trust client filename, extension, or declared MIME type alone.**
+
+This template uses **presigned URLs** (client uploads directly to R2) — protection happens before issuing the URL.
+
+## Required checks (before presign)
+
+| Check | Pattern |
+| ----- | ------- |
+| Max file size | Enforce in presign policy / R2 conditions; document max in API schema |
+| Content-Type allowlist | Zod `z.enum([...])` or explicit allowlist — not free-form string |
+| Filename length | Cap length (`uploads.schema.ts` uses `.max(180)`) |
+| Object key | Server-generated key — `uploads/${uuid}` — never user-controlled path |
+| Extension | Cosmetic only; **do not** trust for security decisions |
+| MIME vs magic bytes | Prefer post-upload verification job for high-risk products; hook point for virus scan |
+
+```ts
+const allowedContentTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
+
+export const presignUploadBodySchema = z
+  .object({
+    filename: z.string().trim().min(1).max(180),
+    contentType: z.enum(allowedContentTypes),
+    sizeBytes: z.number().int().positive().max(10 * 1024 * 1024).optional(),
+  })
+  .strict();
+```
+
+## Private vs public
+
+- Default: **private** bucket; access via presigned GET or app proxy.
+- `publicUrl` only when intentionally public assets — separate prefix/bucket if needed.
+- Never put secrets, PII exports, or auth tokens in public keys.
+
+## Abuse protection
+
+Upload endpoints require `api-protection.mdc`:
+
+- Per-user/org presign quotas (daily count + total bytes)
+- Rate limit presign endpoint
+- Reject disallowed types before generating URL
+
+Large or virus-sensitive files: presign → client upload → **async scan job** → mark `scanStatus` before use.
+
+## Good examples
+
+```ts
+// service — server owns key, not client path
+const key = `uploads/${randomUUID()}${safeExtension(body.filename)}`;
+return createPresignedUpload({ key, contentType: body.contentType });
+```
+
+## Bad examples
+
+```ts
+const key = `uploads/${body.filename}`;           // path traversal / overwrite risk
+if (body.filename.endsWith(".jpg")) { ... }         // extension is not validation
+contentType: z.string()                            // allows application/octet-stream anything
+POST /upload with multipart through API server     // hammers app memory — use presign
+```
+
+## Explicit prohibitions
+
+- No user-controlled object keys or bucket paths.
+- No security decisions based on file extension.
+- No unbounded `sizeBytes` or missing size policy on presign.
+- No serving uploaded files without scan policy when product requires it.
+- No logging presign bodies with tokens (`security-secrets.mdc`).
+
+## AI guidance
+
+Adding upload flow? Start from `uploads` module. Allowlist MIME types in Zod. Generate keys server-side. Add quotas before production. Scan hook = job after upload completes.

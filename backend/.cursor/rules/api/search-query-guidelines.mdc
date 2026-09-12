@@ -1,0 +1,102 @@
+---
+description: Search, filter, and sort without full-table scans or unindexed contains chains
+globs: src/modules/**/*.service.ts,src/modules/**/*.schema.ts,prisma/**
+alwaysApply: false
+---
+
+# Search & query complexity
+
+Golden reference: `src/modules/examples/examples.service.ts` (single `search` on `label`).
+
+Works with `database.mdc` (bounded `take`) and `http-api.mdc` (pagination).
+
+## Purpose
+
+`contains` on `%abc%` across four columns works at 100 users. At 10,000+ rows it becomes a full-table scan — DB CPU spikes, p99 latency dies.
+
+**Search is a schema and indexing decision**, not a one-line Prisma filter.
+
+## Required for list/search endpoints
+
+| Rule | Pattern |
+| ---- | ------- |
+| Pagination | Always — `paginatedQuerySchema`, max `limit` (`http-api.mdc`) |
+| Sort allowlist | `z.enum([...])` + `parseSortField` — only indexed columns |
+| Min query length | e.g. `search.min(2)` — reject `?q=a` |
+| Column count | Prefer **one** primary search field early; multi-column is expensive |
+| Rate limit | Aggressive search routes need `api-protection.mdc` |
+
+## Search strategies (pick deliberately)
+
+| Strategy | When | Pattern |
+| -------- | ---- | ------- |
+| **Prefix** | Autocomplete, slug | `startsWith: query` on indexed column |
+| **Equality / IN** | IDs, status, enums | `where: { status: query.status }` |
+| **Single `contains`** | Small tables, indexed trigram/GIN later | One column, documented |
+| **Multi-column OR** | Avoid by default | Requires Postgres FTS or dedicated search index |
+| **Full-text search** | Real search product | `tsvector` + GIN migration, or Meilisearch/Typesense later |
+
+```ts
+// ⚠️ acceptable early — ONE column, paginated, min length
+const where = query.search
+  ? { label: { contains: query.search, mode: "insensitive" as const } }
+  : {};
+
+// ❌ scales badly — OR across many unindexed columns
+where: {
+  OR: [
+    { name: { contains: q, mode: "insensitive" } },
+    { email: { contains: q, mode: "insensitive" } },
+    { bio: { contains: q, mode: "insensitive" } },
+    { notes: { contains: q, mode: "insensitive" } },
+  ],
+}
+```
+
+## Indexes
+
+When adding search on a column users will query in production:
+
+1. Add index in `prisma/schema.prisma` (`@@index`, or GIN for FTS)
+2. Migrate (`database.mdc`)
+3. Document the indexed field in the module or PR
+
+Do not ship `contains` on large tables without an index plan.
+
+## Expensive filters
+
+| Filter | Risk | Mitigation |
+| ------ | ---- | ---------- |
+| Date ranges | OK if indexed | `createdAt` index |
+| JSON path | Slow | Denormalize or forbid |
+| `NOT` / `OR` chains | Planner surprises | Simplify; composite indexes |
+| Sort on unindexed column | Filesort | Allowlist indexed sorts only |
+| Export all matching | OOM | Job + chunking (`worker-scaling.mdc`) |
+
+## Good examples
+
+```ts
+export const listExamplesQuerySchema = paginatedQuerySchema.extend({
+  search: z.string().trim().min(2).max(100).optional(),
+  sort: z.enum(["createdAt", "label"]).optional(),
+});
+```
+
+## Bad examples
+
+```ts
+findMany({ where: { OR: [/* 5x contains */] } }); // no pagination
+orderBy: { relevance: "desc" };                  // computed, unindexed
+take: 10_000;                                    // export disguised as search
+```
+
+## Explicit prohibitions
+
+- No multi-column `contains` OR chains without FTS/search infrastructure.
+- No unbounded search results.
+- No user-controlled `orderBy` field names.
+- No `search` shorter than 2 chars on large tables without product reason.
+
+## AI guidance
+
+Adding `?search=` or filters? Name the indexed column(s). If none exist, add migration + index or use prefix/equality only. Heavy search → job or external search engine — not bigger `findMany`.

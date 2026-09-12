@@ -1,0 +1,108 @@
+---
+description: Module layout, naming, imports, and controller → service → Prisma layers
+globs: src/**,prisma/**
+alwaysApply: false
+---
+
+# Module boundaries
+
+Golden reference: `src/modules/examples/`.
+
+## Purpose
+
+One folder per feature. Consistent names. Strict layer flow. **The most common AI mistake** is mixing HTTP, Prisma, and vendors in the wrong file.
+
+```txt
+routes → controller → service → prisma | src/lib/<vendor>
+         ↑ HTTP only   ↑ business   ↑ data & integrations
+```
+
+## Naming
+
+| Item | Convention | Example |
+| ---- | ---------- | ------- |
+| Module folder | plural kebab-case | `examples`, `webhook-events` |
+| Files | `<feature>.<layer>.ts` | `examples.service.ts`, `examples.mapper.ts` |
+| Router mount | plural resource | `apiRouter.use("/examples", ...)` |
+| Exports | camelCase | `listExamples`, `createExample` |
+| Log events | snake_case | `request_finished`, `queue_add_failed` |
+| Prisma generated | `src/generated/prisma` | do not edit |
+
+`pnpm make:module <plural-name>` scaffolds correct file names.
+
+## Module layout
+
+- Flat files per module — no nested `controllers/`, `services/`, or `dto/` folders.
+- Cross-module reuse goes through `src/lib/`, not service-to-service imports.
+
+| Layer | May do | Must not do |
+| ----- | ------ | ----------- |
+| `*.routes.ts` | `validate*` middleware, `asyncHandler`, auth (future) | Prisma, business rules |
+| `*.controller.ts` | Read validated `req`, call service, `sendSuccess()` | Prisma, external APIs, `res.status(4xx)` for domain cases |
+| `*.service.ts` | Prisma, rules, domain errors, enqueue, call `src/lib/*` | `Request`/`Response`, `res.status()`, `req.user` |
+| `*.mapper.ts` | `toXxxDto(row)` — response projection (optional file) | Prisma queries, HTTP |
+| `*.queue.ts` | `createOptionalQueue`, enqueue helpers (optional) | BullMQ `Worker`, HTTP |
+| `*.job.ts` | `register*Worker()` processor (optional) | Routes, controllers, `req`/`res` |
+| `src/lib/<vendor>/` | Vendor SDK/HTTP, timeouts | Feature business rules, Prisma |
+
+## Allowed imports
+
+| From | May import |
+| ---- | ---------- |
+| `src/modules/<feature>/*` | `src/app/*`, `src/lib/*`, `src/middleware/*`, `src/queues/*`, same module |
+| `*.service.ts` | **Not** other modules' `*.service.ts` |
+| `src/lib/*` | npm packages, `src/app/env.ts`, other `src/lib/*` |
+
+## Domain errors
+
+Throw from services; `errorHandler` maps to HTTP. Controllers never branch on status for domain failures.
+
+| Error | Typical use |
+| ----- | ----------- |
+| `NotFoundError` | Missing resource |
+| `ConflictError` | Duplicate / state conflict |
+| `ForbiddenError` | Permission denied |
+| `ValidationError` | Business rule (not Zod parse) |
+
+## Auth & tenancy
+
+Auth, audit, flags: `platform-patterns.mdc`. Tenant isolation: `multi-tenant-safety.mdc`. API responses: `response-contracts.mdc`.
+
+- Services accept explicit `{ userId?, organizationId? }` — never `req`.
+- Do not add stub `requireAuth()` until middleware ships.
+
+## Good examples
+
+```ts
+// examples.mapper.ts + examples.service.ts — select + DTO mapper
+const row = await prisma.example.findUnique({ where: { id }, select: examplePublicSelect });
+if (!row) throw new NotFoundError("Example not found");
+return toExampleDto(row);
+
+// controller
+const example = await getExample(req.params.id);
+return sendSuccess(res, example);
+```
+
+## Bad examples
+
+```ts
+import { getExample } from "../examples/examples.service.js"; // cross-module service import
+if (!row) return res.status(404).json({ error: "not found" }); // HTTP in service
+const row = await prisma.example.findUnique({ where: { id: req.params.id } }); // Prisma in controller
+return prisma.user.findUnique({ where: { id } }); // raw model to client
+```
+
+## Explicit prohibitions
+
+- No nested `controllers/` or `dto/` folders inside modules.
+- No manual edits under `src/generated/`.
+- No `prisma` in controllers or routes.
+- No `res.status(4xx|5xx)` in services.
+- No Express types in services.
+- No external `fetch`/SDK in controllers.
+- No importing another module's service.
+
+## AI guidance
+
+New feature: `pnpm make:module <name>` → [add-feature-module](../skills/add-feature-module/SKILL.md). External vendor: [add-external-integration](../skills/add-external-integration/SKILL.md).

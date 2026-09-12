@@ -1,0 +1,100 @@
+---
+description: Zod schemas and runtime validation boundaries for forms, env, and API data
+globs: src/api/schema/**/*,src/api/features/**/*.schema.ts,src/api/config.ts,src/lib/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Zod validation (webapp)
+
+See also: **`api-layer.mdc`** (where schemas live vs types/services/queries), **`frontend-security.mdc`** (client validation is not authorization).
+
+## Core rule
+
+**`parse()` / `safeParse()` at every entry point** (forms, URL/query builders, response validation when shape is critical). Use **`z.infer<typeof schema>`** for types. **No type assertions** (`as Foo`), no “trust me” casts. The schema **is** the contract.
+
+| Boundary                    | Where to parse                                       |
+| --------------------------- | ---------------------------------------------------- |
+| Form submit / modal confirm | `@/api/features/<domain>/*.schema` before `mutate`   |
+| Client-side preflight       | Same schema as API body when possible                |
+| `import.meta.env`           | Parse once in `src/api/config.ts` when you add more keys (see `zod-validation.mdc`) |
+| Untrusted API payloads      | Optional `parse()` when runtime safety matters       |
+
+## Shared primitives (`src/api/schema/primitives.schema.ts`)
+
+Import these instead of redefining ad hoc:
+
+| Primitive                    | Use for                                  |
+| ---------------------------- | ---------------------------------------- |
+| `nonEmptyString`             | Titles, rules, display names             |
+| `isoDate`                    | Timestamps from API                      |
+| `positiveId`                 | Numeric form/query ids                   |
+| `safeUrl`                    | Reference links, asset URLs — HTTPS-only |
+| `enumFromObject(LABELS)`     | Enums synced to a const object           |
+| `paginatedQuerySchema`       | List fetch params                        |
+| `paginationMetaSchema`       | Validate `meta` on paginated responses   |
+| `paginatedItemsSchema(item)` | Validate `{ items: T[] }` in `data`      |
+
+```typescript
+import { nonEmptyString, safeUrl, paginatedQuerySchema } from '@/api/schema/primitives.schema'
+
+export const myFormSchema = z.object({
+  title: nonEmptyString,
+  referenceLinks: z.array(safeUrl).optional(),
+})
+
+export type MyFormValues = z.infer<typeof myFormSchema>
+```
+
+## Env (`src/api/config.ts`)
+
+- This template reads `VITE_API_URL` directly. When you add more env keys, parse `import.meta.env` with Zod at module load — same pattern as a backend `src/lib/env.ts`.
+- Only `VITE_*` keys; never put secrets in the browser bundle.
+
+## nullable vs optional (pick deliberately)
+
+| Zod           | Meaning                                           | Example |
+| ------------- | ------------------------------------------------- | ------- |
+| `.optional()` | Field **not in form state** / omitted from PATCH  |
+| `.nullable()` | Field explicitly **cleared** (`null` sent to API) |
+| `.nullish()`  | Both absent and null acceptable                   |
+
+When backend accepts `null` to clear JSON fields, frontend patch schemas must use `.nullable()`, not `.optional()` alone.
+
+## Pagination
+
+- Query builders: extend **`paginatedQuerySchema`**.
+- Types: `PaginationMeta` in `@/api/types/global.types.ts` aligns with backend `meta`.
+- Prefer typed hooks; use **`paginationMetaSchema.parse(meta)`** only when validating unknown runtime data.
+
+## Anti-patterns
+
+```typescript
+// ❌ Schema defined in pages/
+// pages/FooPage.tsx — z.object({ ... })
+
+// ❌ Inline z.string().trim().min(1) on every field
+
+// ❌ Manual enum duplicated from labels/constants
+status: z.enum(['draft', 'published'])
+
+// ❌ Cast instead of parse
+const body = input as CreateResourceFormInput
+```
+
+```typescript
+// ✅ Page imports schema
+import { myFormSchema, type MyFormValues } from '@/api/features/foo/foo.schema'
+
+const parsed = myFormSchema.safeParse(formState)
+if (!parsed.success) {
+  /* surface field errors */ return
+}
+mutate(parsed.data)
+```
+
+## File layout
+
+- **`src/api/features/<domain>/<domain>.schema.ts`** — domain Zod; export schema + `z.infer` types.
+- **`src/api/schema/primitives.schema.ts`** — shared building blocks only.
+- **`src/api/types/global.types.ts`** — shared TypeScript wrappers; feature DTO types live in **`features/<domain>/`**.
+- **`src/lib/<domain>/`** — mappers, message helpers, submit orchestration — **not** Zod definitions.

@@ -1,0 +1,143 @@
+---
+description: HTTP routes, Zod validation, OpenAPI contracts, and no shared DTOs
+globs: src/modules/**/*.routes.ts,src/modules/**/*.controller.ts,src/modules/**/*.schema.ts,src/modules/**/*.openapi.ts,src/app/router.ts,src/app/env.ts,contracts/openapi.json
+alwaysApply: false
+---
+
+# HTTP API
+
+Golden reference: `src/modules/examples/`.
+
+## Purpose
+
+Predictable resource-oriented APIs: plural paths, validated input at the boundary, backend-owned OpenAPI contract.
+
+Path naming, audience prefixes (`/me`, `/employee`, `/admin`), and list query params: **`rest-api-convention.mdc`**. Who may call which surface: **`role-based-access.mdc`**.
+
+## Routes
+
+- Mount modules in `src/app/router.ts`. **No URL version prefix by default** — see `platform-patterns.mdc` before adding `/api/v1`.
+- One module = one resource collection (`/examples`, `/uploads`). Role-separated surfaces use audience mounts — do not clone the same CRUD under every prefix.
+- List endpoints return `{ items, meta }` with shared pagination helpers.
+
+| Concern | Pattern |
+| ------- | ------- |
+| Collection | `GET /examples`, `POST /examples` |
+| Member | `GET /examples/:id` |
+| Pagination | `paginatedQuerySchema` + `pageToOffset` + `buildPaginationMeta` (`page`, `limit`, `sort`, `order`, `search`) |
+| Filtering | `search` or explicit filter fields — see `search-query-guidelines.mdc` |
+| Sorting | Allowlisted `sort` enum + `order` asc/desc; `parseSortField` in service |
+| Count | `Promise.all([findMany, count])` with the **same** `where` |
+
+```ts
+// router.ts
+apiRouter.use("/examples", examplesRouter);
+
+// routes.ts
+examplesRouter.get("/", validateQuery(listExamplesQuerySchema), asyncHandler(listExamplesController));
+examplesRouter.get("/:id", validateParams(exampleParamsSchema), asyncHandler(getExampleController));
+examplesRouter.post("/", validateBody(createExampleBodySchema), asyncHandler(createExampleController));
+```
+
+## Zod validation
+
+Golden reference: `src/middleware/validate.ts`, `src/lib/zod-validation.ts`.
+
+- `validateBody` / `validateQuery` / `validateParams` middleware attaches parsed data to `req`.
+- `src/app/env.ts` is the **only** place that parses environment variables.
+- On parse failure at the HTTP boundary: middleware calls `validationErrorFromZod(parsed.error)` — never `parsed.error.flatten()` or raw `ZodError.message`.
+- `message` is always `"Validation failed"`; per-field copy lives in `errors.fieldErrors` only (humanized via `configureZodErrorMap()` at startup).
+- Nested Zod paths flatten to dot keys for the frontend (`identitySummary.builds`) — see `flattenZodError()` in `src/lib/format-zod-error.ts`.
+- Service-level or LLM output parses outside middleware: use `validationErrorFromZod(error)` or throw `ValidationError`; `errorHandler` catches stray `ZodError` as a safety net.
+- Business rule failures use domain `code` + human `message` (e.g. `CONFLICT` / "Resource conflict") — no `fieldErrors` unless optionally mapping one field.
+
+Example JSON samples: [`docs/api-response-samples.md`](../../../docs/api-response-samples.md).
+
+| Input | Rule |
+| ----- | ---- |
+| Body | `.strict()` objects |
+| Query numbers | `z.coerce.number()` |
+| Pagination | Reuse `paginatedQuerySchema` |
+| Env | `envSchema.parse(process.env)` in `env.ts` only |
+
+```ts
+// routes — validate middleware handles failures; do not hand-roll ValidationError here
+examplesRouter.post("/", validateBody(createExampleBodySchema), asyncHandler(createExampleController));
+
+// service — Zod parse outside middleware
+const parsed = llmOutputSchema.safeParse(raw);
+if (!parsed.success) {
+  throw validationErrorFromZod(parsed.error);
+}
+
+export const createExampleBodySchema = z.object({ label: z.string().trim().min(1).optional() }).strict();
+export const listExamplesQuerySchema = paginatedQuerySchema.extend({
+  sort: z.enum(["createdAt", "label"]).optional(),
+});
+```
+
+## OpenAPI contract
+
+Golden reference: `src/modules/examples/examples.openapi.ts`.
+
+- Register paths per module in `*.openapi.ts`; aggregate in `src/app/openapi.ts`.
+- Run `pnpm openapi:generate` after route or schema changes; commit `contracts/openapi.json`.
+- The backend owns the API contract; frontends integrate per project without a shared type package.
+
+| Step | Action |
+| ---- | ------ |
+| 1 | Define shapes in `*.schema.ts` |
+| 2 | Register paths in `*.openapi.ts` with query params documented for list routes |
+| 3 | `pnpm openapi:generate` → commit `contracts/openapi.json` |
+
+```ts
+registry.registerPath({
+  method: "get",
+  path: "/examples",
+  request: { query: listExamplesQuerySchema },
+  responses: { 200: { description: "Paginated examples", ... } },
+});
+```
+
+Frontend types: generate from `contracts/openapi.json` in the frontend repo — do not add shared packages here.
+
+## Good examples
+
+```ts
+// service — same where for items and count
+const [items, total] = await Promise.all([
+  prisma.example.findMany({ where, orderBy, skip, take }),
+  prisma.example.count({ where }),
+]);
+return { items, meta: buildPaginationMeta(query.page, query.limit, total) };
+```
+
+## Bad examples
+
+```ts
+GET /getExamples
+GET /examples?page=1&pageSize=50        // use limit, not pageSize
+GET /examples?sort=password              // never allow unvalidated sort fields
+const page = Number(req.query.page);      // unvalidated in controller
+const body = req.body as CreateExampleBody; // type assertion without parse
+ValidationError("…", parsed.error.flatten()) // use validationErrorFromZod instead
+throw parsed.error // raw ZodError leaks into message — use validationErrorFromZod
+// Hand-editing contracts/openapi.json without regenerating
+shared/types.ts or packages/api-types     // cross-repo DTO packages
+```
+
+## Explicit prohibitions
+
+- No verb routes (`/createExample`) for CRUD resources.
+- No RPC-style paths unless genuinely not resource-shaped (webhooks, actions).
+- No unbounded lists — always paginate collection endpoints.
+- No `pageSize` / `perPage` / `q` aliases — use `limit` / `search` (`rest-api-convention.mdc`).
+- No raw `req.query` / `req.body` in controllers — validate with Zod first.
+- No trusting env vars outside `env.ts`.
+- Never edit `contracts/openapi.json` by hand except via generator output.
+- No raw `ZodError.message` or `parsed.error.flatten()` in API responses — use `validationErrorFromZod`.
+- No `shared/`, `dto/`, or cross-repo type packages for API shapes.
+
+## AI guidance
+
+When adding a list endpoint: extend `paginatedQuerySchema`, allowlist sort fields, mirror `examples.service.ts`, document query params in `*.openapi.ts`. New path or role surface: `rest-api-convention.mdc` + `role-based-access.mdc`. Search/filters: `search-query-guidelines.mdc`. Response shapes: `response-contracts.mdc`. Error envelopes and validation samples: `docs/api-response-samples.md`. After any public route or schema change, run `pnpm openapi:generate`. Changing response shapes or removing fields: `api-evolution.mdc`.

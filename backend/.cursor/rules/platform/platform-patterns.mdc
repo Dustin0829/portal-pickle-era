@@ -1,0 +1,179 @@
+---
+description: API versioning, auth, authorization, audit logs, caching, and feature flags
+globs: src/**
+alwaysApply: false
+---
+
+# Platform patterns
+
+Prescriptive patterns for SaaS features not yet wired in the template. **Follow these when implementing or preparing for them** — do not invent alternate shapes.
+
+## API versioning
+
+**Current template:** no URL version prefix — routes mount at `/examples`, `/uploads`, etc. Best for a backend consumed by its paired SPA.
+
+Add `/api/v1` (or mount `apiRouter` under `/api/v1` in `src/app/router.ts`) when:
+
+- Public or partner API clients exist
+- Mobile clients need long-lived compatibility
+- Breaking changes need parallel version support
+
+When versioning starts:
+
+- Apply the prefix consistently in routes **and** OpenAPI path registration
+- Configure frontend typegen against the versioned spec (tags or separate spec files)
+
+Do not add `/v1` prematurely for a single paired SPA with no external consumers. Field-level safe changes: `api-evolution.mdc`.
+
+## Auth
+
+Auth middleware is **not shipped** — do not add stub `requireAuth()` that always passes.
+
+**Before auth ships** (prepare multi-tenant features now):
+
+- See `multi-tenant-safety.mdc` — scope every query; never trust `organizationId` from body
+- Service functions accept explicit `{ userId?, organizationId? }` — never `req` or `req.user`
+- Controllers stay thin; no auth logic in services
+
+**When wiring auth** (Better Auth or Supabase Auth):
+
+```txt
+route → requireAuth → permission check → controller → service
+```
+
+- Middleware lives in `*.routes.ts` only
+- Controllers read `req.user` (and tenant context) once, pass primitive IDs into services
+- Services stay framework-agnostic
+
+## Authorization
+
+Every SaaS needs roles (client/customer, employee/staff, admin — plus org roles like Owner/Member when multi-tenant).
+
+**Hardening:** `role-based-access.mdc` (RBAC + IDOR). **Paths:** `rest-api-convention.mdc` (audience prefixes, no duplicate CRUD).
+
+```txt
+audience mount → requireAuth → requireRole / requirePermission → controller → service (object + tenant scope)
+```
+
+| Layer | Responsibility |
+| ----- | -------------- |
+| Router mount | `/admin`, `/employee`, `/me`, app resources — separate surfaces |
+| Route | `requireAuth` + `requireRole(...)` or `requirePermission("resource:action")` |
+| Permission middleware | Compare actor role; throw `ForbiddenError` |
+| Service | Object-scoped + tenant-scoped queries — `multi-tenant-safety.mdc`, `role-based-access.mdc` |
+
+Request context after auth (typical):
+
+- `req.user` — actor (id from token only — never trust `userId` from body/params)
+- `req.organization` — current tenant
+- `req.workspace` — optional nested scope
+
+```ts
+// controller — pass actor/tenant from context; never from body as authority
+return sendSuccess(
+  res,
+  await listCampaigns({
+    userId: req.user!.id,
+    organizationId: req.organization!.id,
+  }),
+);
+```
+
+Employees must not reach `/admin/*` or client-only private data; clients must not reach `/admin/*` or `/employee/*`. Self data uses `/me/*`, not `/users/:userId`.
+
+Optionally mirror tenant context in AsyncLocalStorage alongside `requestId` for logs (`observability.mdc`).
+
+Typical bootstrap routes: `GET /me`, `GET /organizations/current`, `GET /workspaces/current`.
+
+## Audit logging
+
+Audit logs are **business history** — not application logs (`observability.mdc`).
+
+Record mutations such as: campaign created, user invited, invoice paid, workspace deleted.
+
+| Rule | Pattern |
+| ---- | ------- |
+| Where | Service layer, after successful mutation |
+| Critical flows | Same `prisma.$transaction` as the domain write |
+| Shape | `audit_logs`: `id`, `actorId`, `action`, `resource`, `metadata`, `createdAt` |
+
+```ts
+await prisma.$transaction(async (tx) => {
+  const campaign = await tx.campaign.create({ data });
+  await tx.auditLog.create({
+    data: {
+      actorId: userId,
+      action: "campaign.created",
+      resource: `campaign:${campaign.id}`,
+      metadata: { organizationId },
+    },
+  });
+  return campaign;
+});
+```
+
+Do not rely on request logs alone for compliance or admin “who did what” views.
+
+## Caching
+
+No product cache layer is wired. Redis exists for BullMQ when `REDIS_URL` is set (`async-reliability.mdc`).
+
+**Use Redis for:** job queues, short-lived hot-read cache, session/config lookup, rate-limit state, ephemeral locks.
+
+**Do not use Redis for:** source of truth, long-term storage, money/auth/permission paths where stale reads hurt, or “cache everything” before profiling.
+
+When adding cache (cache-aside in services):
+
+1. Read from cache
+2. On miss, read Postgres
+3. Set cache with TTL
+4. Delete affected keys after writes
+
+Key prefixes: `queue:` (BullMQ internals), `cache:` (product keys).
+
+Add caching per endpoint only after profiling shows need.
+
+## Feature flags
+
+No flag system is wired. Use the right layer:
+
+| Layer | Use |
+| ----- | --- |
+| Env flags | Kill switches, deploy-time gates, dev-only paths (`env.ts` only) |
+| Database flags | Admin-toggleable product flags (preferred once flags are real) |
+| Per-user/org flags | Beta, dogfooding, early access |
+| Staged rollout | Cohorts or percentage rollout |
+
+Recommended rollout when adding DB-backed flags:
+
+1. Ship feature behind a flag
+2. Enable for admins in local/staging
+3. Enable for selected users/orgs
+4. Enable globally
+5. Remove flag when permanent
+
+```ts
+// service — check before branching behavior
+if (!(await isFeatureEnabled("campaigns_v2", { userId, organizationId }))) {
+  throw new ForbiddenError("Feature not enabled");
+}
+```
+
+Put `isFeatureEnabled` in `src/lib/feature-flags/` when implementing. Env-only gates belong in `env.ts`, not scattered `process.env` checks.
+
+Add flags when the second “maybe ship this” feature appears — not for every toggle.
+
+## Explicit prohibitions
+
+- No `req.user` in services (even after auth ships).
+- No unscoped tenant queries on multi-tenant resources (`multi-tenant-safety.mdc`).
+- No cross-user reads/writes without object-level auth (`role-based-access.mdc`).
+- No relying on frontend role gates as API security.
+- No audit entries only in HTTP access logs.
+- No Redis as primary store or cache on auth/permission paths without explicit design.
+- No `process.env.FEATURE_*` reads outside `env.ts`.
+- No URL version prefix until external clients or breaking-change policy requires it.
+
+## AI guidance
+
+Multi-tenant module? `multi-tenant-safety.mdc` — scope every query now. Role-separated endpoint? `rest-api-convention.mdc` + `role-based-access.mdc`. User-facing mutation with compliance value? Plan `audit_logs` in the same service. New public API surface? Re-read API versioning before choosing paths. Second optional feature? Introduce flags per table above — not ad-hoc env checks in controllers.

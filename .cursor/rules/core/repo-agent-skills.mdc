@@ -1,0 +1,31 @@
+---
+description: Index of agent skills and when to use them (monorepo root).
+alwaysApply: true
+---
+
+# Agent skills (repository root)
+
+This monorepo’s git root is the parent of `app/`, `backend/`, `support/`, and `openspec/`. Run `git` and `gh` from that root.
+
+## Git workflow skills
+
+| Skill | Path | When |
+| ----- | ---- | ---- |
+| Commit changes | `.cursor/skills/commit-changes` | User asks to commit, `/opsx-commit`, or PR auto-commit |
+| Create PR | `.cursor/skills/create-pull-request` | User asks to open/create a PR |
+| OpenSpec commit | `.cursor/skills/openspec-commit` | `/opsx-commit` after OpenSpec work |
+| OpenSpec PR | `.cursor/skills/openspec-pr` | `/opsx-pr` or apply post-ship |
+
+Package-level `commit-changes` / `create-pull-request` skills were removed — use the root skills above.
+
+## Package skills
+
+Read `app/.cursor/skills/SKILL.md`, `backend/.cursor/skills/SKILL.md`, and `support/.cursor/skills/SKILL.md` for package-specific verify, merge readiness, and UI/backend conventions.
+
+## Backend worker rules
+
+When adding or changing background jobs:
+
+- `backend/.cursor/rules/async/worker-jobs.mdc`
+- `backend/.cursor/rules/integrations/reliability-workers-deps.mdc`
+- Cross-ref: `backend/.cursor/rules/async/async-reliability.mdc`

@@ -1,0 +1,135 @@
+---
+description: File, folder, hook, component, provider, and constant naming conventions
+alwaysApply: true
+---
+
+# Naming Conventions
+
+Follow these conventions for all new and renamed files and constants.
+
+**Placeholder names** (`items`, `orders`, `<domain>`) illustrate patterns — use your product’s module names.
+
+## Pages, Layouts & Components (`.tsx`)
+
+- **Convention:** PascalCase
+- **Examples:** `LoginPage.tsx`, `DashboardLayout.tsx`, `AppSidebar.tsx`, `RootLayout.tsx`
+- **Exception:** Do not rename files under `src/components/ui/` — they follow shadcn’s default (e.g. `button.tsx`, `dropdown-menu.tsx`). New components outside `components/ui` use PascalCase.
+- **Imports (bundle size)** — Prefer **direct imports** from the implementing module over heavy **barrel** entry points (`export *` / large `index` re-exports) when a package pulls in a huge dependency graph (common with icon packs, some UI kits, `lodash`, `date-fns` barrel entries). Keeps dev cold start and production chunks leaner; use your bundler’s import optimization if it offers one.
+- **No nested component definitions** — Do not declare React components inside another component’s function body. That creates a new component type every render, so React **remounts** children (lost input focus, repeated effects, broken animations). Hoist child components to module scope and pass data via props (or `useCallback` + stable children only when appropriate).
+
+## Hooks (custom hooks & TanStack Query hooks)
+
+### Domain modules (`src/lib/<domain>/`)
+
+- **File name:** camelCase — `mapItem.ts`, `validateItemWizard.ts`, `useItemWizard.ts`, `itemWizardCtx.types.ts`
+- **Purpose:** Mappers, pure validation, multi-step orchestration hooks, and domain-specific wiring types shared across pages.
+- **Exported hooks:** camelCase with `use` prefix — `useItemWizard`, `useItemWizardState`
+- **Do not** use kebab-case `use-*.ts` here — that pattern is for **`src/api/features/`** and **`src/lib/hooks/`** only.
+
+### Page-local hooks (`src/pages/**`)
+
+- **Avoid** — prefer `src/lib/<domain>/` for orchestration hooks. Pages keep **components** and thin **React context providers** only.
+
+### App / shared UI hooks (`src/lib/hooks/`)
+
+- **File name:** kebab-case after the `use-` prefix: `use-<name>.ts`
+- **Examples:** `use-debounce.ts`, `use-mobile.tsx`
+- **Location:** `src/lib/hooks/`
+
+### API feature modules (`src/api/features/<domain>/`)
+
+Each backend domain gets one folder with **prefixed filenames**:
+
+| File | Purpose | Example |
+| ---- | ------- | ------- |
+| `<domain>.service.ts` | HTTP functions (no React) | `items.service.ts` → `getItems` |
+| `<domain>.schema.ts` | Zod + `z.infer` types | `items.schema.ts` |
+| `<domain>.types.ts` | Optional DTO re-exports | `items.types.ts` |
+| `use-<domain>.ts` | TanStack Query hooks | `use-items.ts` → `useItems` |
+
+| Scope | Folder | Example |
+| ----- | ------ | ------- |
+| **Domain module** | `features/<domain>/` | `features/items/` |
+| **Surface + domain** | `features/<segment>/<domain>/` | `features/admin/reports/` |
+| **Cross-cutting** | `features/auth/` (same file set) | `auth.service.ts`, `use-auth.ts` |
+
+Rules:
+
+- **Folder name:** lowercase / kebab-case — `items`, `payment-methods`.
+- **Query hook file:** `use-<kebab-domain>.ts`; **exported hook:** camelCase with `use` prefix (`useItems`, `useAuthMe`).
+- Include **surface or domain** in the exported hook name when ambiguity would hurt (`useAdminOrders` vs `useStorefrontOrders`).
+- Do **not** suffix with `Mutation` or `Query` — name by intent.
+- **Do not** repeat the segment in the filename when the file already lives under `features/<segment>/` (same rule as before for nested segments).
+
+Shared-only paths (not feature-owned):
+
+- `src/api/schema/primitives.schema.ts` — shared Zod primitives
+- `src/api/types/global.types.ts` — `ApiSuccess`, pagination, cross-feature wrappers
+- `src/api/lib/` — optional `use-authenticated-query.ts` and similar helpers
+
+## API services / schemas / types (legacy layout)
+
+**Do not** add new domain files under flat `src/api/services/`, `src/api/queries/`, or `src/api/schema/<domain>.schema.ts`. Use **`src/api/features/<domain>/`** instead.
+
+## Type-only modules (non-API)
+
+- **File name:** `<name>.types.ts`
+- **Location:** colocated types elsewhere — follow the same `*.types.ts` pattern.
+
+## Utility & Logic Files (`.ts`)
+
+- **Convention:** camelCase
+- **Examples:** `mockData.ts`, `authStore.ts`, `formatCurrency.ts`
+- **Applies to:** utils (`src/lib/utils/`: e.g. `cn.ts`, `date.ts`), stores, validations (`src/lib/validations/`), constants (`src/lib/constants/`), **domain helper folders** (`src/lib/<domain>/` — camelCase filenames like `buildCheckoutPayload.ts`), and other non-component modules (excluding hooks and `*.types.ts` files above)
+
+## Providers (React context / app wrappers)
+
+- **Location:** `src/providers/` (e.g. TanStack Query, auth, theme)
+- **Convention:** PascalCase for component files (e.g. `AuthProvider.tsx`, `QueryProvider.tsx`)
+
+## Constants
+
+- **In code:** UPPER_SNAKE_CASE (e.g. `MAX_RETRIES`, `DEFAULT_PAGE_SIZE`)
+- **Location:** `src/lib/constants/`; file names stay camelCase
+
+## Route guards / layout-level components
+
+- **Location:** `src/components/guards/` (e.g. `ProtectedRoute.tsx` — props like `guestOnly` or `requiredRole` as your app needs)
+
+## Page structure (colocate page-specific components)
+
+See **`page-composition.mdc`** for size limits, folder layout, and split triggers when pages grow past ~750 lines.
+
+- **Folders under `src/pages/` are lowercase** (or kebab-case for multi-word routes) — e.g. `pages/creator/account/`, `pages/home/`, `pages/public/`. **Do not** use PascalCase folders like `pages/HomePage/`.
+- **Page component files** are PascalCase and live in the route folder — e.g. `pages/home/HomePage.tsx`, `pages/creator/account/AccountPage.tsx`.
+- **`index.tsx`** is optional when a page has many colocated children — e.g. `pages/shared/referral/ReferralPage/index.tsx` (folder name may match the page for that pattern only).
+- **One folder per URL area** when routes share a base path — colocate list, detail, and modals (e.g. `pages/app/orders/OrdersPage.tsx`, `OrderDetailPage.tsx`).
+- **Orchestration hooks** — live in `src/lib/<domain>/` (see **Hooks** above); pages keep components and thin React context providers.
+- **Page-only helpers** — Pure functions unlikely to be reused may stay in the page file **below** the default export, using `function helperName() { ... }`. **Reusable** logic belongs under **`src/lib/<domain>/`**; domain types belong in **`src/api/features/<domain>/`** (not `src/pages/`).
+
+## Folders
+
+- Use **lowercase** for single words: `admin`, `app`, `utils`, `hooks`
+- Use **kebab-case** for multi-word folders when helpful (`payment-methods`, `mock-data`)
+- Under `src/api/`, **feature folder names** match backend modules (`features/items/`, `features/billing/`). Optional surface segments: `features/admin/…`.
+- **Static asset file names** under `src/assets/` — kebab-case (e.g. `logo-dark.svg`). Icon and SVG *usage* — see `icons-and-assets.mdc`.
+
+## Quick Reference
+
+| Type                                                       | Convention                                        | Example                    |
+| ---------------------------------------------------------- | ------------------------------------------------- | -------------------------- |
+| Page folders (`src/pages/`)                                | lowercase / kebab-case                            | `home`, `creator/account`  |
+| Page component files                                       | PascalCase                                        | `HomePage.tsx`             |
+| Domain orchestration hook (`src/lib/<domain>/`)              | camelCase `use*.ts`                               | `useItemWizard.ts`         |
+| Layout / component (`.tsx`, except `components/ui`)        | PascalCase                                        | `AppSidebar.tsx`           |
+| API feature folder                                         | `features/<domain>/`                              | `features/items/`          |
+| API service / schema / types (in feature)                  | `<domain>.service.ts`, `.schema.ts`, `.types.ts`  | `items.service.ts`         |
+| API query hook (in feature)                                | `use-<domain>.ts` under `features/<domain>/`      | `use-items.ts`             |
+| Shared API schema / types                                  | `api/schema/`, `api/types/` at root               | `primitives.schema.ts`     |
+| Hook files (`src/lib/hooks`)                               | `use-<kebab>.ts`                                  | `use-debounce.ts`          |
+| Type modules                                               | `<name>.types.ts`                                 | `auth.types.ts`            |
+| Utility / logic (`.ts`)                                    | camelCase                                         | `mockData.ts`              |
+| Domain helpers (`lib/<domain>/`)                           | camelCase                                         | `buildCheckoutPayload.ts`  |
+| Constants                                                  | UPPER_SNAKE_CASE                                  | `MAX_RETRIES`              |
+| Folders                                                    | lowercase / kebab-case                            | `admin`, `payment-methods` |
+| Static assets (`src/assets/`)                              | kebab-case filenames                              | `logo-dark.svg`            |

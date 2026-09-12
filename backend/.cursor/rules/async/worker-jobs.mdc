@@ -1,0 +1,75 @@
+---
+description: Background jobs and BullMQ queues — co-located in feature modules
+globs:
+  - src/modules/**/*.job.ts
+  - src/modules/**/*.queue.ts
+  - src/queues/**
+  - src/worker/**
+alwaysApply: false
+---
+
+# Worker layout (`src/modules/**/*.job.ts` + `src/queues/`)
+
+Job processors and queue producers live **in the feature module**, not under `src/worker/jobs/`. Shared queue infrastructure stays in **`src/queues/`**. The API may import **`src/queues/**`** and module **`*.queue.ts`** — **never** `src/worker/**`.
+
+Golden reference: `src/modules/examples/examples.queue.ts`, `examples.job.ts`, `src/queues/queue.ts`, `src/worker/index.ts`.
+
+Scaffold: `pnpm make:module <name>` then add `<feature>.queue.ts` and `<feature>.job.ts` per [add-feature-module](../../skills/add-feature-module/SKILL.md) §8.
+
+## Directory layout
+
+```
+src/modules/<feature>/
+  <feature>.routes.ts
+  <feature>.controller.ts
+  <feature>.service.ts
+  <feature>.queue.ts      # createOptionalQueue + typed add helpers
+  <feature>.job.ts        # register*Worker() — BullMQ Worker processor
+src/queues/
+  connection.ts           # Redis + BullMQ connection
+  queue.ts                # createOptionalQueue, registerQueueForBoard
+  bull-board.ts           # /admin/queues
+  register-queues.ts      # Eager queue init (API startup)
+src/worker/
+  index.ts                # Worker entry — register module workers, graceful shutdown
+```
+
+| Location | Use for |
+| -------- | ------- |
+| **`<feature>.queue.ts`** | `createOptionalQueue`, enqueue from `*.service.ts` |
+| **`<feature>.job.ts`** | BullMQ `Worker` processor + `register*Worker()` export |
+| **`src/queues/`** | Shared connection, factory, Bull Board — not per-feature business queues |
+| **`src/worker/index.ts`** | Import `register*Worker()` from modules; no job logic here |
+
+- Name files by **feature** (`imports.job.ts`), not `*.service.ts`.
+- Export a single **`register*Worker()`** per job file; wire it in `src/worker/index.ts`.
+- Jobs call **same-module** `*.service.ts` or **`src/lib/*`** — not another module's service (`module-boundaries.mdc`).
+- No `req` / `res` in job modules.
+
+## What stays outside jobs
+
+| Situation | Location |
+| --------- | -------- |
+| HTTP handlers | `*.routes.ts` + `*.controller.ts` + `*.service.ts` |
+| Enqueue after DB write | `<feature>.queue.ts` from `*.service.ts` |
+| Vendor SDK / HTTP | `src/lib/<vendor>/` |
+| Shared helpers | `src/lib/` |
+
+**Never** import `src/worker/**` from the API app.
+
+## Adding a job
+
+1. Add `src/modules/<feature>/<feature>.queue.ts` with `createOptionalQueue` from `src/queues/queue.ts`.
+2. Add `src/modules/<feature>/<feature>.job.ts` with `register*Worker()`.
+3. Register worker in `src/worker/index.ts` (push to `workers` array for shutdown).
+4. Call `registerQueueForBoard("<queue-name>")` in `src/queues/register-queues.ts` for Bull Board.
+5. Enqueue only after DB success; handlers must be idempotent (`async-reliability.mdc`).
+
+For periodic / maintenance sweeps: dedicated module or `maintenance` module with repeatable job registration in the worker entry — same `*.job.ts` pattern.
+
+## Related rules
+
+- Idempotency, webhooks, enqueue timing: **`async-reliability.mdc`**
+- Concurrency, chunking, dead letters: **`worker-scaling.mdc`**
+- When to async, process split, vendor resilience: **`reliability-workers-deps.mdc`**
+- Module layers and import boundaries: **`module-boundaries.mdc`**

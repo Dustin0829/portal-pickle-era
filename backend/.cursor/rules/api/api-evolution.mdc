@@ -1,0 +1,113 @@
+---
+description: Safely add, remove, and rename API fields without breaking frontends
+globs: src/modules/**/*.schema.ts,src/modules/**/*.openapi.ts,contracts/openapi.json,prisma/**
+alwaysApply: false
+---
+
+# API evolution
+
+Golden reference: `src/modules/examples/examples.schema.ts`, `contracts/openapi.json`.
+
+Works with `http-api.mdc` (design) and `platform-patterns.mdc` (URL versioning when clients multiply).
+
+## Purpose
+
+The paired frontend generates types from `contracts/openapi.json`. Schema and response changes are **contract changes** — treat them like public API releases.
+
+## Default: expand, don't break
+
+Prefer changes that old clients ignore and new clients adopt.
+
+| Change | Safe approach |
+| ------ | ------------- |
+| Add response field | Add optional field; old clients ignore it |
+| Add request field | Optional with default / omitted behavior |
+| Add enum value | Usually safe for responses; document in OpenAPI |
+| Tighten validation | **Breaking** — coordinate frontend or version bump |
+| Remove response field | Deprecate in OpenAPI comment first, remove after frontend ships |
+| Rename field | Add new name, keep old as alias for one release, or URL version bump |
+| Change field type | **Breaking** — new field name or `/api/v2` |
+
+## Zod & OpenAPI workflow
+
+Every public contract change:
+
+1. Update `*.schema.ts`
+2. Update `*.openapi.ts` if paths or descriptions change
+3. `pnpm openapi:generate`
+4. Commit `contracts/openapi.json`
+5. Regenerate frontend types in the paired app
+
+```ts
+// ✅ additive — new optional response field
+export const exampleSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().nullable(),
+  archivedAt: z.string().datetime().nullable().optional(), // new, optional
+});
+
+// ✅ additive request — optional with default behavior
+export const updateExampleBodySchema = z
+  .object({
+    label: z.string().trim().min(1).optional(),
+    pinned: z.boolean().optional(),
+  })
+  .strict();
+```
+
+```ts
+// ❌ breaking without coordination — new required body field
+export const createExampleBodySchema = z.object({
+  label: z.string(),
+  organizationId: z.string().uuid(), // was not required before
+});
+
+// ❌ breaking — rename in place
+// was: label → now: title (frontend types break silently)
+```
+
+## Database ↔ API alignment
+
+Schema and API should evolve together via expand-contract:
+
+1. Add nullable DB column
+2. Expose optional API field
+3. Backfill data
+4. Make required in DB only when business rules require it
+5. Tighten Zod only after frontend and backfill are done
+
+See `database.mdc` for migration workflow. Never drop a column the API still exposes without a deprecation window.
+
+## Nullable vs optional
+
+| Zod | Meaning for clients |
+| --- | ------------------- |
+| `.optional()` | Key may be absent |
+| `.nullable()` | Key present, value may be `null` |
+| `.optional().nullable()` | Absent or `null` — document which |
+
+Be consistent with existing module schemas. List responses use `{ items, meta }` — do not rename envelope keys.
+
+## When to version the URL
+
+Stay on unversioned paths while one paired SPA is the only consumer and changes ship together.
+
+Add `/api/v1` (or v2) per `platform-patterns.mdc` when:
+
+- External or mobile clients cannot ship same-day
+- You must support old and new response shapes in parallel
+- A breaking change cannot be deployed atomically with the frontend
+
+Field-level additive changes do **not** require URL versioning. Breaking removals or type changes do.
+
+## Explicit prohibitions
+
+- No hand-editing `contracts/openapi.json` without regenerating from Zod.
+- No removing or renaming response fields without checking frontend usage.
+- No tightening `.strict()` body schemas without frontend coordination.
+- No Prisma column drops while API still serializes that field.
+- No silent renames — use alias period or version bump.
+
+## AI guidance
+
+Adding a field? Optional first. Removing or renaming? Flag as breaking, check frontend, consider deprecation comment in OpenAPI. After any public shape change, run `pnpm openapi:generate` and mention frontend regen in the PR.

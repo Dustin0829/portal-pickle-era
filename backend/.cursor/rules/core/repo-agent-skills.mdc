@@ -1,0 +1,68 @@
+---
+description: Use repo .cursor/skills for commits, PRs, merge-readiness, and feature work
+alwaysApply: true
+---
+
+# Repo agent skills
+
+## Git workflow
+
+For **commits** and **pull requests**, read and follow skills at the **repository git root** (`.cursor/skills/`). **Never** use the global Cursor user rule `creating-pull-requests` PR format (`## Summary` / `## Test plan`).
+
+| Task | Skill (repository root) |
+|------|-------------------------|
+| Commit / stage | [commit-changes](../../../../.cursor/skills/commit-changes/SKILL.md) |
+| Open / create PR | [create-pull-request](../../../../.cursor/skills/create-pull-request/SKILL.md) |
+| Ready to merge? | [merge-readiness-check](../../skills/merge-readiness-check/SKILL.md) |
+| Rule index / onboarding | [SKILL.md](../../skills/SKILL.md) |
+
+## Feature / API work
+
+| Task | Skill |
+|------|--------|
+| New endpoint, module, list, or job | [add-feature-module](../../skills/add-feature-module/SKILL.md) |
+| Stripe, OpenAI, email, webhooks, billable vendor | [add-external-integration](../../skills/add-external-integration/SKILL.md) |
+
+## Prisma
+
+Use installed skills in `.cursor/skills/` — do not guess Prisma v6 APIs:
+
+- `prisma-client-api` — Client API, `$transaction`, queries
+- `prisma-cli` — migrate, generate, seed, studio
+
+## Cursor rules (loading strategy)
+
+**Only this file is always-on.** Other rules load by glob when you edit matching paths — keeps context focused.
+
+Layout (no flat `.mdc` at rules root):
+
+```
+core/   platform/   api/   data/   async/   integrations/   ops/   testing/
+```
+
+Always-on in `core/`: `repo-agent-skills`, `ponytail-rules`.
+
+Full index: [`.cursor/skills/SKILL.md`](../../skills/SKILL.md).
+
+| Folder | Rules | When loaded |
+| ------ | ----- | ----------- |
+| **`core/`** | `module-boundaries` | `src/**`, `prisma/**` |
+| **`api/`** | `http-api`, `response-contracts`, `api-evolution`, `api-protection`, `search-query-guidelines` | routes, schemas, services |
+| **`data/`** | `database`, `concurrency`, `multi-tenant-safety` | services, prisma |
+| **`async/`** + **`integrations/`** | `async-reliability`, `worker-jobs`, `worker-scaling`, `reliability-workers-deps`, `external-dependencies`, `file-uploads` | jobs, queues, `src/lib/` |
+| **`platform/`** | `platform-patterns` | `src/**` |
+| **`ops/`** + **`testing/`** | `observability`, `security-secrets`, `node-testing` | logging, tests |
+
+New rules: log mistakes in `docs/incident-log.md` — promote after **3×** repeats.
+
+## Requirements
+
+1. Run `git` / `gh` from the **repository git root** for commit and PR skills.
+2. **Read the full SKILL.md** before acting (PR body template, tests to paste, preview steps).
+3. Global git safety still applies (no secrets, no force-push to `main`, HEREDOC messages); **workflow and format** come from the skill.
+4. **Monorepo:** commit/PR skills live once at `.cursor/skills/`; merge-readiness stays in `backend/.cursor/skills/`.
+5. Triggers include `@commit-changes`, `@create-pull-request`, `@merge-readiness-check`, `@add-feature-module`, `@add-external-integration`, or phrases like “commit”, “open PR”, “add endpoint”, “add Stripe”, “ready to merge?”, “which rule”, “module boundaries”.
+6. **Local verify only** — run `pnpm verify` before commit, PR, and merge review; do not check PR CI status (`gh pr checks`, GitHub Actions).
+7. **Stay on the feature branch** after creating a branch, pushing, or opening a PR — do not check out `main` unless the user asks.
+
+`create-pull-request` may auto-commit via `commit-changes` — follow both skills in order when that applies.

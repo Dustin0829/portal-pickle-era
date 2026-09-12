@@ -1,0 +1,115 @@
+---
+description: Harden API RBAC — audience mounts, role gates, and object-level auth (no IDOR)
+globs: src/modules/**/*.routes.ts,src/modules/**/*.controller.ts,src/modules/**/*.service.ts,src/middleware/**/*.ts,src/app/router.ts
+alwaysApply: false
+---
+
+# Role-based API access
+
+Complements `platform-patterns.mdc` (auth wiring), `multi-tenant-safety.mdc` (tenant scope), `rest-api-convention.mdc` (path prefixes), `response-contracts.mdc` (no field leakage).
+
+**Frontend role checks are UX only.** The API is the authority.
+
+## Purpose
+
+- Employees must not call admin or client-only endpoints.
+- Clients must not call `/admin` or `/employee`.
+- A user token must never read or mutate **another** user’s private resources (IDOR).
+
+Auth middleware is not shipped yet — still design routes and services to these rules so wiring auth is additive, not a rewrite.
+
+## Defense in depth
+
+```txt
+router mount (audience) → requireAuth → requireRole / requirePermission → controller → service (object scope)
+```
+
+| Layer | Responsibility |
+| ----- | -------------- |
+| Path prefix | `/admin`, `/employee`, `/me`, app resources — wrong surface is obvious |
+| `requireAuth` | Valid session/token; sets `req.user` |
+| `requireRole` / `requirePermission` | Role gate; throw `ForbiddenError` (403) |
+| Service | Object-level checks: owner, membership, tenant — never trust body/params alone |
+
+```ts
+// routes — middleware only here
+adminRouter.use(requireAuth, requireRole("admin"));
+employeeRouter.use(requireAuth, requireRole("employee"));
+meRouter.use(requireAuth);
+brandsRouter.use(requireAuth); // client app; add requirePermission per route if needed
+```
+
+Do **not** add stub `requireAuth()` that always passes (`platform-patterns.mdc`).
+
+## Role → surface matrix
+
+| Role | May call | Must not call |
+| ---- | -------- | ------------- |
+| Client / customer | App resources, `/me/*` | `/admin/*`, `/employee/*` |
+| Employee (staff) | `/employee/*` (+ shared read-only if explicitly allowed) | `/admin/*`, other users’ `/me`-shaped private data via client routes |
+| Admin | `/admin/*` | Impersonation without audit; never “skip” object checks |
+
+Prefer **separate routers** per audience over one fat router with scattered `if (role)` branches.
+
+## Object-level authorization (IDOR)
+
+Every read/write by id must prove the actor may access **that** row.
+
+```ts
+// ❌ IDOR — any authenticated user with a guessed UUID
+const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
+
+// ❌ Trusting client-supplied owner
+await updateProfile({ userId: body.userId, ...body });
+
+// ✅ Self — id from token only
+await updateProfile({ userId: req.user!.id, ...body });
+
+// ✅ Member lookup — scope + existence hiding
+const row = await prisma.order.findFirst({
+  where: { id, organizationId: req.organization!.id },
+});
+if (!row) throw new NotFoundError("Order not found"); // same for wrong-tenant
+```
+
+Rules:
+
+1. **Self resources** — use `/me` and `req.user.id`; ignore `userId` in body/query/params as authority.
+2. **Never** authorize solely because the path matched (`/users/:userId` ≠ permission).
+3. Wrong-tenant / wrong-owner → `NotFoundError` (404), not 403 that confirms existence.
+4. Controllers pass actor ids into services; services never read `req` (`platform-patterns.mdc`).
+
+## Tokens and cross-user access
+
+| Check | Rule |
+| ----- | ---- |
+| Session user | From verified token/session only |
+| `userId` in body/query | Not authoritative |
+| Admin acting on a user | Explicit `/admin/...` + permission + audit log |
+| Employee support lookup | `/employee/...` + permission + audit; least privilege |
+
+## Good / bad
+
+```ts
+// ✅ employee cannot reach admin mount
+apiRouter.use("/admin", requireAuth, requireRole("admin"), adminRouter);
+
+// ✅ client brands scoped in service
+listBrands({ organizationId: req.organization!.id, query });
+
+// ❌ role check only in controller after heavy work
+// ❌ GET /users/:userId/orders for "my orders"
+// ❌ requireRole("admin") on some admin routes but not all under /admin
+```
+
+## Explicit prohibitions
+
+- No security by frontend route guards alone.
+- No shared “god” endpoints usable by every role with different filters.
+- No `findUnique({ where: { id } })` on private rows without actor/tenant scope.
+- No returning other users’ data because “they’re both authenticated.”
+- No role checks inside services that should be route middleware (keep services framework-agnostic; pass `actorId` / flags).
+
+## AI guidance
+
+New endpoint: pick audience prefix (`rest-api-convention.mdc`), attach `requireAuth` + role/permission on the router, pass actor/tenant ids into the service, scope every query. Review diffs for IDOR (param id without actor check) before merge. Tenant tables: also `multi-tenant-safety.mdc`.

@@ -1,0 +1,121 @@
+---
+description: Performance boundaries — Query vs Zustand, list scale, memoization discipline
+globs: src/App.tsx,src/main.tsx,src/layouts/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Performance boundaries
+
+See also: **`data-ownership.mdc`**, **`async-ui.mdc`**, **`api-layer.mdc`**.
+
+AI often over-memoizes, mirrors huge server lists into Zustand, or renders unbounded tables. Prefer **correct ownership** and **bounded rendering** over premature optimization.
+
+## Data placement (performance angle)
+
+| Data                         | Owner              | Why                                      |
+| ---------------------------- | ------------------ | ---------------------------------------- |
+| Server lists & entities      | TanStack Query     | Cache, dedupe, pagination, invalidation  |
+| Form fields                  | React Hook Form    | Isolated re-renders per field            |
+| Local UI toggles             | `useState`         | Cheap, scoped                            |
+| Cross-route client UI        | Zustand (small)    | Shared flags, auth mirror, layout prefs  |
+
+**Do not** copy large Query results into Zustand “for performance” — that **duplicates** memory and fights invalidation (`data-ownership.mdc`).
+
+```tsx
+// Bad — 10k users in global store; every subscriber re-renders on touch
+const users = useStore((s) => s.users);
+```
+
+```tsx
+// Good — paginated query; page-sized slice in cache
+const { data } = useUsers({ page, pageSize: 50 });
+```
+
+## TanStack Query cache
+
+- **Paginate** large collections — `page`, `limit`, cursor params in query key and API.
+- **Do not** `setQueryData` with enormous arrays for “optimistic” or “merge all pages” unless product requires it and UI is virtualized.
+- Prefer **`useInfiniteQuery`** for incremental load; **do not** load entire history into one key.
+- Use **`select`** in hooks to narrow subscribed data when a huge object is cached but the UI needs one field.
+
+```typescript
+return useQuery({
+  queryKey: userKey(id),
+  queryFn: () => fetchUser(id),
+  select: (user) => ({ displayName: user.displayName, avatarUrl: user.avatarUrl }),
+});
+```
+
+## Lists & tables
+
+| Size              | Approach                                                |
+| ----------------- | ------------------------------------------------------- |
+| &lt; ~100 rows    | Normal render often fine                                |
+| Hundreds–thousands| **Virtualize** (`@tanstack/react-virtual` or table virtualizer) |
+| Any large dataset | **Server pagination** or infinite scroll — never fetch all upfront |
+
+- Table sort/filter on big data → **server-side** when possible.
+- Avoid `items.map` over unbounded arrays from a single query.
+
+## Memoization discipline
+
+**Do not memoize everything.** Default to plain render; optimize when profiling shows a problem.
+
+| Use                                    | When                                                         |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `useMemo` / `useCallback`              | Expensive pure compute; stable callback to memoized child  |
+| `React.memo` on child                  | Child re-renders often with same props; parent updates a lot |
+| `memo` on every leaf                   | **Avoid** — noise, stale closure bugs                        |
+
+**Red flags:**
+
+- `useMemo(() => items.filter(...), [items])` on every small list without measurement
+- `useCallback` wrapping every handler “because best practice”
+- Zustand selector returning new object/array literals every call — fix selector shape instead
+
+```tsx
+// Bad — new object every time → useless memo
+useStore((s) => ({ user: s.user, theme: s.theme }));
+```
+
+```tsx
+// Good — separate selectors or shallow compare only when needed
+const user = useStore((s) => s.user);
+```
+
+## Effects & waterfalls
+
+- Parallelize independent fetches in services (`Promise.all`) — see `api-layer.mdc`.
+- **Do not** serialize unrelated `await`s in one `queryFn` when calls are independent.
+- Split dashboard regions into **separate queries** — do not block the shell on the slowest widget (`interaction-polish.mdc` §11).
+
+## Bundle & imports
+
+- Prefer **direct imports** for heavy packages (icons, date libs) — see `naming-conventions.mdc`.
+- **Route-level code splitting** — required once the app has **3+ page modules**:
+
+```tsx
+import { lazy, Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+const ItemsPage = lazy(() => import("@/pages/app/items/ItemsPage"));
+
+<Route path="items" element={<Suspense fallback={<Skeleton className="h-48 w-full" />}><ItemsPage /></Suspense>} />
+```
+
+Route-level fallback may use shadcn `Skeleton` — see **`boneyard-skeletons.mdc`**.
+
+- Lazy-load heavy modals or editors when they are not on the critical path.
+
+## Images & assets
+
+- Use appropriate dimensions; lazy-load below-the-fold media.
+- Do not inline megabyte assets in `src/`.
+
+## Checklist
+
+- [ ] Large collections are paginated or infinite-scrolled — not fully loaded into one query key.
+- [ ] No multi-thousand-row arrays in Zustand.
+- [ ] Long lists use virtualization when rendering hundreds+ DOM nodes.
+- [ ] Memoization added only for measured hotspots — not by default on every component.
+- [ ] Query `select` or narrow hooks used when subscribing to small slices of large cache entries.
+- [ ] Routes use `React.lazy` + `Suspense` when 3+ page modules exist.

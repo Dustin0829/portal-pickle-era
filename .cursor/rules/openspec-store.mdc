@@ -1,0 +1,12 @@
+---
+description: Solo-founder-starter OpenSpec root and overlay locations
+alwaysApply: true
+---
+
+# Solo-founder-starter overlay
+
+- **Slash commands** (`/opsx-*`) and OpenSpec **workflow skills** live in the repo-root `.cursor/` overlay.
+- **Specs and changes** live in `openspec/` at the repository root. There is no named store and no `--store` flag.
+- Do **not** create a second `openspec/` under `app/` or `backend/`.
+- The workspace hub is a **separate product**. Do not add a `workspace/` package to this repo.
+- Git is a **monorepo**: commit, push, and `/opsx-pr` from the repository root (one PR). Run `pnpm verify` from each in-scope package listed in `openspec/config.yaml` `kit.repos`.

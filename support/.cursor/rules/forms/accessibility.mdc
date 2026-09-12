@@ -1,0 +1,120 @@
+---
+description: Accessibility — keyboard, focus, ARIA, labels, live regions, touch targets
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx},src/layouts/**/*.{ts,tsx},src/index.css
+alwaysApply: false
+---
+
+# Accessibility
+
+See also: **`interaction-polish.mdc`**, **`page-layout.mdc`**, **`design-tokens.mdc`**, **`forms-and-drafts.mdc`**. Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+Polish without accessibility is incomplete. AI-generated UIs often look fine but fail keyboard, screen reader, and focus management.
+
+## Baseline
+
+- Use **semantic HTML** first (`button`, `nav`, `main`, `label`, `h1`–`h6`).
+- Prefer **shadcn/Radix primitives** — focus traps, roles, tabs, dialogs.
+- Every interactive control **keyboard operable** (Tab, Enter/Space, Escape).
+- **Visible focus** — `ring-ring`; never `outline: none` without replacement (`design-tokens.mdc`).
+- **Skip link** — first focusable element in root layout: skip to `#main` (`RootLayout` golden path).
+
+```tsx
+<a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background">
+  Skip to main content
+</a>
+<main id="main">{children}</main>
+```
+
+## Labels & names
+
+**A heading is not a label.** Wizard `<h2>` titles do not name inputs — screen readers need an explicit control name.
+
+```tsx
+// Bad — visual heading only; Input has no accessible name
+<h2>Brand name</h2>
+<Input value={name} onChange={...} />
+
+// Good
+<h2 id="brand-step-title">Brand name</h2>
+<Label htmlFor="brand-name" className="sr-only">Brand name</Label>
+<Input id="brand-name" aria-labelledby="brand-step-title" ... />
+```
+
+- Every **`Input` / `Textarea` / `Select`** → `<Label htmlFor={id}>` or `aria-label` / `aria-labelledby`.
+- **Do not** use `placeholder` as the only label.
+- **Icon-only buttons** → `aria-label`; icon `aria-hidden`.
+
+## Tabs & named regions
+
+```tsx
+<TabsList aria-label="Content categories">
+```
+
+Tab lists, nav landmarks, and grouped controls need a **programmatic name** when visible text alone does not label the group.
+
+## Form errors (RHF + server)
+
+Connect **`aria-invalid`**, **`aria-describedby`**, and error element **`id`** — client Zod and server `fieldErrors` (`api-error-routing.mdc`):
+
+```tsx
+const errorId = "website-error";
+<Input
+  id="website"
+  aria-invalid={!!errors.website}
+  aria-describedby={errors.website ? errorId : undefined}
+/>
+{errors.website && (
+  <p id={errorId} role="alert" className="text-sm text-destructive">
+    {errors.website.message}
+  </p>
+)}
+```
+
+With shadcn `FormField`, use `FormMessage` — it wires describedby when using the Form primitives.
+
+## Dynamic content & live regions
+
+| Event | Pattern |
+| ----- | ------- |
+| Query loading (region) | `aria-busy="true"` on container |
+| **Generating / long mutation** | `role="status"` + `aria-live="polite"` on inline progress — **toasts alone are not enough** |
+| Form error summary | `role="alert"` on error text |
+| Route change | Focus `h1` or polite live region for title |
+
+```tsx
+{isProcessing && (
+  <Alert role="status" aria-live="polite">
+    <AlertTitle>Processing your request</AlertTitle>
+  </Alert>
+)}
+```
+
+## Keyboard navigation
+
+| Pattern | Requirement |
+| ------- | ----------- |
+| Dialogs / sheets | Focus trap; `DialogTitle`; Escape closes |
+| Menus / dropdowns | Escape; focus returns to trigger |
+| Tabs | Arrow keys; named `TabsList` |
+| Tables | Row actions not hover-only |
+
+**Do not** rely on `onMouseEnter` as the only path to controls.
+
+## Touch targets
+
+Custom tappable elements must meet **44×44px** — see **`page-layout.mdc`**.
+
+## Color & motion
+
+- State not conveyed by **color alone** (add text/icon).
+- **`prefers-reduced-motion`** — global rule in `index.css` + `interaction-polish.mdc` §22.
+
+## Checklist for PRs
+
+- [ ] Skip link + `<main id="main">` in app shell.
+- [ ] Every input has `Label` / `aria-label` / `aria-labelledby` — headings don't count.
+- [ ] Errors use `aria-describedby` + `aria-invalid`.
+- [ ] Generating/progress states use `aria-live` where visual-only today.
+- [ ] `TabsList` and icon buttons have accessible names.
+- [ ] Tab-only flow works; dialogs titled.
+- [ ] Touch targets ≥ 44×44 on custom controls.

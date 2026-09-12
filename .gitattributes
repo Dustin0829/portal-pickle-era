@@ -1,0 +1,2 @@
+# Shell scripts run inside Linux containers; CRLF breaks `set -e` and similar.
+*.sh text eol=lf

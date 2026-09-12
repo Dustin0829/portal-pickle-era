@@ -1,0 +1,160 @@
+---
+description: Async UX — cancellation, stale responses, loading states, optimistic updates
+globs: src/api/**/*,src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx},src/lib/hooks/**/*
+alwaysApply: false
+---
+
+# Async UI & race conditions
+
+See also: **`api-layer.mdc`**, **`data-ownership.mdc`**, **`interaction-polish.mdc`**, **`performance.mdc`**, **`error-handling.mdc`**, **`offline-reconnect.mdc`**.
+
+Race conditions and stale responses are among the most common AI-generated frontend bugs — especially search, autocomplete, filters, pagination, and tab switches.
+
+## Core rules
+
+1. **Latest input wins** — Older in-flight requests must not overwrite newer results.
+2. **Cancel or ignore stale work** — Prefer cancellation; otherwise compare a generation token / request id before applying results.
+3. **Loading state matches the request** — Show loading for the active query; do not flash stale data as if it were fresh without intent.
+4. **Optimistic updates roll back** — On mutation failure, revert cache/UI and surface recovery (`interaction-polish.mdc` §14, §16).
+
+## Request cancellation
+
+### TanStack Query + Axios
+
+TanStack Query passes an **`AbortSignal`** to `queryFn`. Forward it to the HTTP client:
+
+```typescript
+// src/api/features/users/users.service.ts
+export async function searchUsers(q: string, signal?: AbortSignal) {
+  const { data } = await api.get("/users/search", { params: { q }, signal });
+  return data;
+}
+```
+
+```typescript
+// src/api/features/users/use-user-search.ts
+export function useUserSearch(q: string) {
+  return useQuery({
+    queryKey: ["users", "search", q] as const,
+    queryFn: ({ signal }) => searchUsers(q, signal),
+    enabled: q.length >= 2,
+  });
+}
+```
+
+When the query key changes or the query unmounts, TanStack Query aborts the previous request — **if** the service forwards `signal`.
+
+### Manual `AbortController` (non-Query flows)
+
+For one-off effects (legacy autocomplete, debounced fetch outside Query):
+
+```typescript
+useEffect(() => {
+  const controller = new AbortController();
+  void fetchSuggestions(query, controller.signal);
+  return () => controller.abort();
+}, [query]);
+```
+
+**Do not** leave effects that fetch without cleanup when `query` or filters change rapidly.
+
+## Debounced search pattern
+
+```tsx
+// Bad — every keystroke fires a request; slow responses overwrite fast ones
+const [q, setQ] = useState("");
+const { data } = useUserSearch(q);
+```
+
+```tsx
+// Good — debounce input; query key tracks debounced value; Query cancels superseded runs
+const [input, setInput] = useState("");
+const debouncedQ = useDebounce(input, 300);
+const { data, isFetching, isPending } = useUserSearch(debouncedQ);
+// Show isFetching on the input region; data reflects debouncedQ only
+```
+
+Put debounce in `src/lib/hooks/use-debounce.ts`. Keep search hooks in `src/api/features/<domain>/`.
+
+## Stale responses without abort
+
+If cancellation is impossible, guard application:
+
+```typescript
+let requestId = 0;
+async function load() {
+  const id = ++requestId;
+  const result = await fetchItems(filters);
+  if (id !== requestId) return; // superseded — discard
+  setItems(result);
+}
+```
+
+Prefer Query’s built-in behavior over hand-rolled `requestId` when data is server-backed.
+
+## Pagination & filters
+
+- **Query keys must include** page, sort, and filter params — `["orders", { page, status, q }]`.
+- Changing filters resets or replaces list data via key change; **do not** append page 2 results onto page 1’s cache key by mistake.
+- For **infinite scroll**, use `useInfiniteQuery` with correct `getNextPageParam` — not manual concat in component state.
+
+## Loading & empty states
+
+| Situation              | Pattern                                                |
+| ---------------------- | ------------------------------------------------------ |
+| Initial load           | `isPending` + loading UI — see **`boneyard-skeletons.mdc`** |
+| Background refetch     | Keep stale data visible; subtle `isFetching` indicator |
+| Filter change          | Prefer `placeholderData: keepPreviousData` or skeleton swap when UX needs it |
+| Mutation in flight     | Destructure `isPending`; disable button; guard double-submit (`api-layer.mdc`) |
+
+**Do not** clear the list to `[]` on every refetch unless product requires it — causes layout flash (`interaction-polish.mdc` §12).
+
+## Optimistic updates
+
+**When:** follow [optimistic-ui](../../skills/optimistic-ui/SKILL.md) (default yes unless the never-list matches). Define optimistic logic in **`src/api/features/**`** query modules, not pages:
+
+```typescript
+onMutate: async (vars) => {
+  await queryClient.cancelQueries({ queryKey: itemsKey });
+  const previous = queryClient.getQueryData(itemsKey);
+  queryClient.setQueryData(itemsKey, (old) => applyOptimistic(old, vars));
+  return { previous };
+},
+onError: (_err, _vars, context) => {
+  if (context?.previous) queryClient.setQueryData(itemsKey, context.previous);
+},
+onSettled: () => queryClient.invalidateQueries({ queryKey: itemsKey }),
+```
+
+- **Cancel in-flight queries** for the same key before optimistic patch.
+- **Rollback** on error; toast recovery in the hook (`api-layer.mdc`).
+- **Do not** optimistically update enormous lists or unbounded caches (`performance.mdc`).
+
+## Anti-patterns
+
+```tsx
+// Bad — copies Query data into local state; races with refetch
+const { data } = useItems();
+const [items, setItems] = useState([]);
+useEffect(() => setItems(data ?? []), [data]);
+```
+
+```tsx
+// Good — render from Query; derive UI from data directly
+const { data: items, isPending } = useItems();
+```
+
+```tsx
+// Bad — fire-and-forget fetch in component; no abort; no key
+useEffect(() => {
+  fetch(`/api/search?q=${q}`).then((r) => r.json()).then(setResults);
+}, [q]);
+```
+
+## Checklist
+
+- [ ] Search/filter/pagination hooks forward `signal` (or use Query keys that invalidate stale work).
+- [ ] Debounced inputs do not trigger unbounded parallel requests.
+- [ ] No `useEffect` sync from Query → `useState` for the same server list.
+- [ ] Optimistic mutations cancel, rollback, and invalidate in the query module.
+- [ ] Loading UI distinguishes initial pending vs background refetch where it matters.

@@ -1,0 +1,118 @@
+---
+description: Map API DTOs to UI models — never render backend shapes directly in components
+globs: src/api/**/*,src/lib/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Response mapping
+
+See also: **`api-layer.mdc`**, **`zod-validation.mdc`**, **`frontend-feature-boundaries.mdc`**.
+
+This is the frontend equivalent of backend **data exposure** control: components consume **UI models**, not raw API DTOs sprinkled through JSX.
+
+## Core rule
+
+**Never render API responses directly across the UI.**
+
+1. **Parse** at the boundary (Zod in services or query `queryFn` when runtime safety matters).
+2. **Map** DTOs → UI models in pure functions under `src/lib/<domain>/`.
+3. **Components** import mappers or pre-mapped props — not `user.first_name` in ten files.
+
+## Folder layout
+
+| Layer            | Location example                          | Contains                          |
+| ---------------- | ----------------------------------------- | --------------------------------- |
+| API DTO / schema | `src/api/features/users/users.schema.ts`  | `userSchema`, `UserDto`           |
+| Types (optional) | `src/api/features/users/users.types.ts`   | Re-exports / thin type aliases    |
+| **UI mappers**   | `src/lib/users/mapUserToCard.ts`          | `mapUserToCard(dto): UserCardModel` |
+| Display helpers  | `src/lib/users/formatUserLabel.ts`        | `formatUserLabel(dto): string`    |
+| Components       | `src/pages/...`, `src/components/...`     | `UserCard` props = UI model       |
+
+Naming: `map<Entity>To<Surface>`, `to<Surface>Model`, or `format<Entity><Field>` for single-field display.
+
+## Bad vs good
+
+```tsx
+// Bad — backend rename breaks every callsite; leaks internal fields
+<Card title={`${user.first_name} ${user.last_name}`} />
+<span>{user.internal_account_status}</span>
+```
+
+```tsx
+// Good — one mapper; component only knows UI shape
+const card = mapUserToCard(user);
+return <UserCard {...card} />;
+```
+
+```typescript
+// src/lib/users/mapUserToCard.ts
+import type { UserDto } from "@/api/features/users/users.schema";
+
+export type UserCardModel = {
+  displayName: string;
+  subtitle: string;
+  avatarUrl: string | null;
+  statusLabel: string;
+};
+
+export function mapUserToCard(dto: UserDto): UserCardModel {
+  return {
+    displayName: `${dto.firstName} ${dto.lastName}`.trim(),
+    subtitle: dto.email,
+    avatarUrl: dto.avatarUrl ?? null,
+    statusLabel: formatUserStatus(dto.status),
+  };
+}
+```
+
+Use **camelCase in UI models** even when the API uses `snake_case` — normalize in the mapper.
+
+## Where mapping runs
+
+| Approach              | When                                                |
+| --------------------- | --------------------------------------------------- |
+| Map in component      | Single use, trivial one-liner (still prefer helper) |
+| Map in page container | Page-specific assembly from one query               |
+| Map in `select`       | Narrow + transform in query hook for one consumer   |
+| Map in lib helper     | **Default** — reused across pages/components        |
+
+```typescript
+// Optional: map inside query select when one hook feeds one UI
+return useQuery({
+  queryKey: userKey(id),
+  queryFn: () => fetchUser(id),
+  select: (dto) => mapUserToProfile(dto),
+});
+```
+
+Prefer **lib mappers** when multiple surfaces consume the same entity.
+
+## API evolution
+
+When the backend changes field names or nesting:
+
+- Update **schema + mapper** — not every component.
+- Keep **deprecated** DTO fields out of UI models (do not pass through “just in case”).
+- **Do not** expose internal ids, flags, or audit fields in card/list models unless the UI needs them.
+
+## Lists & tables
+
+```typescript
+// src/lib/orders/mapOrderToRow.ts
+export function mapOrdersToRows(dtos: OrderDto[]): OrderRowModel[] {
+  return dtos.map(mapOrderToRow);
+}
+```
+
+Table columns consume `OrderRowModel` — sorting labels and badges come from mapped fields, not raw enums from the wire format.
+
+## Testing
+
+Unit-test mappers in `src/test/lib/<domain>/` — pure functions, no mocks (`vitest-testing.mdc`). When API shape changes, mapper tests catch UI regressions early.
+
+## Checklist
+
+- [ ] JSX does not reference raw DTO field names (`snake_case`, internal keys) outside mappers.
+- [ ] Reused entities have `map*To*` helpers under `src/lib/<domain>/`.
+- [ ] UI models expose only what the surface needs — no whole DTO spread into props.
+- [ ] Mapper tests cover renames, nulls, and enum → label mapping.

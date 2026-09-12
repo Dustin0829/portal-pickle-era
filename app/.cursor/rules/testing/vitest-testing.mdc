@@ -1,0 +1,52 @@
+---
+description: Vitest tests for API, lib, and high-risk UI changes
+globs: src/test/**/*
+alwaysApply: false
+---
+
+# Vitest testing
+
+Follow this when adding or changing code under `src/lib/`, `src/api/`, or high-risk UI flows.
+
+## File mapping
+
+Every new/changed module gets a matching test under `src/test/` (same relative path + `.test.ts` or `.test.tsx`):
+
+- `src/lib/orders/formatOrderTotal.ts` → `src/test/lib/orders/formatOrderTotal.test.ts`
+- `src/api/features/items/items.service.ts` → `src/test/api/features/items/items.service.test.ts`
+- `src/api/features/items/use-items.ts` → `src/test/api/features/items/use-items.test.ts`
+- `src/api/schema/primitives.schema.ts` → `src/test/api/schema/primitives.schema.test.ts`
+
+**Skip test files** for types-only modules, barrel `index.ts`, and static `src/lib/constants/*`.
+
+## Pipeline (mirror api-layer)
+
+1. Types (no test file)
+2. **Schema** — Zod parse tests, no mocks
+3. **Service** — `vi.mock('@/api/client')`, assert URL/method/body; see `src/test/api/features/examples/examples.service.test.ts`
+4. **Query** — `vi.mock` service + `makeQueryWrapper()` from `src/test/helpers/queryWrapper.ts`; add `use-examples.test.ts` when hooks grow
+5. **Lib** — pure mappers/messages, no mocks
+6. **High-risk UI** (auth, checkout, onboarding, multi-step wizards) — `src/test/components/`, `src/test/pages/`, or `src/test/providers/` with mocked queries; use `renderWithProviders()` from `src/test/helpers/renderWithProviders.tsx`
+
+## Complete reference (copy for new API work)
+
+End-to-end golden example — **every service function + every hook**:
+
+- Service: `src/test/api/features/examples/examples.service.test.ts` → `src/api/features/examples/examples.service.ts`
+- Schema: `src/test/api/features/examples/examples.schema.test.ts` → `src/api/features/examples/examples.schema.ts`
+- Shared primitives: `src/test/api/schema/primitives.schema.test.ts` → `src/api/schema/primitives.schema.ts`
+- Status helper: `src/test/lib/examples/exampleListStatus.test.ts` → `src/lib/examples/exampleListStatus.ts`
+- Page region: `src/pages/home/ExamplesSection.tsx` — copy for Query-driven surfaces
+
+Per export, include at minimum:
+
+- **Service**: happy path (URL/method/body) + rethrow on error
+- **Query hook**: success + service error; mutations also assert `mutateAsync` args
+- **Schema**: valid parse + one invalid case per constraint
+
+## Rules
+
+- Do **not** call real `VITE_API_URL` in unit tests.
+- Prefer table-driven `it` cases over snapshots for pages.
+- `pnpm test:run` must pass before merge; replace `it.todo` with real tests in files you touch.
+- Heavy business logic that belongs on the backend should be tested there; the webapp tests cover **display mapping** and client behavior only.

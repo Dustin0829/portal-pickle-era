@@ -1,0 +1,50 @@
+---
+description: Node test conventions
+globs: src/**/*.test.ts,tests/**
+alwaysApply: false
+---
+
+# Node tests
+
+## Purpose
+
+Fast, co-located tests for schemas, pagination, and module behavior without requiring Redis.
+
+## Architecture decisions
+
+- `node:test` + `node:assert/strict` only (no Jest/Vitest in this repo).
+- Tests live beside source: `examples.test.ts` next to `examples.service.ts`.
+- Redis optional — test no-Redis paths by default.
+
+## Required patterns
+
+| Target | Test |
+| ------ | ---- |
+| Schemas | Defaults, rejection of invalid input |
+| Pagination | `paginatedQuerySchema` coerce/default |
+| OpenAPI | Key paths registered |
+| Services | Behavior with mocked Prisma when needed |
+
+## Good examples
+
+```ts
+test("list query schema rejects unsupported sort", () => {
+  assert.equal(listExamplesQuerySchema.safeParse({ sort: "id" }).success, false);
+});
+```
+
+## Bad examples
+
+```ts
+import { describe, it, expect } from "vitest";  // wrong runner
+test("redis queue", ...) // requires Redis in unit test without opt-in
+```
+
+## Explicit prohibitions
+
+- No requiring Redis for default unit tests.
+- No e2e framework in `src/**/*.test.ts` unless explicitly added later.
+
+## AI guidance
+
+Add schema/parsing tests for every new list or create endpoint. Run `pnpm verify` before commit.

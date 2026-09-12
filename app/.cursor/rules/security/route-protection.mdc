@@ -1,0 +1,144 @@
+---
+description: Route protection — auth resolution order, role gates, no protected fetch before auth
+globs: src/components/guards/**/*.{ts,tsx},src/providers/**/*.{ts,tsx},src/App.tsx
+alwaysApply: false
+---
+
+# Route protection
+
+See also: **`frontend-security.mdc`**, **`data-ownership.mdc`**, **`api-layer.mdc`**.
+
+Route guards control **what React renders** — not what the API allows (`frontend-security.mdc`). Still, **order matters**: resolve auth **before** protected UI and data fetches to prevent flash, wasted requests, and leaked layout chrome.
+
+## Core rules
+
+1. **Resolve auth state first** — Know `authenticated | unauthenticated | loading` before rendering protected shells or firing protected queries.
+2. **Never fetch protected data before auth is resolved** — Use `enabled: false` on queries until identity is known.
+3. **Role gates are UX** — Backend enforces roles; frontend hides or redirects for clarity.
+4. **No flash of protected content** — Show a stable loading shell, not dashboard → login flicker.
+
+## Auth states
+
+Model three states explicitly:
+
+| State            | UI behavior                                              |
+| ---------------- | -------------------------------------------------------- |
+| `loading`        | Full-screen or layout skeleton; **no** protected children |
+| `unauthenticated`| Redirect to login or show `fallback`                     |
+| `authenticated`  | Render protected routes; enable protected queries        |
+
+```tsx
+// Bad — dashboard mounts and fetches before auth check completes
+function App() {
+  const user = useAuthStore((s) => s.user);
+  return (
+    <Routes>
+      <Route path="/dashboard" element={<DashboardPage />} />
+    </Routes>
+  );
+}
+// DashboardPage immediately calls useDashboard() → 401 flash
+```
+
+```tsx
+// Good — gate at layout; queries wait for auth
+function ProtectedLayout() {
+  const { status, user } = useAuth(); // status: 'loading' | 'authenticated' | 'unauthenticated'
+
+  if (status === "loading") return <AuthLoadingShell />;
+  if (status === "unauthenticated") return <Navigate to="/login" replace />;
+
+  return <Outlet context={{ user }} />;
+}
+```
+
+## ProtectedRoute pattern
+
+Template shell (`src/components/guards/ProtectedRoute.tsx`) — wire `isAllowed` only when auth is **resolved**:
+
+```tsx
+// Bad — isAllowed false while still loading → shows fallback or wrong branch
+<ProtectedRoute isAllowed={!!user} fallback={<Navigate to="/login" />}>
+  <SettingsPage />
+</ProtectedRoute>
+```
+
+```tsx
+// Good — three-way branch
+if (authStatus === "loading") return <AuthLoadingShell />;
+return (
+  <ProtectedRoute
+    isAllowed={authStatus === "authenticated"}
+    fallback={<Navigate to="/login" replace />}
+  >
+    <SettingsPage />
+  </ProtectedRoute>
+);
+```
+
+## TanStack Query gating
+
+Protected hooks must not run until auth is ready:
+
+```typescript
+export function useDashboard() {
+  const { status } = useAuth();
+
+  return useQuery({
+    queryKey: dashboardKey,
+    queryFn: fetchDashboard,
+    enabled: status === "authenticated",
+  });
+}
+```
+
+Or use a shared **`useAuthenticatedQuery`** helper in `src/api/lib/` when the pattern repeats (`api-layer.mdc`).
+
+**Do not** fire `/admin/*` queries on public routes “because Query will error” — waste and noisy errors.
+
+## Role-protected routes
+
+```tsx
+// UX gate — API must still return 403 for unauthorized admin mutations
+const canAccessAdmin = user?.role === "admin";
+
+if (authStatus === "loading") return <AuthLoadingShell />;
+if (!canAccessAdmin) return <Navigate to="/" replace />;
+
+return <AdminLayout />;
+```
+
+- **Do not** assume role from stale client cache after logout — clear store on `401`.
+- Re-fetch `/me` on app boot and after login.
+
+## Public vs authenticated layouts
+
+Split route trees:
+
+```
+/ login, signup, marketing     → no auth queries
+/app/*                         → ProtectedLayout → enabled queries
+/admin/*                       → ProtectedLayout + role check
+```
+
+Marketing pages **must not** import hooks that hit authenticated endpoints at module level.
+
+## Redirect after login
+
+- Preserve `returnTo` in location state or query — redirect after successful auth.
+- **Do not** render protected page content before redirect completes.
+
+## 401 handling
+
+Centralize in `api/client.ts` interceptor or auth layer:
+
+- On `401` from protected API: clear session, redirect to login, invalidate auth-dependent queries.
+- **Do not** leave stale user in Zustand while showing login.
+
+## Checklist
+
+- [ ] `loading` auth state shows a shell — not protected pages or empty fallbacks that flash.
+- [ ] Protected `useQuery` hooks use `enabled: status === 'authenticated'` (or equivalent).
+- [ ] Role routes check auth resolution before role check.
+- [ ] Client guards paired with API `401`/`403` handling — not used as sole security (`frontend-security.mdc`).
+- [ ] No protected data fetch on public/marketing routes.

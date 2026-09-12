@@ -1,0 +1,69 @@
+# schema: use built-in spec-driven (do not schema-fork unless you need custom artifacts)
+schema: spec-driven
+
+context: |
+  Solo-founder starter — one git repo, one OpenSpec root (`./openspec`).
+
+  Packages:
+  - api: ./backend (Express + Prisma product API)
+  - web: ./app (Vite + React product app)
+  - support: ./support (Vite + React operator app)
+  - plans: . (this OpenSpec store)
+
+  The workspace hub (boards, MCP) is a separate product. Do not add it to this store.
+
+  **Ladder:** /opsx-explore (optional) → /opsx-propose (+ review when chained)
+  → /opsx-apply (+ verify → PR when chained) → /opsx-archive
+
+  Manual anytime: /opsx-review-proposal · /opsx-verify · /opsx-pr · /opsx-commit · /opsx-sync
+
+  This is a **monorepo**. Git and GitHub PRs run from the repository root (one branch, one PR).
+  Verify and merge-readiness run inside each in-scope package path.
+
+kit:
+  store: null
+  default_base_branch: main
+  ladder: explore → propose (+review) → apply (+verify→pr) → archive
+  repos:
+    - id: api
+      path: ./backend
+      verify_fast: pnpm format:check && pnpm lint && pnpm typecheck
+      verify: pnpm verify
+      format: pnpm format
+      commit_skill: ../.cursor/skills/commit-changes/SKILL.md
+      pr_skill: ../.cursor/skills/create-pull-request/SKILL.md
+      merge_readiness_skill: .cursor/skills/merge-readiness-check/SKILL.md
+    - id: web
+      path: ./app
+      verify_fast: pnpm format:check && pnpm lint && pnpm exec tsc -b --noEmit
+      verify: pnpm verify
+      format: pnpm format
+      commit_skill: ../.cursor/skills/commit-changes/SKILL.md
+      pr_skill: ../.cursor/skills/create-pull-request/SKILL.md
+      merge_readiness_skill: .cursor/skills/merge-readiness-check/SKILL.md
+    - id: support
+      path: ./support
+      verify_fast: pnpm format:check && pnpm lint && pnpm exec tsc -b --noEmit
+      verify: pnpm verify
+      format: pnpm format
+      commit_skill: ../.cursor/skills/commit-changes/SKILL.md
+      pr_skill: ../.cursor/skills/create-pull-request/SKILL.md
+      merge_readiness_skill: .cursor/skills/merge-readiness-check/SKILL.md
+    - id: plans
+      path: .
+      verify: openspec validate
+      commit_skill: .cursor/skills/commit-changes/SKILL.md
+      pr_skill: .cursor/skills/create-pull-request/SKILL.md
+
+rules:
+  proposal:
+    - State which kit.repos ids are in scope; list non-goals for excluded packages.
+    - Mark documentation-only changes when no application src/ will change.
+  design:
+    - Before drafting: read each in-scope package's `.cursor/skills/SKILL.md` and cite rule/skill paths; do not paste rule text.
+    - Note deploy order when API and clients must ship in sequence.
+  tasks:
+    - Group tasks under headings per in-scope repo id from kit.repos (api, web, support, plans).
+    - Mid-apply checks use kit.repos[].verify_fast when present; full verify + merge-readiness belong to /opsx-verify and /opsx-pr.
+    - Final tasks may list /opsx-verify and /opsx-pr checkboxes for visibility (apply/kit can auto-run them).
+    - Use the same change id as the branch prefix (e.g. feat/add-auth).

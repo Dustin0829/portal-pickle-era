@@ -1,0 +1,102 @@
+---
+description: Optional delight — small personality moments that make applicable screens memorable, not every screen
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Delight UX
+
+See also: **`interaction-polish.mdc`** (feedback, motion, consistency), **`error-handling.mdc`** (empty states must still teach), **`design-tokens.mdc`**, **`accessibility.mdc`**, **`performance.mdc`**.
+
+**Delight** = small moments of personality that turn a **functional** state into something **memorable**. Use **sparingly** on screens where extra warmth earns trust — not as default chrome on every page.
+
+This rule does **not** replace polish, empty-state guidance, or accessibility. Delight sits **on top** when the moment warrants it.
+
+## When delight fits
+
+| Moment | Example |
+| ------ | ------- |
+| **Milestone / achievement** | “100 tasks completed”, first publish, streak |
+| **Onboarding completion** | Welcome done → first real screen |
+| **Positive empty → first success** | First item created after an intentional empty state |
+| **Rare positive surprise** | Long-awaited export finished, invite accepted |
+
+The user should feel **rewarded**, not marketed at.
+
+## When delight does not fit
+
+| Moment | Why |
+| ------ | --- |
+| Errors, auth failures, payments | Recovery and clarity only — **`error-handling.mdc`** |
+| Loading / skeletons | Acknowledge work — no jokes while waiting |
+| Dense dashboards, settings, tables | Information throughput wins — **`interaction-polish.mdc`** |
+| Every section header or CTA | Becomes noise; feels like a template |
+| Critical compliance / legal flows | Neutral, precise copy |
+
+**Default:** ship functional + polished. Add delight only when you can name the **specific moment** worth celebrating.
+
+## Design constraints (still required)
+
+- **Semantic tokens only** — `text-warning`, `text-success`, `text-primary`, `bg-muted/30`; no raw `amber-500`, `gold`, or hex (`design-tokens.mdc`).
+- **Typography scale** — `text-sm` / `text-lg` / `text-4xl`; no arbitrary `text-[72px]`.
+- **Motion** — short, optional; respect `prefers-reduced-motion` (`interaction-polish.mdc`, `index.css`).
+- **Accessibility** — celebration text is **visible copy**, not emoji alone; use `role="status"` + `aria-live="polite"` for one-shot milestones; do not trap focus or block the next action.
+
+```tsx
+// Bad — decoration without meaning; arbitrary color; blocks workflow
+<div className="text-[#f59e0b] text-[80px]">🎉🎉🎉</div>
+
+// Good — milestone panel; semantic tokens; user can dismiss or continue
+<section
+  role="status"
+  aria-live="polite"
+  className="flex flex-col items-center gap-2 rounded-lg border border-border bg-muted/30 px-6 py-8 text-center"
+>
+  <p className="text-sm font-medium tracking-wide text-warning uppercase">
+    Milestone unlocked
+  </p>
+  <p className="text-4xl font-semibold tabular-nums text-foreground">100</p>
+  <p className="text-sm text-muted-foreground">tasks completed</p>
+  <Button className="mt-4 w-full sm:w-auto" onClick={onContinue}>
+    Keep going
+  </Button>
+</section>
+```
+
+Emoji or icons are **optional garnish** — one line max; never the only message.
+
+## Copy tone
+
+- **Short** — headline + number or fact + one line of context.
+- **Specific** — “100 tasks completed”, not “Amazing job superstar!!!”.
+- **Forward-looking** — hint the next step (“Keep going”, “Create your next item”).
+- **Match product voice** — warm ≠ loud; avoid forced puns on every screen.
+
+## Implementation patterns
+
+| Pattern | Use |
+| ------- | --- |
+| **Inline panel** | Milestone on the page that earned it (not a blocking modal unless product requires) |
+| **Toast** | Light acknowledgment after a small win — supplement, not replace UI update |
+| **One-time flag** | `localStorage` / user prefs so the same milestone does not replay every visit |
+| **Colocated component** | `MilestoneCelebration.tsx` next to the feature — not global confetti |
+
+Do not add animation libraries for delight alone; CSS transitions or existing primitives are enough.
+
+## Relationship to other rules
+
+| Rule | Division |
+| ---- | -------- |
+| `error-handling.mdc` | Empty/error **must** teach and recover — delight may soften **positive** empty-to-first-win only |
+| `interaction-polish.mdc` | All interactions acknowledged; delight is **extra**, not a substitute for loading/error UX |
+| `page-layout.mdc` | Delight panels follow zone rhythm — do not break shell alignment for a one-off |
+| `error-handling.mdc` | Derive `showMilestone` from data + one-time flag — no extra boolean soup in JSX |
+
+## Checklist (when adding delight)
+
+- [ ] Named moment — milestone, first success, or onboarding complete (not “because we can”).
+- [ ] Not on error, payment, auth failure, or blocking load.
+- [ ] Semantic tokens and type scale only; motion respects reduced motion.
+- [ ] Copy + structure accessible; emoji is decorative, not the only label.
+- [ ] User can proceed immediately — delight does not block the primary path.
+- [ ] Shown once (or rarely), not on every repeat visit.

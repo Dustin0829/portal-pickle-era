@@ -1,0 +1,49 @@
+---
+description: Idempotency, when to async, process split, queue stack, outbound resilience
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Reliability: jobs, idempotency, and outbound dependencies
+
+Idempotency tables and webhook dedup patterns: **`async-reliability.mdc`**. Job file layout: **`worker-jobs.mdc`**. Vendor HTTP/SDK wrappers: **`external-dependencies.mdc`**.
+
+## Idempotency (API + webhooks + workers)
+
+- Any **POST/PATCH** that browsers, **workers**, or **webhooks** may retry must be safe to replay.
+- Support **`Idempotency-Key`** where appropriate: persist **`(scope, key) → outcome`** (TTL or permanent row) and return the same HTTP/business result on replay.
+- Use **natural keys** in Postgres: **`UNIQUE`** on provider event IDs, composite keys on domain tuples — duplicates surface as conflicts instead of extra rows.
+- **Money movement / billing:** never double-charge — enforce uniqueness (batch + line key) or a strict state machine (**`pending` → `posted`** once only).
+
+## When work leaves the Express request
+
+Move async when **any** apply:
+
+- Vendor calls often exceed **~2–3 s**, are **rate-limited**, or flaky (payments, AI, email, large uploads).
+- Batch work scales with **N** rows (imports, digest sends, reconciliation sweeps).
+- Retries need **backoff** without holding HTTP connections open.
+
+Return **`202 Accepted`** with a **`jobId`** or a resource in **`processing`** when the product UX allows; persist minimal identifiers on the job row and reload authoritative state from Prisma in the worker.
+
+`REDIS_URL` unset → producers no-op; synchronous CRUD still works (`async-reliability.mdc`).
+
+## Process split
+
+- **`api`:** validate auth, enqueue work, fast reads/writes — no large cron batches in-process.
+- **`worker`:** separate **`pnpm`** / deploy service; processors live in **`src/modules/**/*.job.ts`** (`worker-jobs.mdc`), wired from **`src/worker/index.ts`**. Bounded concurrency per queue (`worker-scaling.mdc`).
+
+## Queue stack
+
+- **Redis** + **BullMQ** with explicit concurrency, retries, and dead-letter inspection via Bull Board (`/admin/queues`).
+- Postgres remains the **source of truth** for business state; Redis is the execution transport.
+- Enqueue **after** Prisma transaction commits; never inside `$transaction` (`async-reliability.mdc`).
+
+## Outbound resilience
+
+- Wrap vendor HTTP clients with **timeouts** and caps on concurrent calls per instance (`external-dependencies.mdc`).
+- Use **circuit breakers** after repeated failures (library or small wrapper) — fail fast while cooling down.
+- Keep **Prisma transactions short**: do not await vendor HTTP inside transactions holding row locks; persist intent (`pending_external_call`) then call vendors in the job or after commit.
+
+## Input normalization (non-schema)
+
+- **Trim**, enforce **max lengths**, normalize Unicode for comparisons, strip unsafe control characters in constrained string fields (slugs, handles) — apply **after** Zod where rules exceed pure typing.

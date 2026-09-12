@@ -1,0 +1,95 @@
+---
+description: Feature boundaries — pages, components, hooks, mappers stay inside their feature
+globs: src/api/**/*,src/lib/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend feature boundaries
+
+See also: **`naming-conventions.mdc`**, **`api-layer.mdc`**, **`response-mapping.mdc`**, **`page-composition.mdc`**.
+
+Mirror backend **module boundaries** on the client. Features own their vertical slice; **avoid cross-feature imports** that create spaghetti (`orders` ↔ `items` ↔ `users`).
+
+**Loads on:** `src/api/**`, `src/lib/**` edits. For new routes/pages, read this when creating `src/pages/<feature>/` or colocated components — see **`page-composition.mdc`**.
+
+Examples use placeholder domain names (`items`, `invoices`, `<feature>`) — match your product’s modules.
+
+## Feature = product area
+
+A **feature** is a user-facing domain: `items`, `orders`, `users`, `settings`, etc. Map features to:
+
+- `src/pages/<feature>/` — routes and page-only components
+- `src/components/<Feature>/` or colocated under pages — feature-specific UI
+- `src/lib/<feature>/` — mappers, formatters, message helpers
+- `src/api/features/<feature>/` — service, schema, types, TanStack hooks (one folder)
+
+**Cross-cutting** code (`client`, `config`, `primitives`, `global.types`, shared UI primitives) lives at **api roots** or `features/auth/` — not scattered across unrelated feature folders.
+
+## Ownership
+
+Each feature **owns**:
+
+| Asset        | Rule                                                |
+| ------------ | --------------------------------------------------- |
+| Pages        | Under `src/pages/<feature>/`                        |
+| Components   | Colocated in page folder or `components/<Feature>/` |
+| Hooks        | `src/lib/hooks/` only if **shared**; else feature query module or page-local |
+| Mappers      | `src/lib/<feature>/`                                |
+| API slice    | `src/api/features/<feature>/` — service, schema, types, `use-<feature>.ts` |
+
+## Import rules
+
+### Allowed
+
+```typescript
+// Feature page imports its own stack + cross-cutting
+import { useItems } from "@/api/features/items/use-items";
+import { mapItemToRow } from "@/lib/items/mapItemToRow";
+import { Button } from "@/components/ui/button";
+import { useAuthMe } from "@/api/features/auth/use-auth";
+```
+
+### Avoid
+
+```typescript
+// Bad — invoices page reaches into items internals
+import { ItemDraftPanel } from "@/pages/items/ItemDraftPanel";
+import { useItemStore } from "@/lib/stores/itemStore";
+```
+
+```typescript
+// Bad — lib/invoices imports lib/items helper
+import { formatItemLabel } from "@/lib/items/formatItemLabel";
+```
+
+### When features need each other
+
+1. **Shared kernel** — Move truly generic helpers to `src/lib/shared/` or root `src/lib/utils/` (sparingly).
+2. **API composition** — Backend aggregates; frontend consumes one query — do not import another feature’s page components.
+3. **Cross-feature UI** — Extract to `src/components/shared/` only when **two or more** features need the same component; keep it dumb (props in, events out).
+4. **Navigation** — Link by route (`/items/:id`), not by importing another feature’s page.
+
+## `src/api/features/` boundaries
+
+- **One folder per backend module** — do not split a domain across `services/`, `queries/`, and `schema/` trees.
+- **No cross-feature imports** between `features/invoices/` and `features/items/` — share via `api/types/global.types.ts`, `api/schema/primitives.schema.ts`, or backend aggregation.
+- Surface segments (`features/admin/items/`) follow the same rules within that subtree.
+
+## `src/components/ui/`
+
+shadcn primitives are **global** — any feature may import `@/components/ui/*`. Do not treat `ui/` as a feature folder.
+
+## Stores
+
+Prefer **feature-scoped** Zustand files: `itemDraftStore.ts`, not a monolith with every domain. **Do not** import another feature’s store from a different feature’s pages.
+
+## Refactor trigger
+
+If you need a third cross-import between two features, **stop** and extract shared code to an explicit shared module or push aggregation to the API.
+
+## Checklist
+
+- [ ] New API work lands in `src/api/features/<domain>/`, not flat layer folders.
+- [ ] No imports from `pages/<other-feature>/` into unrelated features.
+- [ ] No `lib/<featureA>/` importing `lib/<featureB>/` except via documented shared modules.
+- [ ] Shared UI lives in `components/ui/` or `components/shared/` — not leaked from one feature’s page folder.

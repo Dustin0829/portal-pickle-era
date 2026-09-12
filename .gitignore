@@ -1,0 +1,16 @@
+.DS_Store
+workspace/
+.cursor/mcp.json
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+dist-ssr/
+coverage/
+.pnpm-store/
+src/generated/
+*.log
+.idea
+.vscode/*
+!.vscode/extensions.json

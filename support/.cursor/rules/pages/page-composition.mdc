@@ -1,0 +1,104 @@
+---
+description: Page folder composition — split bloated routes into colocated modules
+globs: src/pages/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Page composition
+
+See also: **`page-layout.mdc`**, **`naming-conventions.mdc`**, **`frontend-feature-boundaries.mdc`**, **`error-handling.mdc`**, **`forms-and-drafts.mdc`**, **`api-layer.mdc`**.
+
+Large route files are hard to review, test, and reuse. **One flat `FooPage.tsx` per complex route is a smell** — colocate a **folder per URL area** with a thin page shell and focused children.
+
+New `src/pages/<feature>/` folders: follow **`frontend-feature-boundaries.mdc`** (one feature per folder; no cross-imports from other features’ pages).
+
+**Spacing, alignment, and hierarchy** → `page-layout.mdc` (`AppPageShell`, `PageHeader`, zone rhythm).
+
+Examples below use placeholder names (`items`, `<domain>`) — **replace with your product’s routes and modules**.
+
+## Size limits
+
+| File kind | Soft max | Action when exceeded |
+| --------- | -------- | -------------------- |
+| Page shell (`*Page.tsx`) | **250 lines** | Extract steps, tabs, dialogs, tables |
+| Step / tab / panel component | **400 lines** | Split sub-sections or hooks |
+| Domain orchestration hook (`lib/<domain>/use*.ts`) | **500 lines** | Split by step or concern |
+| Any file under `src/pages/` | **750 lines** | **Must split** before adding features |
+
+Counts are guidelines — a 900-line file with a tracked split PR is OK; a growing 1k+ file is not.
+
+## Folder layout
+
+**One lowercase folder per URL area** under `src/pages/<segment>/`:
+
+```
+src/pages/app/items/
+  ItemsPage.tsx
+  new/
+    CreateItemPage.tsx          ← route default export (thin)
+    ItemDetailsStep.tsx
+    ItemOptionsStep.tsx
+    ItemReviewStep.tsx
+    ItemFormDialogs.tsx
+    CreateItemWizardContext.tsx ← thin React provider; hooks in lib/items/
+```
+
+Rules:
+
+- **Page shell** wires layout, route params, and child composition — minimal logic.
+- **Colocate** page-only **components** in the same folder — orchestration hooks belong in `src/lib/<domain>/`.
+- **`index.tsx`** is optional; prefer explicit `*Page.tsx` imports in the router.
+- **Do not** create PascalCase page folders (`pages/ItemsPage/`).
+- Folder segments (`app`, `admin`, `public`) are **examples** — match your router.
+
+## What goes where
+
+| Asset | Location | Example |
+| ----- | -------- | ------- |
+| HTTP + TanStack Query | `src/api/features/<domain>/` | `use-items.ts` |
+| API DTOs, Zod schemas, types | `src/api/features/<domain>/` | `items.schema.ts`, `items.types.ts` |
+| Mappers, validation, orchestration hooks | `src/lib/<domain>/` | `mapItem.ts`, `useItemWizard.ts`, `validateItemWizard.ts` |
+| Multi-step orchestration | `src/lib/<domain>/` (camelCase `use*.ts`) | `useItemWizard.ts`, `useItemWizardState.ts` |
+| Step, tab, dialog UI | Page folder `PascalCase.tsx` | `ItemOptionsStep.tsx` |
+| Route-only React context | Page folder `PascalCase.tsx` | `CreateItemWizardContext.tsx` |
+| Shared across 2+ features | `src/components/shared/` | dumb props-only UI |
+
+**`src/lib/<domain>/`** holds reusable domain logic: mappers, validation, orchestration hooks, context wiring types (`itemWizardCtx.types.ts`).
+
+**Do not** put route **components** (steps, dialogs, tables) in `lib/` to shrink page files — those stay under `src/pages/`.
+
+## Split triggers
+
+Split when **any** apply:
+
+1. File **> 750 lines**
+2. **Multiple steps, tabs, or wizards** on one route
+3. **3+ modals / drawers** owned by the page
+4. **Distinct regions** each needing their own status union (`error-handling.mdc`)
+5. Second engineer (or agent) cannot orient in **< 5 minutes**
+
+## Split recipe
+
+1. Create `pages/<segment>/<area>/` folder.
+2. Move orchestration hooks / validation to `src/lib/<domain>/` if missing.
+3. Move domain types into `src/api/features/<domain>/*.types.ts` if missing.
+4. Move page orchestration → React context provider in the page folder.
+5. Extract **steps / tabs / dialogs / tables** into PascalCase siblings.
+6. Leave `*Page.tsx` as composition + providers only.
+7. Update route imports in the router (`App.tsx` or route module).
+8. Delete the old flat file — no long-term re-export shim unless a PR is mid-flight.
+
+## Context vs prop drilling
+
+- **Few props (< 8)** → pass explicitly.
+- **Multi-step flows** → page-local context (`<CreateItemWizardProvider>`) in the same folder; **do not** add global providers for one route.
+- **Never** nest component definitions inside the page shell — hoist to module scope (`naming-conventions.mdc`).
+
+## Checklist
+
+- [ ] No file under `src/pages/` exceeds **750 lines** (except documented follow-up).
+- [ ] Complex routes live in a **folder**, not a single flat `SegmentPage.tsx`.
+- [ ] API hooks remain in `src/api/features/` — page hooks are UI orchestration only.
+- [ ] Orchestration hooks live in `src/lib/<domain>/`; API hooks in `src/api/features/`.
+- [ ] Domain types live in `src/api/features/<domain>/`, not `src/pages/`.
+- [ ] New work adds to extracted modules, not back into the page shell.

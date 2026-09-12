@@ -1,0 +1,90 @@
+---
+description: Race conditions, transactions, locking, and safe concurrent updates
+globs: src/modules/**/*.service.ts,src/modules/**/*.job.ts,prisma/**
+alwaysApply: false
+---
+
+# Concurrency
+
+Golden reference: `database.mdc` (`$transaction`), `async-reliability.mdc` (idempotency).
+
+## Purpose
+
+Two requests at the same time must not corrupt balances, inventory, credits, or reservations. **Read-then-write without isolation is a bug.**
+
+## When this matters
+
+Wallets, credits, billing, inventory, seat counts, reservations, status machines, “only one active subscription,” coupon redemption.
+
+## Required patterns
+
+| Pattern | Use when |
+| ------- | -------- |
+| `prisma.$transaction` | Multiple writes must succeed or fail together |
+| `SELECT … FOR UPDATE` / serializable tx | Read balance → deduct balance in same transaction |
+| `@@unique` constraint | One row per logical key; catch `P2002` → `ConflictError` |
+| Conditional update | `updateMany({ where: { id, version } })` — check `count === 1` |
+| Optimistic locking | `version` or `updatedAt` column on contested rows |
+| Idempotent retry | Safe replays don't double-deduct (`async-reliability.mdc`) |
+| Atomic increment | `update({ data: { credits: { decrement: amount } } })` with `where: { credits: { gte: amount } } }` |
+
+```ts
+// ❌ race — two requests both pass the check
+const wallet = await prisma.wallet.findUnique({ where: { userId } });
+if (wallet.balance < amount) throw new ValidationError("Insufficient balance");
+await prisma.wallet.update({ where: { userId }, data: { balance: wallet.balance - amount } });
+
+// ✅ conditional update — second request gets 0 rows updated
+const result = await prisma.wallet.updateMany({
+  where: { userId, balance: { gte: amount } },
+  data: { balance: { decrement: amount } },
+});
+if (result.count !== 1) throw new ValidationError("Insufficient balance");
+
+// ✅ transaction — inventory + ledger together
+await prisma.$transaction(async (tx) => {
+  const reserved = await tx.inventory.updateMany({
+    where: { sku, quantity: { gte: 1 } },
+    data: { quantity: { decrement: 1 } },
+  });
+  if (reserved.count !== 1) throw new ConflictError("Out of stock");
+  await tx.orderLine.create({ data: { sku, ... } });
+});
+```
+
+## Status transitions
+
+Guard illegal transitions in the `where` clause — not only in application `if`:
+
+```ts
+const updated = await prisma.invoice.updateMany({
+  where: { id, status: "pending" },
+  data: { status: "paid", paidAt: new Date() },
+});
+if (updated.count !== 1) throw new ConflictError("Invoice already processed");
+```
+
+## Good examples
+
+- Webhook payment: unique on `providerEventId` before side effects
+- Coupon redeem: `@@unique([couponId, userId])`
+- Credit spend: decrement with `gte` guard in one statement
+
+## Bad examples
+
+```ts
+const item = await prisma.item.findUnique({ where: { id } });
+if (item.stock > 0) await prisma.item.update({ data: { stock: item.stock - 1 } });
+// two concurrent requests oversell
+```
+
+## Explicit prohibitions
+
+- No read-modify-write on contested numeric fields outside a transaction or conditional update.
+- No assuming single-threaded usage.
+- No “check in service, update later” across separate requests without locking.
+- No double side effects on concurrent webhook delivery without dedupe.
+
+## AI guidance
+
+Touching balances, inventory, credits, or one-time state? Name the race, pick transaction + unique constraint or conditional `updateMany`. Pair with idempotency for retries.

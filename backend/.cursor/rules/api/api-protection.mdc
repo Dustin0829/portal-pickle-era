@@ -1,0 +1,110 @@
+---
+description: When endpoints need rate limits, quotas, cooldowns, and cost protection
+globs: src/modules/**/*.routes.ts,src/modules/**/*.controller.ts,src/modules/**/*.service.ts,src/modules/**/*.job.ts
+alwaysApply: false
+---
+
+# API protection
+
+Golden reference: `src/modules/uploads/` (presign — validate before issuing URLs).
+
+## Purpose
+
+Before shipping an endpoint, ask: **can this be abused or cost money at scale?** Protection is a design requirement — not “add express-rate-limit later.”
+
+High-cost endpoints need at least one of: **rate limiting**, **per-user/org quotas**, **cooldowns**, **async jobs**, or **idempotency keys**.
+
+## When protection is required
+
+| Endpoint type | Risk | Minimum protection |
+| ------------- | ---- | ------------------ |
+| Public / unauthenticated | Scraping, spam | Rate limit by IP; CAPTCHA at edge if needed |
+| Auth (login, signup) | Credential stuffing | Strict rate limit; lockout/backoff |
+| Password reset, OTP, magic link | Email/SMS cost, enumeration | Rate limit; single-use tokens; generic responses |
+| Invites | Spam | Per-org daily cap; cooldown |
+| Webhooks (inbound) | Replay, flood | Signature verify + dedupe (`async-reliability.mdc`) |
+| Uploads / presign | Storage cost, malware | Size/type allowlist, per-user caps (`file-uploads.mdc`) |
+| Search / list with heavy filters | DB load | Pagination + `search-query-guidelines.mdc`; rate limit aggressive search |
+| AI / generation | Token cost | **Never** unbounded sync `POST /generate` — job queue + per-user quota |
+| Bulk / import / export | DB + worker load | Async job; row limits; admin-only or quota |
+| Report generation | CPU + vendor cost | Job queue; cooldown; cache result |
+
+If an endpoint triggers **billable third-party usage** (OpenAI, Anthropic, email, SMS, R2 egress), also read the cost section below.
+
+## Protection mechanisms
+
+Pick what fits — often combine:
+
+```txt
+rate limit → quota check → idempotency key → enqueue job → return 202/pending
+```
+
+| Mechanism | Use when |
+| --------- | -------- |
+| Rate limiting | Any public or auth endpoint; per IP or per user/org |
+| Quotas | Daily/monthly caps on AI tokens, emails, uploads, imports |
+| Cooldowns | “Generate again in 60s”; password reset resend |
+| Job queue | Work > 2–3s or vendor latency (`external-dependencies.mdc`) |
+| Idempotency-Key | Paid actions, creates that clients retry (`async-reliability.mdc`) |
+
+Store limit state in Redis when async mode is on (`platform-patterns.mdc`). Env kill switches for emergencies live in `env.ts` only.
+
+## Cost controls (billable work)
+
+Any endpoint that spends money or scarce resources must not be infinitely callable.
+
+**Billable triggers:** AI completion, image generation, email send, SMS, presigned large uploads, CSV import processing, report PDF, Stripe side effects.
+
+| Requirement | Pattern |
+| ----------- | ------- |
+| No sync AI in HTTP | `POST` enqueues job → poll/webhook for result |
+| Per-actor quota | Check `credits` / `usage` table before enqueue |
+| Duplicate guard | `Idempotency-Key` or unique constraint on request hash |
+| Retry safety | Provider idempotency keys (`external-dependencies.mdc`) |
+| Failure does not double-charge | Track job status; refund or no-op on retry |
+
+```ts
+// ✅ protected generation
+export async function requestReport(input: { userId: string; organizationId: string }) {
+  await assertWithinQuota(input.organizationId, "reports");
+  const job = await reportQueue.add("generate", input, { jobId: `report:${input.userId}:${dayKey()}` });
+  return { status: "pending", jobId: job.id };
+}
+
+// ❌ unprotected — bankrupt at 10k users
+export async function generateReport(prompt: string) {
+  return openai.chat.completions.create({ messages: [{ role: "user", content: prompt }] });
+}
+```
+
+Document the quota key and limit in the service when adding billable endpoints.
+
+## Good examples
+
+```ts
+// uploads — validate before presign (size/type in schema; caps in service when auth exists)
+presignUploadBodySchema // max filename/contentType length
+
+// search — paginated list, not unbounded scan (http-api.mdc, database.mdc)
+listExamples(query) // uses take/skip from paginatedQuerySchema
+```
+
+## Bad examples
+
+```ts
+POST /generate        // sync OpenAI, no auth, no quota
+POST /send-email      // loop over 10k recipients in request handler
+POST /import          // accepts 500MB CSV, processes inline
+GET  /search?q=       // findMany without limit on large table
+```
+
+## Explicit prohibitions
+
+- No new AI/generation/email/SMS/bulk endpoints without quota or job design.
+- No “we’ll add rate limits in v2” on public or auth routes.
+- No charging vendor APIs from controllers.
+- No unbounded loops over user-supplied lists in the request path.
+
+## AI guidance
+
+Adding `POST /generate`, `/send-*`, `/import`, or `/presign`? Stop and specify: who can call it, max frequency, max cost per call, sync vs job, idempotency. Cross-ref: `external-dependencies.mdc`, `async-reliability.mdc`, `file-uploads.mdc`, `worker-scaling.mdc`.

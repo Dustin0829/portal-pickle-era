@@ -1,0 +1,135 @@
+---
+description: OpenAI, Stripe, R2, Discord, email — clients, timeouts, retries, and failure handling
+globs: src/lib/**,src/modules/**/*.service.ts,src/modules/**/*.job.ts,src/modules/**/*.controller.ts
+alwaysApply: false
+---
+
+# External dependencies
+
+Golden reference: `src/lib/storage/r2.ts`, `src/lib/observability/discord-alert.ts`.
+
+## Purpose
+
+External systems fail, slow down, and rate-limit. Wrap every vendor in `src/lib/<vendor>/`. Never call Stripe, OpenAI, R2, Discord, or email APIs ad hoc from controllers or inline in modules.
+
+## Architecture
+
+| Rule | Pattern |
+| ---- | ------- |
+| Client location | `src/lib/<vendor>/` — e.g. `storage/r2.ts`, `stripe/client.ts`, `openai/client.ts` |
+| Env vars | Parsed only in `src/app/env.ts` |
+| Who calls | `*.service.ts` or `*.job.ts` — **never** controllers |
+| Slow / unreliable | `*.job.ts` (BullMQ), not the HTTP request path |
+| Inbound webhooks | Verify signature, dedupe — `async-reliability.mdc` |
+
+Existing integrations: **R2** (presigned uploads), **Discord** (throttled alerts). Add **Stripe**, **OpenAI**, **email** the same way when needed.
+
+## Timeouts
+
+Every outbound HTTP call and SDK usage must have a bounded wait.
+
+```ts
+const response = await fetch(url, {
+  signal: AbortSignal.timeout(10_000),
+  ...
+});
+
+// or SDK-level timeout config where supported
+```
+
+Default guidance: 5–15s for user-facing request path (prefer jobs instead); 30–120s acceptable in background jobs.
+
+## Retries
+
+| Safe to retry | Not safe without idempotency key |
+| ------------- | -------------------------------- |
+| Idempotent GET / read | Payment capture, charge, transfer |
+| Provider supports idempotency key (Stripe) | Blind `create` on webhook replay |
+| Transient 429/502/503 with backoff | Email send that may duplicate |
+
+- Max 2–3 retries with exponential backoff for transient errors.
+- Pass provider idempotency keys on writes (e.g. Stripe `idempotencyKey`).
+- Never unbounded retry loops.
+
+## Degraded behavior (fallbacks)
+
+Request path must stay responsive:
+
+- **Alerts (Discord):** fire-and-forget; failure logs, does not fail the API response.
+- **R2 presign:** misconfiguration → `ValidationError`; upstream failure → log and throw after timeout.
+- **AI / email / heavy IO:** enqueue job; return `202` or pending state — do not block `POST` on model latency.
+- **Optional integrations:** when env unset, no-op or clear `ValidationError` — never crash unrelated CRUD.
+
+Circuit breaking: if a vendor fails repeatedly in a short window, stop hammering it — log, return a domain error (`ValidationError` / `ConflictError`), and rely on jobs or manual retry. No circuit-breaker library required in v1; use judgment and throttle patterns like `discord-alert.ts`.
+
+## Logging & secrets
+
+Per `observability.mdc`:
+
+```ts
+logger.error("stripe_charge_failed", {
+  requestId: getRequestContext()?.requestId,
+  provider: "stripe",
+  operation: "createPaymentIntent",
+  durationMs: Date.now() - started,
+  error,
+});
+```
+
+- Never log API keys, tokens, card numbers, or full webhook bodies with secrets.
+- Use `redactAlertPayload` before Discord alerts.
+
+## Good examples
+
+```ts
+// src/lib/storage/r2.ts pattern — validate config, bounded operation
+export async function createPresignedUpload(input: { key: string; contentType: string }) {
+  const client = createR2Client();
+  return getSignedUrl(client, command, { expiresIn: 900 });
+}
+
+// service — orchestrate, don't embed SDK details
+export async function presignUpload(input: PresignInput) {
+  const key = buildObjectKey(input);
+  const url = await createPresignedUpload({ key, contentType: input.contentType });
+  return { url, key };
+}
+
+// job — OK to call slow OpenAI / email here
+export async function processCampaignDraft(job: Job<{ campaignId: string }>) {
+  const draft = await generateDraftWithOpenAI(job.data); // timeout inside lib
+  await prisma.campaign.update({ where: { id: job.data.campaignId }, data: { draft } });
+}
+```
+
+## Bad examples
+
+```ts
+// controller
+const completion = await openai.chat.completions.create(...);
+
+// service — raw fetch, no timeout
+await fetch("https://api.stripe.com/v1/charges", { method: "POST", body });
+
+// service — retry charge on every 500 without idempotency key
+for (let i = 0; i < 10; i++) {
+  try { return await stripe.charges.create({ amount }); } catch { continue; }
+}
+
+// inline in module — vendor logic not in src/lib/
+import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_KEY!);
+```
+
+## Explicit prohibitions
+
+- No external API calls from controllers.
+- No `process.env.VENDOR_*` outside `env.ts`.
+- No vendor SDK imports in `*.controller.ts` or `*.routes.ts`.
+- No unbounded retries on non-idempotent writes.
+- No blocking HTTP handlers on AI, email, or multi-second third-party calls.
+- No secrets in logs, errors returned to clients, or Discord payloads.
+
+## AI guidance
+
+New vendor → `src/lib/<vendor>/`, env in `env.ts`, call from service or job. Billable or high-cost HTTP endpoints: `api-protection.mdc`. Payment/webhook path → `async-reliability.mdc`. Layer boundaries → `module-boundaries.mdc`. Secrets → `security-secrets.mdc`.

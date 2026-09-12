@@ -1,0 +1,87 @@
+---
+description: Worker concurrency, retries, backoff, and throughput under load
+globs: src/modules/**/*.job.ts,src/worker/**,src/queues/**
+alwaysApply: false
+---
+
+# Worker scaling
+
+Golden reference: `src/modules/examples/examples.job.ts`, `src/queues/queue.ts`.
+
+## Purpose
+
+What if 100,000 jobs arrive overnight? A bare `new Worker(queue, processor)` with defaults can overwhelm Postgres, vendors, and memory.
+
+Design jobs for **throughput, failure, and recovery** — not only happy path.
+
+## Worker configuration
+
+When registering a `Worker`, set explicit options — do not rely on all defaults for production-heavy queues:
+
+| Option | Guidance |
+| ------ | -------- |
+| `concurrency` | Low (1–5) for DB-heavy or vendor-heavy jobs; higher for pure IO |
+| `limiter` | `{ max: N, duration: ms }` to cap jobs/sec per queue |
+| `attempts` | 3–5 typical; idempotent handlers only (`async-reliability.mdc`) |
+| `backoff` | Exponential `{ type: "exponential", delay: 1000 }` — not instant tight loops |
+| `removeOnComplete` | Keep recent count or age — avoid unbounded Redis growth |
+| `removeOnFail` | `false` or move to failed set for inspection — **dead-letter behavior** |
+
+```ts
+return new Worker<ImportJob>(
+  "imports",
+  processImport,
+  {
+    connection,
+    concurrency: 2,
+    limiter: { max: 10, duration: 60_000 },
+    settings: { backoffStrategy: (attempts) => Math.min(attempts * 1000, 30_000) },
+  },
+);
+```
+
+## Job design under load
+
+| Pattern | Use when |
+| ------- | -------- |
+| Batch processing | Import 100k rows — chunk into jobs of 500 rows |
+| Idempotent steps | `if (row.status === "done") return` at start |
+| Progress markers | Update `processedCount` for resumable imports |
+| Separate queues | Isolate slow AI jobs from fast notifications |
+| Priority | Critical jobs on dedicated queue/worker pool |
+
+```ts
+// ❌ one job processes entire CSV synchronously
+async (job) => {
+  const rows = parse(await download(job.data.url)); // 100k rows, OOM risk
+  for (const row of rows) await prisma.row.create({ data: row });
+};
+
+// ✅ fan-out chunks
+async (job) => {
+  const chunk = await readChunk(job.data.importId, job.data.offset, 500);
+  await processChunk(chunk);
+  if (hasMore) await importQueue.add("chunk", { ...job.data, offset: job.data.offset + 500 });
+};
+```
+
+## Failure & dead letters
+
+- Failed jobs after max attempts must be **visible** (Bull Board, log alert, `failed` table) — not silently dropped.
+- Do not retry forever on poison messages.
+- Log `jobId`, `queue`, `attemptsMade`, error — not full payload secrets.
+
+## Interaction with API protection
+
+High-cost work enqueued from HTTP must use quotas **before** `queue.add` (`api-protection.mdc`). Worker concurrency is not a substitute for admission control at the API.
+
+## Explicit prohibitions
+
+- No unbounded `concurrency` on vendor or DB-heavy processors without load testing.
+- No single job that loads entire large files into memory.
+- No infinite `attempts` on non-idempotent handlers.
+- No enqueue storm without chunking (100k `add` calls from one request).
+
+## AI guidance
+
+New queue? Specify concurrency, attempts, backoff, and what happens after final failure. Import/bulk/AI jobs almost always need chunking. Cross-ref: `async-reliability.mdc`, `external-dependencies.mdc`.

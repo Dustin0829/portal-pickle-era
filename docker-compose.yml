@@ -1,0 +1,104 @@
+name: solo-founder-starter
+
+# Product API + Postgres + Redis. Frontend stays on the host (`pnpm dev`) for Vite HMR.
+#   docker compose up -d
+# Nested compose in backend/ still works if you prefer to run from that folder.
+
+services:
+  backend-postgres:
+    image: postgres:16-alpine
+    container_name: backend-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: backend
+    ports:
+      - "5432:5432"
+    volumes:
+      - backend_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-timescale:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: backend-timescale
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: backend_logs
+    ports:
+      - "5433:5432"
+    volumes:
+      - backend_timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-redis:
+    image: redis:7-alpine
+    container_name: backend-redis
+    ports:
+      - "6379:6379"
+
+  backend-server:
+    build:
+      context: ./backend
+      target: dev
+    container_name: backend-server
+    command: ["pnpm", "dev"]
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@backend-postgres:5432/backend?schema=public
+      LOGS_DATABASE_URL: postgresql://postgres:postgres@backend-timescale:5432/backend_logs
+      API_CORS_ORIGIN: http://localhost:5173,http://localhost:5174
+      REDIS_URL: redis://backend-redis:6379
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend-postgres:
+        condition: service_healthy
+      backend-timescale:
+        condition: service_healthy
+      backend-redis:
+        condition: service_started
+
+  backend-worker:
+    build:
+      context: ./backend
+      target: dev
+    container_name: backend-worker
+    command: ["pnpm", "worker:dev"]
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      SKIP_PRISMA_SETUP: "true"
+      DATABASE_URL: postgresql://postgres:postgres@backend-postgres:5432/backend?schema=public
+      LOGS_DATABASE_URL: postgresql://postgres:postgres@backend-timescale:5432/backend_logs
+      REDIS_URL: redis://backend-redis:6379
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      backend-postgres:
+        condition: service_healthy
+      backend-timescale:
+        condition: service_healthy
+      backend-redis:
+        condition: service_started
+      backend-server:
+        condition: service_started
+
+volumes:
+  backend_postgres_data:
+  backend_timescale_data:
+  backend_node_modules:

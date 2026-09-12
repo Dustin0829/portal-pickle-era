@@ -1,0 +1,122 @@
+---
+description: Prisma query patterns and migration workflow
+globs: prisma/**,src/modules/**/*.service.ts,src/modules/**/*.job.ts
+alwaysApply: false
+---
+
+# Database
+
+For Client API, `$transaction`, filters — use `.cursor/skills/prisma-client-api/` and `prisma-cli/`.
+
+Golden reference: `src/modules/examples/examples.service.ts`.
+
+## Purpose
+
+Safe, efficient data access and schema changes aligned with this repo's Docker setup.
+
+## Query patterns
+
+- Datasource URL in `prisma.config.ts` (Prisma 7); Docker runs `migrate deploy` on start.
+- Generated client at `src/generated/prisma` — never edit by hand.
+- Enqueue **after** DB write or `$transaction` — never Redis/BullMQ inside a transaction.
+
+| Concern | Pattern |
+| ------- | ------- |
+| Pagination count | `Promise.all([findMany, count])` with identical `where` |
+| Sort safety | Allowlist fields in Zod; `parseSortField` in service |
+| Shape control | Prefer `select` for known columns; `include` only when nesting relations |
+| N+1 | One query with `include`/`select`, or batch IDs — not `findUnique` in a loop |
+| Multi-write | `prisma.$transaction(async (tx) => { ... })` |
+| Must-not-lose events | Transactional outbox (domain + outbox row same tx) |
+| Contested updates | Conditional `updateMany`, transactions — `concurrency.mdc` |
+
+## Bounded queries
+
+**Never unbounded `findMany()`.** At 100 rows it's fine; at 100k it hurts memory, DB, and API payloads.
+
+| Context | Rule |
+| ------- | ---- |
+| List HTTP endpoints | `paginatedQuerySchema` + `take` / `skip` — always (`http-api.mdc`) |
+| Internal service code | Explicit `take` + `orderBy`; loop with cursor if processing all rows |
+| Jobs processing many rows | Chunk with cursor/`skip` — `worker-scaling.mdc` |
+| `count` + `findMany` | Same `where` clause for both |
+
+```ts
+// ❌ loads entire table
+const users = await prisma.user.findMany();
+
+// ❌ user-controlled limit
+take: req.query.limit as number;
+
+// ✅ paginated list endpoint
+take: query.limit, skip: pageToOffset(query.page, query.limit),
+
+// ✅ batch job
+const batch = await prisma.row.findMany({ take: 500, skip: offset, orderBy: { id: "asc" } });
+```
+
+```ts
+const where = { label: { contains: search, mode: "insensitive" } };
+const [items, total] = await Promise.all([
+  prisma.example.findMany({ where, orderBy, skip, take }),
+  prisma.example.count({ where }),
+]);
+
+const row = await prisma.example.create({ data });
+await exampleQueue.add("created", { exampleId: row.id }); // after write, not inside tx
+```
+
+## Migrations
+
+Use `.cursor/skills/prisma-cli/` for command reference.
+
+| Environment | Command |
+| ----------- | ------- |
+| Local | `pnpm prisma migrate dev` |
+| Docker | entrypoint runs `prisma migrate deploy` |
+
+1. Edit `prisma/schema.prisma`
+2. `pnpm prisma migrate dev` (name the migration)
+3. Update tests
+4. `pnpm openapi:generate` if API shape changes — see `api-evolution.mdc`
+
+Prefer additive migrations. Consider rollback and deploy order before destructive changes.
+
+Expand pattern: add nullable column → backfill → later make required.
+
+## Good examples
+
+```ts
+await prisma.example.findMany({
+  select: { id: true, label: true, createdAt: true },
+});
+```
+
+## Bad examples
+
+```ts
+for (const id of ids) {
+  await prisma.example.findUnique({ where: { id } }); // N+1
+}
+await prisma.$transaction(async (tx) => {
+  await tx.order.create({ data });
+  await exampleQueue.add("created", payload); // Redis inside transaction
+});
+prisma.example.findMany({ orderBy: { [userSort]: "asc" } }); // unvalidated sort
+await prisma.user.findMany(); // unbounded — no take
+Hand-edit migration.sql to DROP COLUMN without data plan
+```
+
+## Explicit prohibitions
+
+- No unvalidated `orderBy` from raw query strings.
+- No `include` every relation by default — fetch only what the endpoint returns.
+- No cross-module Prisma calls from controllers.
+- No casual drops or renames without production data plan.
+- No skipping migration when schema changes.
+- No unbounded `findMany` without `take` and a deliberate reason (chunked job).
+- No list endpoints that return unpaginated collections.
+
+## AI guidance
+
+Before adding `include`, ask whether `select` suffices. For list endpoints, pair `findMany` with `count` using the same `where`. Races on balances/inventory: `concurrency.mdc`. Queue design: `async-reliability.mdc`, `worker-scaling.mdc`.

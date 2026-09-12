@@ -1,0 +1,31 @@
+---
+description: Icon libraries, brand logos, static assets, and avoiding custom inline SVGs
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx},src/assets/**/*,components.json
+alwaysApply: false
+---
+
+# Icons & assets
+
+How to use images, UI icons, and SVGs in this template. Not file-naming rules — see `naming-conventions.mdc` for kebab-case under `src/assets/`. Icon **colors** follow `design-tokens.mdc` (semantic tokens, not arbitrary fills).
+
+## UI icons
+
+- Use the shadcn preset’s `iconLibrary` in `components.json` (`lucide`, `tabler`, `phosphor`, etc.). Set via [shadcn Create](https://ui.shadcn.com/create) or `apply` on a preset.
+- Import from that library in components. **Do not** hand-write inline `<svg>` for standard glyphs (chevrons, close, menu, etc.).
+- Prefer **direct imports** from the icon package over heavy barrel entry points when bundle size matters (see `naming-conventions.mdc`).
+- **Inside shadcn components** (`Button`, menus, etc.): `data-icon`, sizing — **[shadcn `icons.md`](../../skills/shadcn/rules/icons.md)** only; do not duplicate here.
+
+## Brand / social logos
+
+- Use [thesvg](https://github.com/GLINCKER/thesvg) (`npm i thesvg`): tree-shakeable, typed brand icons.
+- **Do not** paste one-off brand SVG markup.
+
+## Static assets (`src/assets/`)
+
+- **File names:** kebab-case (e.g. `logo-dark.svg`).
+- Use only when the icon library or thesvg cannot cover the use case — illustrations, custom artwork, non-brand imagery.
+
+## No custom inline SVG icons
+
+- Do not generate ad-hoc `<svg>` in components. Agents often produce inconsistent paths, wrong viewBox, or non-accessible markup.
+- Use the preset icon library or thesvg; reserve `src/assets/` for assets that are not in those packages.

@@ -1,0 +1,153 @@
+---
+description: Data ownership — server, form, UI, global state; useState vs Zustand; minimal effects
+globs: src/pages/**/*.{ts,tsx},src/components/**/*.{ts,tsx},src/lib/stores/**/*.{ts,tsx},src/lib/hooks/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Data ownership
+
+See also: **`api-layer.mdc`**, **`async-ui.mdc`**, **`performance.mdc`**, **`forms-and-drafts.mdc`**, **`error-handling.mdc`**. Index: [`skills/SKILL.md`](../../skills/SKILL.md).
+
+Most frontend AI bugs trace to **unclear ownership**: the same fact lives in Query, Zustand, and `useState`, then drifts out of sync.
+
+## Ownership matrix
+
+| Kind of data              | Owner                         | Location                                      |
+| ------------------------- | ----------------------------- | --------------------------------------------- |
+| **Server / API data**     | TanStack Query                | `src/api/features/<domain>/use-*.ts`, render `data` from hooks |
+| **Form input state**      | React Hook Form               | Page/modal + `@/api/features/<domain>/*.schema` for validation |
+| **Ephemeral UI**          | `useState` / `useReducer`     | Component or parent that owns the interaction   |
+| **Cross-page client UI**  | Zustand                       | `src/lib/stores/` — small, domain-split stores  |
+| **URL-addressable state** | Router search params          | Filters, tabs, pagination when shareable        |
+
+**One source of truth per fact.** If Query has it, components read Query — they do not mirror it elsewhere.
+
+## React Hook Form
+
+Use **React Hook Form** for multi-field forms (install with shadcn `Form` when needed). Pair with Zod via `@hookform/resolvers/zod` and schemas from `@/api/features/<domain>/<domain>.schema`.
+
+- **RHF owns** field values, touched/dirty, and submit lifecycle.
+- **Zod owns** shape validation at submit (and optional `mode: "onBlur"`).
+- **Mutations** live in query hooks; the form calls `mutate(parsedValues)`.
+
+**Do not** duplicate each input in both RHF and Zustand.
+
+## Never duplicate server data
+
+```tsx
+// Bad — sync hell; stale after mutation; race on refetch
+const { data: users } = useUsers();
+const setUsers = useStore((s) => s.setUsers);
+useEffect(() => {
+  if (users) setUsers(users);
+}, [users]);
+
+// Good — Query is the cache; UI reads hooks
+const { data: users, isPending } = useUsers();
+```
+
+### When local overlay is valid
+
+Short-lived **draft** or **optimistic** overlays may sit in Zustand **only** when:
+
+- Product requires edits to survive navigation before save, **and**
+- You merge overlay + server data in one direction (draft wins until save/invalidate), **and**
+- You document the merge in `src/lib/<domain>/`.
+
+Do not mirror full server lists into a store “for convenience.”
+
+## `useState` vs Zustand
+
+### Prefer `useState` / `useReducer`
+
+- State is **simple and scoped** to one component or screen subtree (one or two levels of props).
+- Examples: toggle, controlled input, “copied!” flag, modal open **only on that page**.
+- State **does not need to survive** route changes or distant siblings without props.
+- Two siblings in sync → parent `useState`, not global store.
+
+### Prefer Zustand
+
+- **Multiple components or hooks** need the same state (sidebar, header, guards, cross-route).
+- **Coordinated updates** across modules (auth session, role-gated UI).
+- **UI persists across navigation** within a session (filters, draft edits keyed by `entityId` — use namespaced keys).
+- **Draft / optimistic overlays** that merge with server data until save/invalidate.
+
+Avoid god-stores; split domains (`authStore`, `uiLayoutStore`, …).
+
+### Do not use Zustand for
+
+- **Fetched entities and loading/error flags** — TanStack Query.
+- **Form drafts** in one modal that reset on close — unless product requires persistence.
+- **Every boolean** — default to `useState` until sharing or persistence appears.
+
+## UI state examples
+
+| Example                    | Owner        |
+| -------------------------- | ------------ |
+| Modal open on one page     | `useState`   |
+| Sidebar collapsed globally | Zustand      |
+| “Copied!” toast flag       | `useState`   |
+| Theme preference           | `next-themes` / provider |
+| Selected row (single page) | `useState`   |
+| Selected row across routes | URL param or Zustand with clear scope |
+
+## Derived state (prefer render, not effects)
+
+- Compute during **render** instead of syncing with `useEffect`.
+- Do not set state in an effect **only** because props changed — use derived expressions, `key` reset, or lifted state. See [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect).
+
+## Avoid effect-heavy pages
+
+Before adding `useEffect` to a page, ask:
+
+1. Can this be **derived during render**?
+2. Can this run in an **event handler**?
+3. Should **TanStack Query** own it instead of copying into `useState`?
+4. Will a **`key`** reset local UI without an effect?
+
+**Red flags:** multiple effects in `src/pages/**` that only call `setState` when query data changes; effects that fetch/mutate (belong in query hooks); effect chains.
+
+Prefer **small hooks in `src/lib/hooks/`** or **query modules** over growing effect chains in pages.
+
+## `useState` patterns
+
+- **Lazy init** — `useState(() => expensive())` for costly initial values.
+- **Functional updates** — `setCount(c => c + 1)` when next state depends on previous.
+
+## Effects vs event handlers
+
+User-triggered work (submit, click) → **event handler**, not “set flag → useEffect runs.”
+
+## URL vs store vs Query
+
+| Use case              | Prefer                                      |
+| --------------------- | ------------------------------------------- |
+| Shareable list filters| Search params (`?status=open&page=2`)       |
+| Private panel state   | `useState` or Zustand                       |
+| Server list content   | Query only                                  |
+
+## Query vs component responsibilities
+
+| Layer              | Owns                                                    |
+| ------------------ | ------------------------------------------------------- |
+| `*.service.ts`     | HTTP, parsing response DTOs                             |
+| `use-*.ts` in feature | Keys, fetch, cache, mutations, toasts, optimistic patch |
+| `pages/` / UI      | Destructure `data`, `isPending`, `mutate`, … — see `api-layer.mdc` |
+| `lib/<domain>/`    | Pure mappers, message helpers — **no** fetched caches   |
+
+**Pages do not** call `useQueryClient` for domain cache logic (`api-layer.mdc`).
+
+## Decision flow
+
+1. Does it come from the API? → **TanStack Query**
+2. Is it a form field? → **React Hook Form**
+3. Must siblings/routes share it without URL? → **Zustand**
+4. Otherwise → **`useState`** in the owning component
+
+## Checklist
+
+- [ ] No `useEffect` copying Query `data` into `useState` or Zustand for the same entity list.
+- [ ] Forms use RHF + Zod; submit goes through query mutations.
+- [ ] Zustand slices are small and client-only — not a second server cache.
+- [ ] Shareable filters/page state use URL params when bookmarking matters.
+- [ ] Pages avoid effect chains — derive at render or push logic to hooks.

@@ -1,0 +1,149 @@
+---
+description: Forms — unsaved changes, navigation blocking, draft recovery, autosave
+globs: src/**/*Form*.{ts,tsx},src/**/*Wizard*.{ts,tsx},src/**/forms/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Forms & drafts
+
+See also: **`data-ownership.mdc`**, **`api-error-routing.mdc`**, **`accessibility.mdc`**, **`error-handling.mdc`**, **`api-layer.mdc`**, **`interaction-polish.mdc`**, **`offline-reconnect.mdc`**.
+
+Long-lived forms (editors, multi-step flows, settings) must not **lose work** on navigation, refresh, or transient network failure.
+
+## Ownership
+
+| Concern | Owner |
+| ------- | ----- |
+| Field values, touched, dirty | **React Hook Form** (install with shadcn `Form` when needed) |
+| Submit / patch mutations | **TanStack Query** in `src/api/features/<domain>/` |
+| Draft surviving route change | **Zustand** or **localStorage** via `src/lib/<domain>/` helpers |
+| Unsaved navigation guard | **Router blocker** + confirm dialog |
+
+**Do not** mirror every form field in Zustand — RHF is the edit buffer; Zustand holds **draft snapshots** only when persistence across navigation is required.
+
+## Unsaved changes
+
+### Detect dirty state
+
+```tsx
+const form = useForm<ItemFormValues>({
+  resolver: zodResolver(itemFormSchema),
+  defaultValues: initialValues,
+});
+
+const isDirty = form.formState.isDirty;
+```
+
+For **non-RHF** editors (e.g. rich text), track dirty with explicit compare to last saved snapshot — do not guess from `onChange` alone on large forms.
+
+### Block navigation
+
+Use React Router **`useBlocker`** when `isDirty` (or equivalent):
+
+```tsx
+const blocker = useBlocker(isDirty);
+
+useEffect(() => {
+  if (blocker.state !== "blocked") return;
+  // Show shadcn AlertDialog: "Discard unsaved changes?"
+  // blocker.proceed() or blocker.reset()
+}, [blocker]);
+```
+
+- **In-app navigation** — `useBlocker` + confirm dialog (not `window.confirm` unless unavoidable).
+- **Tab close / hard refresh** — `beforeunload` only when dirty; keep handler minimal.
+- **Successful save** — reset RHF with new defaults (`form.reset(saved)`) so `isDirty` clears before navigate away.
+
+### Surface unsaved state in UI
+
+- Settings / editors: **“Unsaved changes”** in header or sticky footer when dirty.
+- Disable misleading “Saved” label while dirty.
+- Primary save button shows loading during mutation (`error-handling.mdc`).
+
+## Autosave
+
+For editors and long forms where product expects autosave:
+
+| Pattern | Use when |
+| ------- | -------- |
+| **Debounced PATCH** | User pauses typing; server has PATCH endpoint |
+| **Explicit Save** | High-stakes fields, legal consent, billing |
+| **Hybrid** | Autosave draft + explicit “Publish” |
+
+```tsx
+// Debounced autosave — orchestration in feature query hook or lib helper
+const debouncedValues = useDebounce(form.watch(), 800);
+
+useEffect(() => {
+  if (!form.formState.isDirty) return;
+  void saveDraft(debouncedValues);
+}, [debouncedValues]);
+```
+
+**Sync status** in toolbar (required for autosave UIs):
+
+| Status | UI |
+| ------ | -- |
+| Idle (clean) | “Saved” or nothing |
+| Dirty | “Unsaved changes” |
+| Saving | “Saving…” |
+| Error | “Couldn’t save” + retry — **never discard local edits** (`interaction-polish.mdc` §17) |
+
+Define `useSaveItemDraft` (or similar) in `src/api/features/<domain>/` — pages call the hook, not raw `mutate` + inline debounce everywhere.
+
+## Draft recovery
+
+When drafts must survive refresh or navigation:
+
+1. **Merge strategy** — document in `src/lib/<domain>/`: server wins after save; local draft wins until save or discard.
+2. **Storage** — `localStorage` / `sessionStorage` via small helpers in `src/lib/<domain>/`; key by `entityId` or `draftId`.
+3. **Recovery prompt** — on mount, if stored draft ≠ server snapshot, offer “Restore draft” / “Discard”.
+
+```tsx
+// Zustand — namespaced by entity (data-ownership.mdc)
+// itemDraftStore: Record<string, ItemDraft>
+```
+
+**Do not** copy full server lists into draft stores — only the editable payload.
+
+## Submit flow
+
+1. Client validate — Zod + RHF (`@/api/features/<domain>/*.schema`).
+2. `mutate` / `mutateAsync` from feature query hook — destructure at call site (`api-layer.mdc`).
+3. On success — `form.reset(data)`, clear draft store, clear blocker, toast optional (hook may own).
+4. On error — keep form values. `VALIDATION_ERROR` → `applyFieldErrorsToForm` (no toast). Other API errors → toast (`api-error-routing.mdc`). Wire **`aria-invalid`** + **`aria-describedby`** to error elements (`accessibility.mdc`).
+
+Pages pass `onSuccess` to `mutate` only for **local UI** (close dialog, navigate) — not for API toast strings (`api-layer.mdc`).
+
+## Modal vs full-page forms
+
+| Scope | Unsaved guard |
+| ----- | ------------- |
+| Modal, discard on close OK | `onOpenChange` confirm when dirty |
+| Full-page editor / settings | `useBlocker` + sticky save bar |
+| Multi-step wizard | Per-step dirty or whole-form dirty — pick one; document in feature |
+
+## Anti-patterns
+
+```tsx
+// Bad — navigates away while dirty
+<Link to="/items">Back</Link>
+
+// Bad — autosave on every keystroke without debounce
+onChange={() => mutate(getValues())}
+
+// Bad — silent failure; user thinks draft saved
+saveDraft(values).catch(() => {});
+
+// Bad — toast on validation failure instead of field highlight
+onError: (e) => toast.error(e.message);
+```
+
+## Checklist
+
+- [ ] Long forms use RHF; dirty state drives UI and guards.
+- [ ] Navigation away while dirty shows confirm (blocker or modal).
+- [ ] Autosave uses debounce; sync status visible (saving / saved / failed).
+- [ ] Failed save does not wipe local edits.
+- [ ] After successful save, form resets and dirty clears before redirect.
+- [ ] Draft persistence uses namespaced keys and a documented merge rule.

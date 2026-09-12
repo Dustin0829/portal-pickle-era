@@ -1,0 +1,65 @@
+---
+description: Structured logging, requestId propagation, and secret redaction
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Observability
+
+Golden reference: `src/middleware/requestContext.ts`, `src/middleware/requestLogger.ts`, `src/lib/observability/`.
+
+## Purpose
+
+Every request and side effect should be traceable without leaking secrets.
+
+## Architecture decisions
+
+- `requestContext` assigns `x-request-id` (from header or UUID) and stores it in `res.locals` + async context.
+- `requestLogger` emits one structured `request_finished` log per HTTP response.
+- Discord alert payloads pass through `redactAlertPayload` before leaving the process.
+
+## Required patterns
+
+| Concern | Location |
+| ------- | -------- |
+| `requestId` | `res.locals.requestId` / `runWithRequestContext` |
+| HTTP access log | `logger.info("request_finished", { requestId, method, path, statusCode, durationMs })` |
+| Service/job logs | Include `requestId` when available; add `operation`, `provider`, `durationMs` |
+| Alert redaction | `redactAlertPayload` for webhook bodies; skip sensitive routes via `isSensitiveAlertBodyPath` |
+
+## Good examples
+
+```ts
+logger.info("example_job_processed", {
+  requestId: getRequestContext()?.requestId,
+  jobId: job.id,
+  exampleId: job.data.exampleId,
+});
+
+logger.error("r2_presign_failed", {
+  requestId: getRequestContext()?.requestId,
+  provider: "r2",
+  operation: "presign",
+  error,
+});
+```
+
+## Bad examples
+
+```ts
+console.log("error", error);
+logger.info("user login", { password: body.password });
+logger.info("webhook", { headers: req.headers }); // may contain Authorization
+```
+
+## Explicit prohibitions
+
+- No `console.log` in application code — use `src/app/logger.ts`.
+- Never log passwords, tokens, API keys, cookies, or full auth headers.
+- Do not attach raw request bodies to Discord alerts on `/auth` or `/uploads/presign` paths.
+
+Full secret/env prohibitions: `security-secrets.mdc`.
+
+## AI guidance
+
+When adding external calls or jobs, log outcome + duration with stable event names (`snake_case`). Use `redactAlertPayload` before alerting with user-controlled data.
