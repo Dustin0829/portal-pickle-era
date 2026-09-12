@@ -31,5 +31,5 @@ Rules/skills: `app/.cursor/skills/SKILL.md`, `merge-readiness-check/SKILL.md`; `
 
 ## 4. Ship
 
-- [ ] 4.1 `/opsx-verify` — full `pnpm verify` + merge-readiness in `backend` and `app`
-- [ ] 4.2 `/opsx-pr` — one monorepo PR from `feat/waitlist-api-player-coming-soon`
+- [x] 4.1 `/opsx-verify` — full `pnpm verify` + merge-readiness in `backend` and `app`
+- [x] 4.2 `/opsx-pr` — one monorepo PR from `feat/waitlist-api-player-coming-soon`
