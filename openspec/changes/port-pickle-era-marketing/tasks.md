@@ -23,5 +23,5 @@ Source tree (read-only): `/Users/MacBook/Library/Mobile Documents/com~apple~Clou
 
 ## 3. Ship
 
-- [ ] 3.1 `/opsx-verify` — full `pnpm verify` + `@merge-readiness-check` in `app`
-- [ ] 3.2 `/opsx-pr` — one monorepo PR from `feat/port-pickle-era-marketing`
+- [x] 3.1 `/opsx-verify` — full `pnpm verify` + `@merge-readiness-check` in `app`
+- [x] 3.2 `/opsx-pr` — one monorepo PR from `feat/port-pickle-era-marketing`
