@@ -27,7 +27,11 @@ export default defineConfig([
     },
   },
   {
-    files: ["src/providers/QueryProvider.tsx"],
+    files: [
+      "src/providers/QueryProvider.tsx",
+      "src/providers/AuthProvider.tsx",
+      "src/providers/BookingModalProvider.tsx",
+    ],
     rules: {
       "react-refresh/only-export-components": "off",
     },
