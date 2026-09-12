@@ -19,4 +19,4 @@ Rules/skills: `app/.cursor/skills/SKILL.md`, `merge-readiness-check`, `ai-slop-c
 ## 3. Ship
 
 - [x] 3.1 `/opsx-verify` — full `pnpm verify` + `@merge-readiness-check` in `app`
-- [ ] 3.2 `/opsx-pr` — one monorepo PR from `feat/student-admin-portals`
+- [x] 3.2 `/opsx-pr` — one monorepo PR from `feat/student-admin-portals`
