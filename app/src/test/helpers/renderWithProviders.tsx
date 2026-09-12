@@ -2,6 +2,8 @@ import React from "react";
 import { render, type RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { BookingModalProvider } from "@/providers/BookingModalProvider";
 
 export function renderWithProviders(
   ui: React.ReactElement,
@@ -18,7 +20,11 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={qc}>
-        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+        <MemoryRouter initialEntries={[route]}>
+          <AuthProvider>
+            <BookingModalProvider>{children}</BookingModalProvider>
+          </AuthProvider>
+        </MemoryRouter>
       </QueryClientProvider>
     );
   }

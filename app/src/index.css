@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "lenis/dist/lenis.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -138,6 +139,15 @@ body {
   --color-sidebar-ring: var(--sidebar-ring);
   --font-heading: var(--font-sans);
   --font-sans: "Inter Variable", sans-serif;
+  /* Pickle Era brand (marketing) — coexist with shadcn tokens */
+  --font-display: "Oswald", sans-serif;
+  --font-mark: "Barlow Condensed", sans-serif;
+  --font-marketing: "Montserrat", sans-serif;
+  --color-black: #1d1d1b;
+  --color-blue: #153c6a;
+  --color-green: #107850;
+  --color-yellow: #e5c53a;
+  --color-maroon: #8c0c11;
 }
 
 @layer base {
@@ -169,4 +179,54 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Marketing brand utilities (Pickle Era landing / auth) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: #f4f1e8;
+  caret-color: #f4f1e8;
+  box-shadow: none;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+section[id],
+footer[id] {
+  scroll-margin-top: 84px;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+.wordmark {
+  font-family: var(--font-mark);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.8;
+  text-transform: uppercase;
+}
+
+.dots {
+  background-image: radial-gradient(
+    circle,
+    rgb(229 197 58 / 0.18) 1.4px,
+    transparent 1.6px
+  );
+  background-size: 28px 28px;
+}
+
+.pay-action {
+  height: 56px;
+  min-height: 56px;
+  flex-shrink: 0;
 }
