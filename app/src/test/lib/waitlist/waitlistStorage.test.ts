@@ -34,4 +34,26 @@ describe("waitlistStorage", () => {
       phone: "1",
     });
   });
+
+  it("normalizes corrupt stored rows without crashing", () => {
+    localStorage.setItem(
+      "pickle-era-waitlist",
+      JSON.stringify([
+        { email: "ok@example.com", name: "Ok" },
+        { email: "  ", name: "Bad" },
+        null,
+        { email: "phone@example.com", phone: "09" },
+      ]),
+    );
+
+    const entries = listWaitlistEntries();
+    expect(entries).toHaveLength(2);
+    expect(entries.map((item) => item.email).sort()).toEqual([
+      "ok@example.com",
+      "phone@example.com",
+    ]);
+    expect(entries.every((item) => typeof item.joinedAt === "string")).toBe(
+      true,
+    );
+  });
 });

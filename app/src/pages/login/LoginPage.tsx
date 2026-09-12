@@ -10,6 +10,7 @@ import {
   AuthSubmit,
 } from "@/components/marketing/AuthLayout";
 import { useAuth } from "@/providers/AuthProvider";
+import { portalHomePath } from "@/lib/auth/portalHome";
 
 export function LoginPage() {
   const { user, login } = useAuth();
@@ -19,15 +20,15 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={portalHomePath(user.role)} replace />;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setPending(true);
     try {
-      await login({ email, password });
-      navigate("/", { replace: true });
+      const next = await login({ email, password });
+      navigate(portalHomePath(next.role), { replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not log in.");
     } finally {

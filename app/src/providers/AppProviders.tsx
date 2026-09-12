@@ -1,6 +1,7 @@
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { BookingModalProvider } from "@/providers/BookingModalProvider";
+import { JoinClubModalProvider } from "@/providers/JoinClubModalProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { RateLimitGate } from "@/providers/RateLimitGate";
 import { ThemeProvider } from "@/providers/ThemeProvider";
@@ -16,8 +17,10 @@ export function AppProviders({ children }: AppProvidersProps) {
         <RateLimitGate>
           <AuthProvider>
             <BookingModalProvider>
-              {children}
-              <Toaster position="bottom-right" richColors />
+              <JoinClubModalProvider>
+                {children}
+                <Toaster position="bottom-right" richColors />
+              </JoinClubModalProvider>
             </BookingModalProvider>
           </AuthProvider>
         </RateLimitGate>

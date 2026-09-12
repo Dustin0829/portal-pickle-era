@@ -1,7 +1,10 @@
+export type AuthRole = "student" | "admin";
+
 export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  role: AuthRole;
 };
 
 type StoredUser = AuthUser & {
@@ -11,6 +14,44 @@ type StoredUser = AuthUser & {
 
 const USERS_KEY = "pickle-era-users";
 const SESSION_KEY = "pickle-era-session";
+
+/** Demo admin for local portal gates — UX only, not real security. */
+export const ADMIN_FIXTURE = {
+  name: "Facility Admin",
+  email: "admin@pickleera.local",
+  password: "password1",
+} as const;
+
+/** Demo player for local portal stress-testing (password: password1). */
+export const PLAYER_FIXTURE = {
+  name: "Demo Player",
+  email: "player@pickleera.local",
+  password: "password1",
+} as const;
+
+const DEMO_STUDENTS = [
+  PLAYER_FIXTURE,
+  {
+    name: "Maya Santos",
+    email: "maya.santos@example.com",
+    password: "password1",
+  },
+  {
+    name: "Alex Rivera",
+    email: "alex.rivera@example.com",
+    password: "password1",
+  },
+  {
+    name: "Nina Reyes",
+    email: "nina.reyes@example.com",
+    password: "password1",
+  },
+  {
+    name: "Kai Mendoza",
+    email: "kai.mendoza@example.com",
+    password: "password1",
+  },
+] as const;
 
 async function hashPassword(password: string) {
   const data = new TextEncoder().encode(password);
@@ -32,14 +73,32 @@ function saveUsers(users: StoredUser[]) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
+function normalizeUser(user: StoredUser): StoredUser {
+  return {
+    ...user,
+    role: user.role === "admin" ? "admin" : "student",
+  };
+}
+
 function toPublicUser(user: StoredUser): AuthUser {
-  return { id: user.id, name: user.name, email: user.email };
+  const normalized = normalizeUser(user);
+  return {
+    id: normalized.id,
+    name: normalized.name,
+    email: normalized.email,
+    role: normalized.role,
+  };
 }
 
 export function getSession(): AuthUser | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthUser;
+    return {
+      ...parsed,
+      role: parsed.role === "admin" ? "admin" : "student",
+    };
   } catch {
     return null;
   }
@@ -51,6 +110,52 @@ function setSession(user: AuthUser | null) {
     return;
   }
   localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+}
+
+/** Ensures a local admin account exists for demo (password: password1). */
+export async function ensureAdminFixture() {
+  const users = listUsers().map(normalizeUser);
+  const email = ADMIN_FIXTURE.email;
+  if (users.some((user) => user.email === email)) {
+    saveUsers(users);
+    return;
+  }
+
+  const admin: StoredUser = {
+    id: crypto.randomUUID(),
+    name: ADMIN_FIXTURE.name,
+    email,
+    role: "admin",
+    passwordHash: await hashPassword(ADMIN_FIXTURE.password),
+    createdAt: new Date().toISOString(),
+  };
+  saveUsers([...users, admin]);
+}
+
+/** Ensures demo player accounts exist for local portal stress-testing. */
+export async function ensureStudentFixtures() {
+  if (import.meta.env.MODE === "test") return;
+
+  let users = listUsers().map(normalizeUser);
+  let changed = false;
+
+  for (const fixture of DEMO_STUDENTS) {
+    if (users.some((user) => user.email === fixture.email)) continue;
+    users = [
+      ...users,
+      {
+        id: crypto.randomUUID(),
+        name: fixture.name,
+        email: fixture.email,
+        role: "student",
+        passwordHash: await hashPassword(fixture.password),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    changed = true;
+  }
+
+  if (changed) saveUsers(users);
 }
 
 export async function signupAccount(input: {
@@ -67,7 +172,7 @@ export async function signupAccount(input: {
     );
   }
 
-  const users = listUsers();
+  const users = listUsers().map(normalizeUser);
   if (users.some((user) => user.email === email)) {
     throw new Error("An account with that email already exists.");
   }
@@ -76,6 +181,7 @@ export async function signupAccount(input: {
     id: crypto.randomUUID(),
     name,
     email,
+    role: "student",
     passwordHash: await hashPassword(input.password),
     createdAt: new Date().toISOString(),
   };
@@ -87,8 +193,11 @@ export async function signupAccount(input: {
 }
 
 export async function loginAccount(input: { email: string; password: string }) {
+  await ensureAdminFixture();
   const email = input.email.trim().toLowerCase();
-  const user = listUsers().find((item) => item.email === email);
+  const user = listUsers()
+    .map(normalizeUser)
+    .find((item) => item.email === email);
   const passwordHash = await hashPassword(input.password);
 
   if (!user || user.passwordHash !== passwordHash) {
@@ -113,7 +222,7 @@ export async function resetAccountPassword(input: {
     throw new Error("Use a password with at least 8 characters.");
   }
 
-  const users = listUsers();
+  const users = listUsers().map(normalizeUser);
   const index = users.findIndex((user) => user.email === email);
   if (index === -1) {
     throw new Error(
@@ -126,4 +235,12 @@ export async function resetAccountPassword(input: {
     passwordHash: await hashPassword(input.password),
   };
   saveUsers(users);
+}
+
+/** Registered player accounts (excludes facility admins). */
+export function listStudents(): AuthUser[] {
+  return listUsers()
+    .map(normalizeUser)
+    .filter((user) => user.role === "student")
+    .map(toPublicUser);
 }

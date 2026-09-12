@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { BookingModalProvider } from "@/providers/BookingModalProvider";
+import { JoinClubModalProvider } from "@/providers/JoinClubModalProvider";
 
 export function renderWithProviders(
   ui: React.ReactElement,
@@ -22,7 +23,9 @@ export function renderWithProviders(
       <QueryClientProvider client={qc}>
         <MemoryRouter initialEntries={[route]}>
           <AuthProvider>
-            <BookingModalProvider>{children}</BookingModalProvider>
+            <BookingModalProvider>
+              <JoinClubModalProvider>{children}</JoinClubModalProvider>
+            </BookingModalProvider>
           </AuthProvider>
         </MemoryRouter>
       </QueryClientProvider>
