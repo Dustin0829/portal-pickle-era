@@ -90,8 +90,7 @@ function BookingFilterSelect({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
-  const selected =
-    FILTERS.find((item) => item.id === value) ?? FILTERS[0]!;
+  const selected = FILTERS.find((item) => item.id === value) ?? FILTERS[0]!;
 
   useEffect(() => {
     if (!open) return;
@@ -194,10 +193,6 @@ export function BookingsPage() {
     currentPage * PAGE_SIZE,
   );
 
-  useEffect(() => {
-    setPage(1);
-  }, [filter]);
-
   const selected = bookings.find((item) => item.id === selectedId) ?? null;
 
   return (
@@ -291,9 +286,7 @@ export function BookingsPage() {
                       type="button"
                       aria-label="Next page"
                       disabled={currentPage >= pageCount}
-                      onClick={() =>
-                        setPage((p) => Math.min(pageCount, p + 1))
-                      }
+                      onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                       className="inline-flex h-9 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-700 transition hover:border-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Next

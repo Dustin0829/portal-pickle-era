@@ -57,7 +57,7 @@ describe("portal access gates", () => {
         screen.getByRole("heading", { name: /log in/i }),
       ).toBeInTheDocument();
     });
-    expect(screen.queryByText(/player portal/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
   });
 
   it("blocks non-admin users from /admin", async () => {
@@ -72,16 +72,21 @@ describe("portal access gates", () => {
     expect(screen.queryByText(/bookings inbox/i)).not.toBeInTheDocument();
   });
 
-  it("renders player portal for signed-in players", async () => {
+  it("shows Coming soon for signed-in players on /app", async () => {
     seedSession("student");
     renderWithProviders(<App />, { route: "/app" });
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: /hi, test/i }),
+        screen.getByRole("heading", { name: /coming soon/i }),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText(/player portal/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /join the club/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /hi, test/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -95,7 +100,19 @@ describe("portal smoke", () => {
     localStorage.clear();
   });
 
-  it("renders player overview empty state", async () => {
+  it("renders login form on /login", async () => {
+    renderWithProviders(<App />, { route: "/login" });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /log in/i }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+  });
+
+  it("renders player overview empty state when mounted directly", async () => {
     seedSession("student");
     renderWithProviders(<OverviewPage />);
 

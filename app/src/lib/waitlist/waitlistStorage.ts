@@ -28,7 +28,9 @@ function normalizeEntry(item: unknown): WaitlistEntry | null {
 
 export function listWaitlistEntries(): WaitlistEntry[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as unknown;
+    const raw = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) ?? "[]",
+    ) as unknown;
     if (!Array.isArray(raw)) return [];
     return raw
       .map(normalizeEntry)
@@ -62,27 +64,73 @@ export function saveWaitlistEntry(
 
 const DEMO_WAITLIST_DOMAIN = "@demo.pickleera.local";
 
-const DEMO_WAITLIST: Array<Omit<WaitlistEntry, "joinedAt"> & { daysAgo: number }> =
-  [
-    { name: "Rica Gomez", email: `rica${DEMO_WAITLIST_DOMAIN}`, phone: "0917 111 2201", daysAgo: 0 },
-    { name: "Jon Sy", email: `jon${DEMO_WAITLIST_DOMAIN}`, phone: "0918 222 3302", daysAgo: 1 },
-    { name: "Bea Castillo", email: `bea${DEMO_WAITLIST_DOMAIN}`, daysAgo: 1 },
-    { name: "Mark Uy", email: `mark${DEMO_WAITLIST_DOMAIN}`, phone: "0920 444 5504", daysAgo: 2 },
-    { name: "Lara Chua", email: `lara${DEMO_WAITLIST_DOMAIN}`, daysAgo: 3 },
-    { name: "Paolo Dizon", email: `paolo${DEMO_WAITLIST_DOMAIN}`, phone: "0916 666 7706", daysAgo: 4 },
-    { name: "Kim Fernandez", email: `kim${DEMO_WAITLIST_DOMAIN}`, daysAgo: 5 },
-    { name: "Troy Aguilar", email: `troy${DEMO_WAITLIST_DOMAIN}`, phone: "0915 888 9908", daysAgo: 7 },
-    { name: "Irene Basco", email: `irene${DEMO_WAITLIST_DOMAIN}`, daysAgo: 9 },
-    { name: "Gabe Ortega", email: `gabe${DEMO_WAITLIST_DOMAIN}`, phone: "0912 101 1120", daysAgo: 12 },
-    { name: "Mia Espino", email: `mia${DEMO_WAITLIST_DOMAIN}`, daysAgo: 15 },
-    { name: "Noel Pineda", email: `noel${DEMO_WAITLIST_DOMAIN}`, phone: "0910 131 4151", daysAgo: 21 },
-    { name: "Carla Sison", email: `carla${DEMO_WAITLIST_DOMAIN}`, daysAgo: 28 },
-    { name: "Vince Rojas", email: `vince${DEMO_WAITLIST_DOMAIN}`, phone: "0908 161 7181", daysAgo: 35 },
-    { name: "Tess Miranda", email: `tess${DEMO_WAITLIST_DOMAIN}`, daysAgo: 42 },
-    { name: "Owen Valdez", email: `owen${DEMO_WAITLIST_DOMAIN}`, daysAgo: 50 },
-    { name: "Yuki Sato", email: `yuki${DEMO_WAITLIST_DOMAIN}`, phone: "0906 192 0212", daysAgo: 60 },
-    { name: "Dana Flores", email: `dana${DEMO_WAITLIST_DOMAIN}`, daysAgo: 75 },
-  ];
+const DEMO_WAITLIST: Array<
+  Omit<WaitlistEntry, "joinedAt"> & { daysAgo: number }
+> = [
+  {
+    name: "Rica Gomez",
+    email: `rica${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0917 111 2201",
+    daysAgo: 0,
+  },
+  {
+    name: "Jon Sy",
+    email: `jon${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0918 222 3302",
+    daysAgo: 1,
+  },
+  { name: "Bea Castillo", email: `bea${DEMO_WAITLIST_DOMAIN}`, daysAgo: 1 },
+  {
+    name: "Mark Uy",
+    email: `mark${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0920 444 5504",
+    daysAgo: 2,
+  },
+  { name: "Lara Chua", email: `lara${DEMO_WAITLIST_DOMAIN}`, daysAgo: 3 },
+  {
+    name: "Paolo Dizon",
+    email: `paolo${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0916 666 7706",
+    daysAgo: 4,
+  },
+  { name: "Kim Fernandez", email: `kim${DEMO_WAITLIST_DOMAIN}`, daysAgo: 5 },
+  {
+    name: "Troy Aguilar",
+    email: `troy${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0915 888 9908",
+    daysAgo: 7,
+  },
+  { name: "Irene Basco", email: `irene${DEMO_WAITLIST_DOMAIN}`, daysAgo: 9 },
+  {
+    name: "Gabe Ortega",
+    email: `gabe${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0912 101 1120",
+    daysAgo: 12,
+  },
+  { name: "Mia Espino", email: `mia${DEMO_WAITLIST_DOMAIN}`, daysAgo: 15 },
+  {
+    name: "Noel Pineda",
+    email: `noel${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0910 131 4151",
+    daysAgo: 21,
+  },
+  { name: "Carla Sison", email: `carla${DEMO_WAITLIST_DOMAIN}`, daysAgo: 28 },
+  {
+    name: "Vince Rojas",
+    email: `vince${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0908 161 7181",
+    daysAgo: 35,
+  },
+  { name: "Tess Miranda", email: `tess${DEMO_WAITLIST_DOMAIN}`, daysAgo: 42 },
+  { name: "Owen Valdez", email: `owen${DEMO_WAITLIST_DOMAIN}`, daysAgo: 50 },
+  {
+    name: "Yuki Sato",
+    email: `yuki${DEMO_WAITLIST_DOMAIN}`,
+    phone: "0906 192 0212",
+    daysAgo: 60,
+  },
+  { name: "Dana Flores", email: `dana${DEMO_WAITLIST_DOMAIN}`, daysAgo: 75 },
+];
 
 /** Seeds / refreshes demo waitlist rows. Keeps non-demo entries. Skipped in Vitest. */
 export function ensureWaitlistFixtures() {

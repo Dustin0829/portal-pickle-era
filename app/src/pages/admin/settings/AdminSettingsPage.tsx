@@ -54,9 +54,9 @@ export function AdminSettingsPage() {
               Pre-signup
             </h2>
             <p className="mt-1.5 text-sm text-zinc-500">
-              When on, marketing booking buttons become{" "}
-              <span className="text-zinc-900">Join the club</span> and open a
-              waitlist modal (name, email, optional phone).
+              Marketing CTAs are currently locked to{" "}
+              <span className="text-zinc-900">Join the club</span> (waitlist
+              modal). Toggle is kept for when booking opens again.
             </p>
           </div>
           <button

@@ -3,11 +3,11 @@ import { ClipboardList, PhilippinePeso, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
 import {
-  PortalRangeSelect,
   PORTAL_RANGE_OPTIONS,
   type PortalRangeValue,
-} from "@/components/portal/PortalRangeSelect";
+} from "@/components/portal/portalRange";
 import { listStudents } from "@/lib/auth/auth";
 import {
   PLAN_META,
@@ -320,10 +320,7 @@ function StatCard({
           {label}
         </p>
         <span
-          className={cn(
-            "grid size-9 place-items-center rounded-xl",
-            iconClass,
-          )}
+          className={cn("grid size-9 place-items-center rounded-xl", iconClass)}
         >
           {icon}
         </span>

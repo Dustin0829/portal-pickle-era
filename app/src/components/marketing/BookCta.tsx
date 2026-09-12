@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import { BookingButton } from "@/components/marketing/BookingButton";
 
 const pillars = ["Play", "Improve", "Connect", "Belong"];
@@ -26,24 +25,21 @@ export function BookCta() {
             Ready to play?
           </p>
           <h2 className="display max-w-[12ch] text-[40px] text-white sm:text-[56px] xl:text-[64px]">
-            Book a court today.
+            Join the club today.
           </h2>
           <p className="mt-4 text-sm text-white/80">
-            Good games are just a few clicks away.
+            Leave your details — we&apos;ll reach out when courts open.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <BookingButton
               plan="court"
               className="inline-flex items-center gap-2 bg-yellow px-6 py-3 text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white"
-            >
-              Book now
-              <ArrowRight size={14} />
-            </BookingButton>
+            />
             <a
               href="#pricing"
               className="inline-flex border border-white/50 px-6 py-3 text-[12px] font-bold uppercase tracking-[0.16em] text-white transition hover:border-yellow hover:text-yellow"
             >
-              View schedule
+              View pricing
             </a>
           </div>
           <p className="pointer-events-none absolute right-0 top-1/2 hidden origin-center -translate-y-1/2 rotate-90 text-[11px] font-bold uppercase tracking-[0.55em] text-white/25 xl:block">

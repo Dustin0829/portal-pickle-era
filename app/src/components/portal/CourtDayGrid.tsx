@@ -238,9 +238,7 @@ export function CourtDayGrid({
                 <span
                   className={cn(
                     "mt-auto text-[10px] leading-tight",
-                    count > 0
-                      ? "font-semibold text-zinc-800"
-                      : "text-zinc-400",
+                    count > 0 ? "font-semibold text-zinc-800" : "text-zinc-400",
                   )}
                 >
                   {count > 0
@@ -353,6 +351,7 @@ function DayScheduleModal({
   useEffect(() => {
     const stillValid = courts.some((court) => court.courtId === activeCourtId);
     if (!stillValid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset selection when court list changes
       setActiveCourtId(courts[0]?.courtId ?? COURTS[0]!.id);
       setSelectedSlotIds([]);
     }
@@ -362,8 +361,7 @@ function DayScheduleModal({
     courts.find((court) => court.courtId === activeCourtId) ?? courts[0];
 
   const selectedSorted = useMemo(
-    () =>
-      [...selectedSlotIds].sort((a, b) => a.localeCompare(b)),
+    () => [...selectedSlotIds].sort((a, b) => a.localeCompare(b)),
     [selectedSlotIds],
   );
   const payTotal = bookingTotal("court", selectedSorted.length);
@@ -437,9 +435,7 @@ function DayScheduleModal({
               <p className="mt-1 text-sm text-zinc-400">
                 {dayBookings.length} taken · {availableCount} available court
                 hours
-                {canBook
-                  ? " · tap open hours to multi-select"
-                  : ""}
+                {canBook ? " · tap open hours to multi-select" : ""}
               </p>
             </div>
           </div>
@@ -484,7 +480,9 @@ function DayScheduleModal({
                   Open hours
                 </h3>
                 <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
-                  {canBook ? "Tap to select · booked hours on the left" : "Open only"}
+                  {canBook
+                    ? "Tap to select · booked hours on the left"
+                    : "Open only"}
                 </p>
               </div>
 
@@ -645,10 +643,7 @@ function DayBookingRow({ booking }: { booking: BookingRequest }) {
 
   return (
     <li className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white pl-1 shadow-sm">
-      <div
-        className="absolute inset-y-0 left-0 w-1 bg-maroon/70"
-        aria-hidden
-      />
+      <div className="absolute inset-y-0 left-0 w-1 bg-maroon/70" aria-hidden />
       <div className="px-4 py-3.5 pl-3.5">
         <p className="text-sm font-semibold text-zinc-900">
           {time}

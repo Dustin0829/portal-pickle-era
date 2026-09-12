@@ -50,7 +50,7 @@ export const useFacilitySettingsStore = create<FacilitySettingsState>()(
     (set) => ({
       plans: defaultPlans,
       payment: defaultPayment,
-      preSignup: false,
+      preSignup: true,
       setPlanPrice: (plan, price) =>
         set((state) => ({
           plans: {
@@ -64,7 +64,7 @@ export const useFacilitySettingsStore = create<FacilitySettingsState>()(
         set({
           plans: defaultPlans,
           payment: defaultPayment,
-          preSignup: false,
+          preSignup: true,
         }),
     }),
     { name: "pickle-era-facility-settings" },

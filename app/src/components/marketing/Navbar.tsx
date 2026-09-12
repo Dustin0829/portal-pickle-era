@@ -1,9 +1,9 @@
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Logo } from "@/components/marketing/Logo";
 import { portalHomePath } from "@/lib/auth/portalHome";
 import { useAuth } from "@/providers/AuthProvider";
-import { Logo } from "@/components/marketing/Logo";
 
 const links = [
   { href: "#top", label: "Home" },

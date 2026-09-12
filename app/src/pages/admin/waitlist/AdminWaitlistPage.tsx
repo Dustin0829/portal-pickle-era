@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
+import { useAdminWaitlistList } from "@/api/features/waitlist/use-waitlist";
+import type { WaitlistEntry } from "@/api/features/waitlist/waitlist.schema";
+import { ApiRequestError } from "@/api/client";
+import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
-import {
-  ensureWaitlistFixtures,
-  listWaitlistEntries,
-  type WaitlistEntry,
-} from "@/lib/waitlist/waitlistStorage";
 import { cn } from "@/lib/utils";
 
 function initialsFromName(name: string, email: string) {
@@ -39,19 +38,17 @@ function contactLabel(entry: WaitlistEntry) {
 }
 
 function exportCsv(entries: WaitlistEntry[]) {
-  const header = ["Name", "Email", "Phone", "Joined at", "Status"];
+  const header = ["Name", "Email", "Phone", "Joined at", "Source"];
   const rows = entries.map((entry) => [
     entry.name || "",
     entry.email,
     entry.phone || "",
-    entry.joinedAt || "",
-    "Active",
+    entry.createdAt || "",
+    entry.source,
   ]);
   const csv = [header, ...rows]
     .map((row) =>
-      row
-        .map((cell) => `"${String(cell).replaceAll('"', '""')}"`)
-        .join(","),
+      row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
     )
     .join("\n");
 
@@ -64,21 +61,27 @@ function exportCsv(entries: WaitlistEntry[]) {
   URL.revokeObjectURL(url);
 }
 
+function opsMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    if (error.statusCode === 401) {
+      return "Waitlist list requires API admin Basic Auth in this environment. Use Swagger (/docs), curl, or TablePlus until session-authenticated admin APIs ship.";
+    }
+    if (error.statusCode === 404) {
+      return "Admin waitlist API is not mounted (common in production without ADMIN_BASIC_AUTH_*). Review leads via Swagger, curl, or the database.";
+    }
+  }
+  return getUserFacingApiErrorMessage(error);
+}
+
 export function AdminWaitlistPage() {
   const [query, setQuery] = useState("");
-  ensureWaitlistFixtures();
-
-  const entries = useMemo(
-    () =>
-      listWaitlistEntries().sort((a, b) =>
-        (b.joinedAt || "").localeCompare(a.joinedAt || ""),
-      ),
-    [],
-  );
+  const { data, isPending, isError, error, isFetching } =
+    useAdminWaitlistList(query);
 
   const visible = useMemo(() => {
+    const entries = data?.items ?? [];
     const q = query.trim().toLowerCase();
-    if (!q) return entries;
+    if (!q || q.length < 2) return entries;
     return entries.filter((entry) => {
       return (
         entry.name.toLowerCase().includes(q) ||
@@ -86,7 +89,9 @@ export function AdminWaitlistPage() {
         (entry.phone ?? "").toLowerCase().includes(q)
       );
     });
-  }, [entries, query]);
+  }, [data?.items, query]);
+
+  const entries = data?.items ?? [];
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -102,7 +107,8 @@ export function AdminWaitlistPage() {
               Waitlist
             </h1>
             <p className="text-sm text-zinc-500">
-              Leads from Join the club and the marketing newsletter form.
+              Leads from Join the club and the marketing newsletter form
+              (product API).
             </p>
           </div>
 
@@ -135,7 +141,20 @@ export function AdminWaitlistPage() {
         </header>
 
         <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
-          {visible.length === 0 ? (
+          {isPending || isFetching ? (
+            <div className="px-5 py-10 text-sm text-zinc-500">
+              Loading waitlist…
+            </div>
+          ) : isError ? (
+            <div className="px-5 py-10 text-sm text-zinc-600" role="alert">
+              <p className="font-medium text-zinc-900">
+                Could not load waitlist from API
+              </p>
+              <p className="mt-2 max-w-xl leading-relaxed">
+                {opsMessage(error)}
+              </p>
+            </div>
+          ) : visible.length === 0 ? (
             <div className="px-5 py-10 text-sm text-zinc-500">
               {entries.length === 0
                 ? "Waitlist is empty. Entries appear after someone joins from the marketing site."
@@ -148,14 +167,16 @@ export function AdminWaitlistPage() {
                   <tr className="border-b border-zinc-200 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
                     <th className="px-4 py-3 font-semibold sm:px-5">Name</th>
                     <th className="px-4 py-3 font-semibold sm:px-5">Contact</th>
-                    <th className="px-4 py-3 font-semibold sm:px-5">Joined at</th>
+                    <th className="px-4 py-3 font-semibold sm:px-5">
+                      Joined at
+                    </th>
                     <th className="px-4 py-3 font-semibold sm:px-5">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map((entry) => (
                     <tr
-                      key={entry.email}
+                      key={entry.id}
                       className="border-b border-zinc-100 last:border-b-0"
                     >
                       <td className="px-4 py-3.5 sm:px-5">
@@ -178,7 +199,7 @@ export function AdminWaitlistPage() {
                         {contactLabel(entry)}
                       </td>
                       <td className="px-4 py-3.5 text-sm text-zinc-600 sm:px-5">
-                        {formatJoinedAt(entry.joinedAt)}
+                        {formatJoinedAt(entry.createdAt)}
                       </td>
                       <td className="px-4 py-3.5 sm:px-5">
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-green/40 bg-green/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-green">
@@ -197,10 +218,12 @@ export function AdminWaitlistPage() {
           )}
         </div>
 
-        <p className="mt-4 text-xs text-zinc-400">
-          Showing {visible.length} of {entries.length} lead
-          {entries.length === 1 ? "" : "s"}.
-        </p>
+        {!isError ? (
+          <p className="mt-4 text-xs text-zinc-400">
+            Showing {visible.length} of {entries.length} lead
+            {entries.length === 1 ? "" : "s"}.
+          </p>
+        ) : null}
       </AppPageShell>
     </div>
   );

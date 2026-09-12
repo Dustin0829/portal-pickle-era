@@ -85,6 +85,7 @@ Follow the [add-feature-module](.cursor/skills/add-feature-module/SKILL.md) skil
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | [Docker](docs/docker.md)                                          | Hot reload compose, default full stack                                                       |
 | [Environment](docs/environment.md)                                | Env vars, admin auth, optional integrations                                                  |
+| [Railway deploy](docs/railway-deploy.md)                          | Railway-only API + Postgres (Root Directory `backend`)                                       |
 | [API response samples](docs/api-response-samples.md)              | Success/error envelopes, validation, nested field paths                                      |
 | [Platform patterns](.cursor/rules/platform/platform-patterns.mdc) | Auth, RBAC, API versioning, audit logs, caching, feature flags                               |
 | [API protection](.cursor/rules/api/api-protection.mdc)            | Rate limits, quotas, cost controls for high-risk endpoints                                   |

@@ -1,15 +1,27 @@
 import { type FormEvent, useState } from "react";
-import { saveWaitlistEntry } from "@/lib/waitlist/waitlistStorage";
+import { useCreateWaitlistEntry } from "@/api/features/waitlist/use-waitlist";
+import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 
 export function Waitlist() {
+  const { createWaitlistEntry, isCreatingWaitlist } = useCreateWaitlistEntry();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
     if (!email.trim()) return;
-    if (!saveWaitlistEntry({ name: "", email })) return;
-    setSubmitted(true);
+    try {
+      await createWaitlistEntry({
+        name: "",
+        email: email.trim(),
+        source: "newsletter",
+      });
+      setSubmitted(true);
+    } catch (caught) {
+      setError(getUserFacingApiErrorMessage(caught));
+    }
   }
 
   return (
@@ -51,12 +63,18 @@ export function Waitlist() {
             />
             <button
               type="submit"
-              className="h-14 bg-yellow px-7 text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white sm:h-12"
+              disabled={isCreatingWaitlist}
+              className="h-14 bg-yellow px-7 text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:opacity-60 sm:h-12"
             >
-              Subscribe
+              {isCreatingWaitlist ? "…" : "Subscribe"}
             </button>
           </form>
         )}
+        {error ? (
+          <p className="mt-3 text-sm text-yellow" role="alert">
+            {error}
+          </p>
+        ) : null}
       </div>
     </section>
   );

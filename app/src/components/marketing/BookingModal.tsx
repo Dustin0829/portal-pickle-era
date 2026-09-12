@@ -56,17 +56,11 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>(preset?.step ?? "schedule");
   const [month, setMonth] = useState(() =>
-    startOfMonth(
-      preset?.date ? parseDateKey(preset.date) : new Date(),
-    ),
+    startOfMonth(preset?.date ? parseDateKey(preset.date) : new Date()),
   );
-  const [date, setDate] = useState(
-    () => preset?.date ?? dateKey(new Date()),
-  );
+  const [date, setDate] = useState(() => preset?.date ?? dateKey(new Date()));
   const [courtId, setCourtId] = useState(() => preset?.courtId ?? "");
-  const [slotIds, setSlotIds] = useState<string[]>(
-    () => preset?.slotIds ?? [],
-  );
+  const [slotIds, setSlotIds] = useState<string[]>(() => preset?.slotIds ?? []);
   const [name, setName] = useState(() => user?.name ?? "");
   const [email, setEmail] = useState(() => user?.email ?? "");
   const [referenceId, setReferenceId] = useState("");
@@ -76,6 +70,8 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
 
   useEffect(() => {
     if (!user) return;
+    // Prefill identity fields once when session becomes available.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form defaults from auth session
     setName((current) => current || user.name);
     setEmail((current) => current || user.email);
   }, [user]);

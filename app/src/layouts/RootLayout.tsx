@@ -3,8 +3,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 
 export default function RootLayout() {
   const { pathname } = useLocation();
-  const isPortal =
-    pathname.startsWith("/app") || pathname.startsWith("/admin");
+  const isPortal = pathname.startsWith("/app") || pathname.startsWith("/admin");
 
   return (
     <div className="min-h-svh">

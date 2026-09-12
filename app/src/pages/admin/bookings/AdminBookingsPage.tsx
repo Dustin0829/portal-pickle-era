@@ -13,11 +13,11 @@ import {
 } from "lucide-react";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
 import {
-  PortalRangeSelect,
   PORTAL_RANGE_OPTIONS,
   type PortalRangeValue,
-} from "@/components/portal/PortalRangeSelect";
+} from "@/components/portal/portalRange";
 import {
   COURTS,
   PLAN_META,
@@ -377,7 +377,8 @@ function WalkInBookingModal({
 
           <label className="flex flex-col gap-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-              Email <span className="normal-case tracking-normal">(optional)</span>
+              Email{" "}
+              <span className="normal-case tracking-normal">(optional)</span>
             </span>
             <input
               type="email"
