@@ -19,18 +19,24 @@ import {
 } from "@/lib/booking/booking";
 import { cn } from "@/lib/utils";
 
+type BookSlotInput = {
+  date: string;
+  courtId: string;
+  slotIds: string[];
+};
+
 type CourtCalendarProps = {
   date: string;
   onDateChange: (date: string) => void;
   bookings: BookingRequest[];
   /** When true, schedule is informational only (no booking from slots). */
   readOnly?: boolean;
+  /** Player pay vs admin walk-in copy. Used when `onBookSlot` is set. */
+  bookIntent?: "pay" | "walk-in";
+  /** Keep the day schedule open after confirming selected hours. */
+  keepOpenOnBook?: boolean;
   /** Player: confirm selected open hours to start payment for that court. */
-  onBookSlot?: (input: {
-    date: string;
-    courtId: string;
-    slotIds: string[];
-  }) => void;
+  onBookSlot?: (input: BookSlotInput) => void;
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -120,6 +126,8 @@ export function CourtDayGrid({
   onDateChange,
   bookings,
   readOnly = true,
+  bookIntent = "pay",
+  keepOpenOnBook = false,
   onBookSlot,
 }: CourtCalendarProps) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -128,6 +136,7 @@ export function CourtDayGrid({
   const todayKey = toIsoDate(new Date());
   const countsByDate = new Map<string, number>();
   const canBook = Boolean(onBookSlot) && !readOnly;
+  const isWalkIn = bookIntent === "walk-in";
 
   for (const booking of activeBookings(bookings)) {
     countsByDate.set(booking.date, (countsByDate.get(booking.date) ?? 0) + 1);
@@ -172,7 +181,9 @@ export function CourtDayGrid({
 
       <p className="shrink-0 text-xs text-zinc-500">
         {canBook
-          ? "Click a day, select one or more open hours, then pay."
+          ? isWalkIn
+            ? "Click a day, select open hours, then add a walk-in."
+            : "Click a day, select one or more open hours, then pay."
           : "Click a day for taken / available times"}
         {readOnly ? " · read-only" : ""}.
       </p>
@@ -257,10 +268,11 @@ export function CourtDayGrid({
           bookings={bookings}
           readOnly={readOnly}
           canBook={canBook}
+          bookIntent={bookIntent}
           onBookSlot={
             onBookSlot
               ? (input) => {
-                  setModalOpen(false);
+                  if (!keepOpenOnBook) setModalOpen(false);
                   onBookSlot(input);
                 }
               : undefined
@@ -277,6 +289,7 @@ function DayScheduleModal({
   bookings,
   readOnly,
   canBook,
+  bookIntent,
   onBookSlot,
   onClose,
 }: {
@@ -284,11 +297,8 @@ function DayScheduleModal({
   bookings: BookingRequest[];
   readOnly: boolean;
   canBook: boolean;
-  onBookSlot?: (input: {
-    date: string;
-    courtId: string;
-    slotIds: string[];
-  }) => void;
+  bookIntent: "pay" | "walk-in";
+  onBookSlot?: (input: BookSlotInput) => void;
   onClose: () => void;
 }) {
   const dayBookings = useMemo(
@@ -360,10 +370,13 @@ function DayScheduleModal({
   const activeCourt =
     courts.find((court) => court.courtId === activeCourtId) ?? courts[0];
 
-  const selectedSorted = useMemo(
-    () => [...selectedSlotIds].sort((a, b) => a.localeCompare(b)),
-    [selectedSlotIds],
-  );
+  const isWalkIn = bookIntent === "walk-in";
+  const selectedSorted = useMemo(() => {
+    const open = new Set(activeCourt?.openSlots.map((slot) => slot.slotId));
+    return [...selectedSlotIds]
+      .filter((id) => open.has(id))
+      .sort((a, b) => a.localeCompare(b));
+  }, [activeCourt, selectedSlotIds]);
   const payTotal = bookingTotal("court", selectedSorted.length);
 
   function selectCourt(courtId: string) {
@@ -435,7 +448,11 @@ function DayScheduleModal({
               <p className="mt-1 text-sm text-zinc-400">
                 {dayBookings.length} taken · {availableCount} available court
                 hours
-                {canBook ? " · tap open hours to multi-select" : ""}
+                {canBook
+                  ? isWalkIn
+                    ? " · tap open hours to book a walk-in"
+                    : " · tap open hours to multi-select"
+                  : ""}
               </p>
             </div>
           </div>
@@ -481,7 +498,9 @@ function DayScheduleModal({
                 </h3>
                 <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
                   {canBook
-                    ? "Tap to select · booked hours on the left"
+                    ? isWalkIn
+                      ? "Tap to select · then book walk-in"
+                      : "Tap to select · booked hours on the left"
                     : "Open only"}
                 </p>
               </div>
@@ -612,7 +631,9 @@ function DayScheduleModal({
                   }
                   className="inline-flex h-10 items-center rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-yellow/90"
                 >
-                  Continue to pay · ₱{payTotal}
+                  {isWalkIn
+                    ? `Book walk-in · ₱${payTotal}`
+                    : `Continue to pay · ₱${payTotal}`}
                 </button>
               </div>
             </>
