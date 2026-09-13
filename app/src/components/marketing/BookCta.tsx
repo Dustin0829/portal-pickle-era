@@ -25,10 +25,10 @@ export function BookCta() {
             Ready to play?
           </p>
           <h2 className="display max-w-[12ch] text-[40px] text-white sm:text-[56px] xl:text-[64px]">
-            Join the club today.
+            Book your court.
           </h2>
           <p className="mt-4 text-sm text-white/80">
-            Leave your details — we&apos;ll reach out when courts open.
+            Advance booking opens from October 5, 2026 — reserve your slot now.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <BookingButton

@@ -29,6 +29,7 @@ model AuditLog {
 enum WaitlistSource {
   join_club
   newsletter
+  booking
 }
 
 model WaitlistEntry {

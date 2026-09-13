@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { SmoothScroll } from "@/components/marketing/SmoothScroll";
 import RootLayout from "@/layouts/RootLayout";
 import { StudentPortalLayout } from "@/layouts/StudentPortalLayout";
@@ -65,9 +65,9 @@ const AdminCalendarPage = lazy(() =>
     default: m.AdminCalendarPage,
   })),
 );
-const AdminWaitlistPage = lazy(() =>
+const AdminPlayersPage = lazy(() =>
   import("@/pages/admin/waitlist/AdminWaitlistPage").then((m) => ({
-    default: m.AdminWaitlistPage,
+    default: m.AdminPlayersPage,
   })),
 );
 const AdminSettingsPage = lazy(() =>
@@ -118,7 +118,11 @@ export default function App() {
               <Route index element={<AdminDashboardPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="calendar" element={<AdminCalendarPage />} />
-              <Route path="waitlist" element={<AdminWaitlistPage />} />
+              <Route path="players" element={<AdminPlayersPage />} />
+              <Route
+                path="waitlist"
+                element={<Navigate to="/admin/players" replace />}
+              />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
 

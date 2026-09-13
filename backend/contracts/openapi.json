@@ -268,7 +268,8 @@
             "type": "string",
             "enum": [
               "join_club",
-              "newsletter"
+              "newsletter",
+              "booking"
             ]
           },
           "createdAt": {
@@ -2328,9 +2329,10 @@
                     "type": "string",
                     "enum": [
                       "join_club",
-                      "newsletter"
+                      "newsletter",
+                      "booking"
                     ],
-                    "default": "join_club"
+                    "default": "newsletter"
                   }
                 },
                 "required": [
@@ -2379,7 +2381,8 @@
                           "type": "string",
                           "enum": [
                             "join_club",
-                            "newsletter"
+                            "newsletter",
+                            "booking"
                           ]
                         },
                         "createdAt": {
@@ -2646,7 +2649,8 @@
                                 "type": "string",
                                 "enum": [
                                   "join_club",
-                                  "newsletter"
+                                  "newsletter",
+                                  "booking"
                                 ]
                               },
                               "createdAt": {

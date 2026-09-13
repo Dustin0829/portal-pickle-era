@@ -71,6 +71,9 @@ export const PAYMENT = {
   number: "0917 850 0107",
 };
 
+/** First public court date (YYYY-MM-DD). Advance booking cannot select earlier days. */
+export const OPENING_DATE = "2026-10-05";
+
 const STORAGE_KEY = "pickle-era-bookings";
 
 export const SLOTS: Record<BookingPlan, TimeSlot[]> = {
@@ -111,6 +114,12 @@ export function dateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+/** Earliest selectable court date: opening day until that day arrives, then today. */
+export function earliestBookableDateKey(now = new Date()) {
+  const today = dateKey(now);
+  return today < OPENING_DATE ? OPENING_DATE : today;
 }
 
 export function parseDateKey(key: string) {

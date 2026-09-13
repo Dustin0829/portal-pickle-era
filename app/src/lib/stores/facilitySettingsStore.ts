@@ -17,7 +17,7 @@ export type PaymentSettings = {
 type FacilitySettingsState = {
   plans: Record<BookingPlan, PlanSettings>;
   payment: PaymentSettings;
-  /** When on, marketing booking CTAs become “Join the club” → waitlist. */
+  /** Legacy toggle — Book CTAs open booking; kept for persisted settings. */
   preSignup: boolean;
   setPlanPrice: (plan: BookingPlan, price: number) => void;
   setPayment: (payment: PaymentSettings) => void;
@@ -50,7 +50,7 @@ export const useFacilitySettingsStore = create<FacilitySettingsState>()(
     (set) => ({
       plans: defaultPlans,
       payment: defaultPayment,
-      preSignup: true,
+      preSignup: false,
       setPlanPrice: (plan, price) =>
         set((state) => ({
           plans: {
@@ -64,7 +64,7 @@ export const useFacilitySettingsStore = create<FacilitySettingsState>()(
         set({
           plans: defaultPlans,
           payment: defaultPayment,
-          preSignup: true,
+          preSignup: false,
         }),
     }),
     { name: "pickle-era-facility-settings" },

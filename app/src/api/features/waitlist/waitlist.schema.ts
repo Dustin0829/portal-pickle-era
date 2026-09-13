@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { nonEmptyString } from "@/api/schema/primitives.schema";
 
-export const waitlistSourceSchema = z.enum(["join_club", "newsletter"]);
+export const waitlistSourceSchema = z.enum([
+  "join_club",
+  "newsletter",
+  "booking",
+]);
 
 export const waitlistEntrySchema = z.object({
   id: z.string(),

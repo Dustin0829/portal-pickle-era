@@ -1,36 +1,33 @@
 import { type ButtonHTMLAttributes, type ReactNode } from "react";
-import { useJoinClubModal } from "@/providers/JoinClubModalProvider";
 import type { BookingPlan } from "@/lib/booking/booking";
+import { useBookingModal } from "@/providers/BookingModalProvider";
 
 type BookingButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  /** Kept for call-site compatibility; marketing CTAs open Join the club for now. */
   plan?: BookingPlan;
   children?: ReactNode;
 };
 
-/** Marketing CTAs — currently all open Join the club (pre-signup). */
+/** Marketing CTAs — opens the court booking modal (advance booking). */
 export function BookingButton({
-  plan: _ignoredPlan,
-  children: _ignoredChildren,
+  plan = "court",
+  children,
   className,
   onClick,
   ...props
 }: BookingButtonProps) {
-  void _ignoredPlan;
-  void _ignoredChildren;
-  const { openJoinClubModal } = useJoinClubModal();
+  const { openBookingModal } = useBookingModal();
 
   return (
     <button
       type="button"
       className={className}
       onClick={(event) => {
-        openJoinClubModal();
+        openBookingModal(plan);
         onClick?.(event);
       }}
       {...props}
     >
-      Join the club
+      {children ?? "Book a court"}
     </button>
   );
 }

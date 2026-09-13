@@ -5,13 +5,30 @@ import {
 } from "@/api/features/waitlist/waitlist.schema";
 
 describe("waitlist API schemas", () => {
-  it("parses create form with join_club source", () => {
+  it("parses create form with newsletter source", () => {
     const parsed = createWaitlistFormSchema.parse({
       name: "Ada",
       email: "ada@example.com",
-      source: "join_club",
+      source: "newsletter",
     });
     expect(parsed.email).toBe("ada@example.com");
+    expect(parsed.source).toBe("newsletter");
+  });
+
+  it("parses create form with booking source", () => {
+    const parsed = createWaitlistFormSchema.parse({
+      name: "Ben",
+      email: "ben@example.com",
+      source: "booking",
+    });
+    expect(parsed.source).toBe("booking");
+  });
+
+  it("still accepts legacy join_club source", () => {
+    const parsed = createWaitlistFormSchema.parse({
+      email: "legacy@example.com",
+      source: "join_club",
+    });
     expect(parsed.source).toBe("join_club");
   });
 

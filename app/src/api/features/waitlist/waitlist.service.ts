@@ -14,7 +14,7 @@ export async function createWaitlistEntry(input: CreateWaitlistFormValues) {
     name: body.name ?? "",
     email: body.email,
     ...(body.phone ? { phone: body.phone } : {}),
-    source: body.source ?? "join_club",
+    source: body.source ?? "newsletter",
   });
   return waitlistEntrySchema.parse(data);
 }

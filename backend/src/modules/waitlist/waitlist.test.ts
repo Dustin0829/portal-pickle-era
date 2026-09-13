@@ -10,7 +10,7 @@ test("waitlist schema parses create body and defaults source", () => {
   });
   assert.equal(parsed.email, "Player@Example.com");
   assert.equal(parsed.name, "Ada");
-  assert.equal(parsed.source, "join_club");
+  assert.equal(parsed.source, "newsletter");
 });
 
 test("waitlist schema rejects invalid email", () => {
@@ -23,6 +23,23 @@ test("waitlist schema parses newsletter source", () => {
     source: "newsletter",
   });
   assert.equal(parsed.source, "newsletter");
+});
+
+test("waitlist schema parses booking source", () => {
+  const parsed = createWaitlistBodySchema.parse({
+    email: "book@example.com",
+    name: "Kai",
+    source: "booking",
+  });
+  assert.equal(parsed.source, "booking");
+});
+
+test("waitlist schema still accepts join_club source", () => {
+  const parsed = createWaitlistBodySchema.parse({
+    email: "legacy@example.com",
+    source: "join_club",
+  });
+  assert.equal(parsed.source, "join_club");
 });
 
 test("waitlist list query rejects short search", () => {
@@ -39,11 +56,11 @@ test("waitlist mapper serializes timestamps", () => {
     name: "Ada",
     email: "ada@example.com",
     phone: null,
-    source: "join_club",
+    source: "booking",
     createdAt: new Date("2026-01-15T12:00:00.000Z"),
     updatedAt: new Date("2026-01-16T12:00:00.000Z"),
   });
   assert.equal(dto.createdAt, "2026-01-15T12:00:00.000Z");
   assert.equal(dto.updatedAt, "2026-01-16T12:00:00.000Z");
-  assert.equal(dto.source, "join_club");
+  assert.equal(dto.source, "booking");
 });

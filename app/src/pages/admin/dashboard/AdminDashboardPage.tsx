@@ -163,10 +163,10 @@ export function AdminDashboardPage() {
       items.push({
         id: `waitlist-${lead.email}`,
         at: lead.joinedAt || new Date(0).toISOString(),
-        title: "Joined waitlist",
+        title: "New player lead",
         detail: `${lead.name || "No name"} · ${lead.email}`,
         tone: "yellow",
-        href: "/admin/waitlist",
+        href: "/admin/players",
       });
     }
 
@@ -222,10 +222,10 @@ export function AdminDashboardPage() {
           <StatCard
             label="Total players"
             value={String(totalPlayers)}
-            hint="Accounts, bookings & waitlist"
+            hint="Accounts, bookings & leads"
             icon={<Users size={18} aria-hidden />}
             iconClass="bg-green/15 text-green"
-            to="/admin/waitlist"
+            to="/admin/players"
           />
         </div>
 
