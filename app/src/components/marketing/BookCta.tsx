@@ -28,7 +28,7 @@ export function BookCta() {
             Book your court.
           </h2>
           <p className="mt-4 text-sm text-white/80">
-            Advance booking opens from October 5, 2026 — reserve your slot now.
+            Advance booking for October onwards — reserve from October 5, 2026.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <BookingButton

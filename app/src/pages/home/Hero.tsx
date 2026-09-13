@@ -40,6 +40,9 @@ export function Hero() {
               Explore
             </a>
           </div>
+          <p className="mt-4 text-xs tracking-wide text-white/65 sm:text-sm">
+            Advance booking for October onwards.
+          </p>
         </div>
       </div>
 

@@ -24,6 +24,7 @@ import {
   courtHasOpening,
   courtLabel,
   dateKey,
+  OPENING_DATE,
   earliestBookableDateKey,
   formatLongDate,
   isSlotOpen,
@@ -285,6 +286,12 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 <p className="mt-1 text-sm text-white/60">
                   ₱{meta.price} {meta.unit}. Pick a day, court, and time.
                 </p>
+                {dateKey(new Date()) < OPENING_DATE ? (
+                  <p className="mt-2 text-xs leading-relaxed text-yellow/90">
+                    This is advance booking for October onwards. Earliest date:{" "}
+                    {formatLongDate(OPENING_DATE)}.
+                  </p>
+                ) : null}
               </div>
 
               <div className="mt-5 min-h-0 flex-1">
