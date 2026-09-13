@@ -17,7 +17,7 @@ export type PaymentSettings = {
 type FacilitySettingsState = {
   plans: Record<BookingPlan, PlanSettings>;
   payment: PaymentSettings;
-  /** When on, marketing booking CTAs become “Join the club” → waitlist. */
+  /** Legacy toggle — Book CTAs open booking; kept for persisted settings. */
   preSignup: boolean;
   setPlanPrice: (plan: BookingPlan, price: number) => void;
   setPayment: (payment: PaymentSettings) => void;

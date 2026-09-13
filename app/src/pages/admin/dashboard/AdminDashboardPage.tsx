@@ -3,11 +3,11 @@ import { ClipboardList, PhilippinePeso, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
 import {
-  PortalRangeSelect,
   PORTAL_RANGE_OPTIONS,
   type PortalRangeValue,
-} from "@/components/portal/PortalRangeSelect";
+} from "@/components/portal/portalRange";
 import { listStudents } from "@/lib/auth/auth";
 import {
   PLAN_META,
@@ -163,10 +163,10 @@ export function AdminDashboardPage() {
       items.push({
         id: `waitlist-${lead.email}`,
         at: lead.joinedAt || new Date(0).toISOString(),
-        title: "Joined waitlist",
+        title: "New player lead",
         detail: `${lead.name || "No name"} · ${lead.email}`,
         tone: "yellow",
-        href: "/admin/waitlist",
+        href: "/admin/players",
       });
     }
 
@@ -222,10 +222,10 @@ export function AdminDashboardPage() {
           <StatCard
             label="Total players"
             value={String(totalPlayers)}
-            hint="Accounts, bookings & waitlist"
+            hint="Accounts, bookings & leads"
             icon={<Users size={18} aria-hidden />}
             iconClass="bg-green/15 text-green"
-            to="/admin/waitlist"
+            to="/admin/players"
           />
         </div>
 
@@ -320,10 +320,7 @@ function StatCard({
           {label}
         </p>
         <span
-          className={cn(
-            "grid size-9 place-items-center rounded-xl",
-            iconClass,
-          )}
+          className={cn("grid size-9 place-items-center rounded-xl", iconClass)}
         >
           {icon}
         </span>

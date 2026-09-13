@@ -25,3 +25,23 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+enum WaitlistSource {
+  join_club
+  newsletter
+  booking
+}
+
+model WaitlistEntry {
+  id        String         @id @default(cuid())
+  name      String         @default("")
+  email     String         @unique
+  phone     String?
+  source    WaitlistSource
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([email])
+  @@map("waitlist_entries")
+}

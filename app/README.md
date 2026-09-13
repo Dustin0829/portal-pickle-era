@@ -50,6 +50,8 @@ pnpm dev
 | --------------------- | ------------------ |
 | http://localhost:5173 | App (Vite default) |
 
+Railway hosting (SPA + API pairing): [docs/railway-deploy.md](./docs/railway-deploy.md).
+
 ### 4. Verify before push
 
 ```bash

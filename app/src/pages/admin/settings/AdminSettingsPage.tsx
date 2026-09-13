@@ -51,12 +51,11 @@ export function AdminSettingsPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
-              Pre-signup
+              Pre-signup (legacy)
             </h2>
             <p className="mt-1.5 text-sm text-zinc-500">
-              When on, marketing booking buttons become{" "}
-              <span className="text-zinc-900">Join the club</span> and open a
-              waitlist modal (name, email, optional phone).
+              Marketing Book CTAs open the booking modal. This toggle is unused
+              for CTAs and kept only for local settings compatibility.
             </p>
           </div>
           <button

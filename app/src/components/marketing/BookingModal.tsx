@@ -24,6 +24,8 @@ import {
   courtHasOpening,
   courtLabel,
   dateKey,
+  OPENING_DATE,
+  earliestBookableDateKey,
   formatLongDate,
   isSlotOpen,
   parseDateKey,
@@ -31,6 +33,7 @@ import {
   selectedSlotLabels,
   type BookingPlan,
 } from "@/lib/booking/booking";
+import { createWaitlistEntry } from "@/api/features/waitlist/waitlist.service";
 import { useAuth } from "@/providers/AuthProvider";
 
 type Step = "schedule" | "pay" | "done";
@@ -54,19 +57,16 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const open = plan !== null;
   const lenis = useLenis();
   const { user } = useAuth();
+  const bookableFloor = earliestBookableDateKey();
+  const initialDate =
+    preset?.date && preset.date >= bookableFloor ? preset.date : bookableFloor;
   const [step, setStep] = useState<Step>(preset?.step ?? "schedule");
   const [month, setMonth] = useState(() =>
-    startOfMonth(
-      preset?.date ? parseDateKey(preset.date) : new Date(),
-    ),
+    startOfMonth(parseDateKey(initialDate)),
   );
-  const [date, setDate] = useState(
-    () => preset?.date ?? dateKey(new Date()),
-  );
+  const [date, setDate] = useState(() => initialDate);
   const [courtId, setCourtId] = useState(() => preset?.courtId ?? "");
-  const [slotIds, setSlotIds] = useState<string[]>(
-    () => preset?.slotIds ?? [],
-  );
+  const [slotIds, setSlotIds] = useState<string[]>(() => preset?.slotIds ?? []);
   const [name, setName] = useState(() => user?.name ?? "");
   const [email, setEmail] = useState(() => user?.email ?? "");
   const [referenceId, setReferenceId] = useState("");
@@ -76,6 +76,8 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
 
   useEffect(() => {
     if (!user) return;
+    // Prefill identity fields once when session becomes available.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form defaults from auth session
     setName((current) => current || user.name);
     setEmail((current) => current || user.email);
   }, [user]);
@@ -104,7 +106,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }, [open, onClose, lenis]);
 
   const days = useMemo(() => monthCells(month), [month]);
-  const todayKey = dateKey(new Date());
+  const earliestMonth = startOfMonth(parseDateKey(bookableFloor));
   const meta = plan ? PLAN_META[plan] : null;
   const slots = plan ? SLOTS[plan] : [];
   const multiSlot = plan ? allowsMultiSlot(plan) : false;
@@ -193,6 +195,18 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       receiptDataUrl: receiptDataUrl || undefined,
       receiptMimeType: receiptFile.type || undefined,
     });
+
+    const leadEmail = email.trim().toLowerCase();
+    if (leadEmail) {
+      void createWaitlistEntry({
+        name: name.trim(),
+        email: leadEmail,
+        source: "booking",
+      }).catch(() => {
+        // Soft-fail: booking confirmation is primary.
+      });
+    }
+
     setStep("done");
   }
 
@@ -272,6 +286,12 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 <p className="mt-1 text-sm text-white/60">
                   ₱{meta.price} {meta.unit}. Pick a day, court, and time.
                 </p>
+                {dateKey(new Date()) < OPENING_DATE ? (
+                  <p className="mt-2 text-xs leading-relaxed text-yellow/90">
+                    This is advance booking for October onwards. Earliest date:{" "}
+                    {formatLongDate(OPENING_DATE)}.
+                  </p>
+                ) : null}
               </div>
 
               <div className="mt-5 min-h-0 flex-1">
@@ -297,7 +317,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                       type="button"
                       className="grid h-8 w-8 place-items-center text-white/70 transition hover:text-yellow disabled:text-white/20"
                       onClick={() => setMonth(addMonths(month, -1))}
-                      disabled={month <= startOfMonth(new Date())}
+                      disabled={month <= earliestMonth}
                       aria-label="Previous month"
                     >
                       <ChevronLeft size={18} />
@@ -323,7 +343,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                     if (!day)
                       return <span key={`pad-${index}`} className="h-9" />;
                     const key = dateKey(day);
-                    const disabled = key < todayKey;
+                    const disabled = key < bookableFloor;
                     const selected = key === date;
                     return (
                       <button

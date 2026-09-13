@@ -13,7 +13,7 @@ const items = [
   { to: "/admin", label: "Dashboard", end: true, icon: LayoutDashboard },
   { to: "/admin/bookings", label: "Bookings", icon: ClipboardList },
   { to: "/admin/calendar", label: "Calendar", icon: CalendarRange },
-  { to: "/admin/waitlist", label: "Waitlist", icon: Users },
+  { to: "/admin/players", label: "Players", icon: Users },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

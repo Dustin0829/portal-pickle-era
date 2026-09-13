@@ -4,7 +4,7 @@ import { useState } from "react";
 const faqs = [
   {
     q: "How do I book a court?",
-    a: "Join the waitlist and we’ll send booking details as soon as courts open. Founding members get first access to court time.",
+    a: "Use Book a court on this site to reserve from October 5, 2026. Pick a date, court, and time, then complete GCash payment in the booking flow.",
   },
   {
     q: "What are your operating hours?",
@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: "Are walk-ins allowed?",
-    a: "Open play and drop-ins are part of the club. We’ll share the walk-in and reservation setup with waitlist members first.",
+    a: "Open play and drop-ins are part of the club. Advance reservations open October 5 — walk-in details will be shared closer to opening.",
   },
   {
     q: "Do you offer clinics or coaching?",

@@ -71,7 +71,9 @@ export function ProfilePage() {
                 <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
                   Role
                 </dt>
-                <dd className="mt-1 text-sm font-medium text-zinc-900">{label}</dd>
+                <dd className="mt-1 text-sm font-medium text-zinc-900">
+                  {label}
+                </dd>
               </div>
             </dl>
           </div>

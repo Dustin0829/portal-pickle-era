@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
 import { ensureBookingFixtures, listBookings } from "@/lib/booking/booking";
 
 function todayIso() {
@@ -13,6 +14,11 @@ function todayIso() {
 
 export function AdminCalendarPage() {
   const [date, setDate] = useState(todayIso);
+  const [walkIn, setWalkIn] = useState<{
+    date: string;
+    courtId: string;
+    slotIds: string[];
+  } | null>(null);
   ensureBookingFixtures();
   const bookings = listBookings();
 
@@ -21,12 +27,13 @@ export function AdminCalendarPage() {
       <PortalBackdrop variant="top" />
 
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-4 py-4 sm:px-6 sm:py-5">
-        <header className="mb-3 shrink-0 flex max-w-xl flex-col gap-1">
+        <header className="mb-3 flex max-w-xl shrink-0 flex-col gap-1">
           <h1 className="display text-[32px] text-zinc-900 sm:text-[40px]">
             Court <span className="text-yellow">calendar</span>
           </h1>
           <p className="text-xs text-zinc-500 sm:text-sm">
-            Ops view of occupancy. Approve or reject from the bookings inbox.
+            Tap a day to add walk-in bookings on open hours. Approve GCash
+            requests from the bookings inbox.
           </p>
         </header>
 
@@ -35,8 +42,19 @@ export function AdminCalendarPage() {
           onDateChange={setDate}
           bookings={bookings}
           readOnly={false}
+          bookIntent="walk-in"
+          keepOpenOnBook
+          onBookSlot={setWalkIn}
         />
       </div>
+
+      {walkIn ? (
+        <WalkInBookingModal
+          initial={{ plan: "court", ...walkIn }}
+          onClose={() => setWalkIn(null)}
+          onCreated={() => setWalkIn(null)}
+        />
+      ) : null}
     </div>
   );
 }

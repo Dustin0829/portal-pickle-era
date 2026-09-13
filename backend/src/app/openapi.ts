@@ -8,6 +8,7 @@ import { registerActivityLogsOpenApi } from "../modules/activity-logs/activity-l
 import { registerExamplesOpenApi } from "../modules/examples/examples.openapi.js";
 import { registerHealthOpenApi } from "../modules/health/health.openapi.js";
 import { registerUploadsOpenApi } from "../modules/uploads/uploads.openapi.js";
+import { registerWaitlistOpenApi } from "../modules/waitlist/waitlist.openapi.js";
 
 extendZodWithOpenApi(z);
 
@@ -18,6 +19,7 @@ export function buildOpenApiRegistry() {
   registerExamplesOpenApi(registry);
   registerUploadsOpenApi(registry);
   registerActivityLogsOpenApi(registry);
+  registerWaitlistOpenApi(registry);
 
   return registry;
 }

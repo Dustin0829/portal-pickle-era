@@ -23,6 +23,7 @@ Copy `.env.example` to `.env`.
 | `http://localhost:3000/openapi.json`        | Download OpenAPI JSON (not public in production)         |
 | `http://localhost:3000/admin/queues`        | Bull Board (requires `REDIS_URL`)                        |
 | `http://localhost:3000/admin/activity-logs` | Activity log list (Timescale; 503 if store unset)        |
+| `http://localhost:3000/admin/waitlist`      | Waitlist leads (Postgres; Basic Auth when configured)    |
 
 All of these routes live on the **same API server** as your product routes. Activity-log reads use the same basic-auth policy as Swagger. The **support** SPA (`http://localhost:5174`) is the operator UI.
 
@@ -34,6 +35,10 @@ Timescale boot enables compression after **7 days** and retention of **30 days**
 | `production`  | Admin tools **not mounted**  | Admin tools mounted + Basic Auth required |
 
 Set both `ADMIN_BASIC_AUTH_USER` and `ADMIN_BASIC_AUTH_PASSWORD` on deployed environments.
+
+Public waitlist capture (no Basic Auth): `POST /waitlist`.
+
+Railway (API + Postgres + web SPA): see [railway-deploy.md](./railway-deploy.md).
 
 The committed file `contracts/openapi.json` in the repo is unchanged — only the HTTP endpoint is protected.
 
@@ -61,10 +66,10 @@ Leave `REDIS_URL` unset for Minimal SaaS Mode.
 
 ## Optional: Admin basic auth
 
-| Variable                    | Purpose                                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------------------ |
-| `ADMIN_BASIC_AUTH_USER`     | HTTP Basic Auth user for `/docs`, `/openapi.json`, `/admin/queues`, `/admin/activity-logs` |
-| `ADMIN_BASIC_AUTH_PASSWORD` | HTTP Basic Auth password (set both or neither)                                             |
+| Variable                    | Purpose                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_BASIC_AUTH_USER`     | HTTP Basic Auth user for `/docs`, `/openapi.json`, `/admin/queues`, `/admin/activity-logs`, `/admin/waitlist` |
+| `ADMIN_BASIC_AUTH_PASSWORD` | HTTP Basic Auth password (set both or neither)                                                                |
 
 ## Optional: R2 uploads
 

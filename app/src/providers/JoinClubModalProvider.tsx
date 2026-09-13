@@ -28,10 +28,13 @@ export function JoinClubModalProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook paired with provider
 export function useJoinClubModal() {
   const context = useContext(JoinClubModalContext);
   if (!context) {
-    throw new Error("useJoinClubModal must be used within JoinClubModalProvider");
+    throw new Error(
+      "useJoinClubModal must be used within JoinClubModalProvider",
+    );
   }
   return context;
 }

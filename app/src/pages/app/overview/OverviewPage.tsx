@@ -169,7 +169,9 @@ function RecentRequestRow({ booking }: { booking: BookingRequest }) {
       </div>
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 px-4 py-4">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-zinc-900">{title}</p>
+          <p className="truncate text-sm font-semibold text-zinc-900">
+            {title}
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span
               className={cn(

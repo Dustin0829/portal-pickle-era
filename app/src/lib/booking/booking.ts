@@ -71,6 +71,9 @@ export const PAYMENT = {
   number: "0917 850 0107",
 };
 
+/** First public court date (YYYY-MM-DD). Advance booking cannot select earlier days. */
+export const OPENING_DATE = "2026-10-05";
+
 const STORAGE_KEY = "pickle-era-bookings";
 
 export const SLOTS: Record<BookingPlan, TimeSlot[]> = {
@@ -111,6 +114,12 @@ export function dateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+/** Earliest selectable court date: opening day until that day arrives, then today. */
+export function earliestBookableDateKey(now = new Date()) {
+  const today = dateKey(now);
+  return today < OPENING_DATE ? OPENING_DATE : today;
 }
 
 export function parseDateKey(key: string) {
@@ -230,7 +239,13 @@ const DEMO_PEOPLE: Array<{ name: string; email: string }> = [
   { name: "Benito Ramos", email: "benito.ramos@example.com" },
 ];
 
-const DEMO_PLANS: BookingPlan[] = ["court", "court", "court", "open-play", "clinic"];
+const DEMO_PLANS: BookingPlan[] = [
+  "court",
+  "court",
+  "court",
+  "open-play",
+  "clinic",
+];
 const DEMO_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 
 function slotIdFromHour(hour: number) {
@@ -327,9 +342,9 @@ export function ensureBookingFixtures() {
         const seed = dayOffset * 97 + courtIndex * 13 + hourIndex * 7;
         // ~55% of hours booked on near-term days → busy calendar / day modal.
         if (seed % 9 < 4) continue;
-        const status = dayOffset === 0 && seed % 5 === 0 ? "pending" : "approved";
-        const hours =
-          seed % 11 === 0 && hour < 21 ? [hour, hour + 1] : [hour];
+        const status =
+          dayOffset === 0 && seed % 5 === 0 ? "pending" : "approved";
+        const hours = seed % 11 === 0 && hour < 21 ? [hour, hour + 1] : [hour];
         pushBooking({
           dayOffset,
           courtId: court.id,
@@ -359,7 +374,9 @@ export function ensureBookingFixtures() {
   }
 
   // Spread across 7 / 30 / 90 day ranges for dashboard + filters.
-  for (const daysAgo of [0, 1, 2, 3, 5, 7, 10, 14, 21, 28, 35, 45, 60, 75, 89]) {
+  for (const daysAgo of [
+    0, 1, 2, 3, 5, 7, 10, 14, 21, 28, 35, 45, 60, 75, 89,
+  ]) {
     for (let i = 0; i < 4; i += 1) {
       const seed = daysAgo * 31 + i * 17;
       const court = COURTS[seed % COURTS.length]!;

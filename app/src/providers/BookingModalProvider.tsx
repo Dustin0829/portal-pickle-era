@@ -21,10 +21,7 @@ type BookingModalSession = {
 };
 
 type BookingModalContextValue = {
-  openBookingModal: (
-    plan: BookingPlan,
-    preset?: BookingModalPreset,
-  ) => void;
+  openBookingModal: (plan: BookingPlan, preset?: BookingModalPreset) => void;
 };
 
 const BookingModalContext = createContext<BookingModalContextValue | null>(

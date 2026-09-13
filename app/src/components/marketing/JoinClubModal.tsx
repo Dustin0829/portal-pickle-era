@@ -1,7 +1,8 @@
 import { useLenis } from "lenis/react";
 import { X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
-import { saveWaitlistEntry } from "@/lib/waitlist/waitlistStorage";
+import { useCreateWaitlistEntry } from "@/api/features/waitlist/use-waitlist";
+import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 
 type JoinClubModalProps = {
   onClose: () => void;
@@ -9,6 +10,7 @@ type JoinClubModalProps = {
 
 export function JoinClubModal({ onClose }: JoinClubModalProps) {
   const lenis = useLenis();
+  const { createWaitlistEntry, isCreatingWaitlist } = useCreateWaitlistEntry();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,18 +34,24 @@ export function JoinClubModal({ onClose }: JoinClubModalProps) {
     };
   }, [onClose, lenis]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     if (!name.trim() || !email.trim()) {
       setError("Name and email are required.");
       return;
     }
-    if (!saveWaitlistEntry({ name, email, phone: phone || undefined })) {
-      setError("Enter a valid email address.");
-      return;
+    try {
+      await createWaitlistEntry({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        source: "join_club",
+      });
+      setSubmitted(true);
+    } catch (caught) {
+      setError(getUserFacingApiErrorMessage(caught));
     }
-    setSubmitted(true);
   }
 
   return (
@@ -103,7 +111,10 @@ export function JoinClubModal({ onClose }: JoinClubModalProps) {
             </button>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="flex flex-col gap-3 px-5 py-5 sm:px-6">
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-3 px-5 py-5 sm:px-6"
+          >
             <label className="flex flex-col gap-1.5 text-xs text-white/55">
               Name
               <input
@@ -148,9 +159,10 @@ export function JoinClubModal({ onClose }: JoinClubModalProps) {
 
             <button
               type="submit"
-              className="mt-2 h-11 bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white"
+              disabled={isCreatingWaitlist}
+              className="mt-2 h-11 bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:opacity-60"
             >
-              Join the club
+              {isCreatingWaitlist ? "Joining…" : "Join the club"}
             </button>
           </form>
         )}

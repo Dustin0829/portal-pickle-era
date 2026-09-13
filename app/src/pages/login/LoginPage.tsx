@@ -9,8 +9,8 @@ import {
   AuthPasswordField,
   AuthSubmit,
 } from "@/components/marketing/AuthLayout";
-import { useAuth } from "@/providers/AuthProvider";
 import { portalHomePath } from "@/lib/auth/portalHome";
+import { useAuth } from "@/providers/AuthProvider";
 
 export function LoginPage() {
   const { user, login } = useAuth();
