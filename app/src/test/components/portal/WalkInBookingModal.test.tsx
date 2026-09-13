@@ -36,6 +36,7 @@ describe("WalkInBookingModal", () => {
     await user.type(screen.getByPlaceholderText("Full name"), "Kai Mendoza");
     await user.click(screen.getByRole("button", { name: /create booking/i }));
 
+    expect(screen.queryByText(/select hours/i)).not.toBeInTheDocument();
     expect(onCreated).toHaveBeenCalledTimes(1);
     const saved = listBookings().find((item) => item.name === "Kai Mendoza");
     expect(saved).toMatchObject({

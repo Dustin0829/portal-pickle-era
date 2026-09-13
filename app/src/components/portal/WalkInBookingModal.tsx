@@ -9,6 +9,7 @@ import {
   dateKey,
   isSlotTaken,
   saveBooking,
+  selectedSlotLabels,
   type BookingPlan,
   type BookingRequest,
 } from "@/lib/booking/booking";
@@ -30,6 +31,7 @@ export function WalkInBookingModal({
   onCreated: (booking: BookingRequest) => void;
   initial?: WalkInBookingDefaults;
 }) {
+  const slotsLocked = (initial?.slotIds?.length ?? 0) > 0;
   const [plan, setPlan] = useState<BookingPlan>(initial?.plan ?? "court");
   const [date, setDate] = useState(() => initial?.date ?? dateKey(new Date()));
   const [courtId, setCourtId] = useState(
@@ -49,6 +51,7 @@ export function WalkInBookingModal({
   const total = bookingTotal(plan, plan === "court" ? hours : 1);
   const canSubmit =
     name.trim().length > 0 && courtId.length > 0 && slotIds.length > 0;
+  const timeSummary = selectedSlotLabels(plan, slotIds).join(", ");
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -63,12 +66,12 @@ export function WalkInBookingModal({
 
   function selectPlan(next: BookingPlan) {
     setPlan(next);
-    setSlotIds([]);
+    if (!slotsLocked) setSlotIds([]);
   }
 
   function selectCourt(next: string) {
     setCourtId(next);
-    setSlotIds([]);
+    if (!slotsLocked) setSlotIds([]);
   }
 
   function toggleSlot(id: string) {
@@ -206,7 +209,7 @@ export function WalkInBookingModal({
               value={date}
               onChange={(event) => {
                 setDate(event.target.value);
-                setSlotIds([]);
+                if (!slotsLocked) setSlotIds([]);
               }}
               className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
             />
@@ -229,42 +232,61 @@ export function WalkInBookingModal({
             </select>
           </label>
 
-          <div className="sm:col-span-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-              Time {multiSlot ? "(select hours)" : ""}
-            </p>
-            <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
-              {slots.map((slot) => {
-                const taken = isSlotTaken(plan, date, courtId, slot.id);
-                const selected = slotIds.includes(slot.id);
-                return (
-                  <button
-                    key={slot.id}
-                    type="button"
-                    disabled={taken}
-                    onClick={() => toggleSlot(slot.id)}
-                    className={cn(
-                      "rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition",
-                      selected
-                        ? "border-yellow bg-yellow text-black"
-                        : taken
-                          ? "cursor-not-allowed border-zinc-100 text-zinc-300"
-                          : "border-zinc-200 text-zinc-700 hover:border-yellow/60",
-                    )}
-                  >
-                    {slot.label}
-                  </button>
-                );
-              })}
+          {slotsLocked ? (
+            <div className="sm:col-span-2 rounded-xl border border-yellow/50 bg-yellow/15 px-3.5 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-700">
+                Time selected
+              </p>
+              <p className="mt-1.5 text-base font-semibold leading-snug text-zinc-900">
+                {timeSummary || "Selected on calendar"}
+              </p>
+              <p className="mt-2 text-xs text-zinc-600">
+                Total due on site:{" "}
+                <span className="font-bold text-zinc-900">₱{total}</span>
+                <span className="text-zinc-400"> · </span>
+                Saved as approved
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="sm:col-span-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Time {multiSlot ? "(select hours)" : ""}
+              </p>
+              <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+                {slots.map((slot) => {
+                  const taken = isSlotTaken(plan, date, courtId, slot.id);
+                  const selected = slotIds.includes(slot.id);
+                  return (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      disabled={taken}
+                      onClick={() => toggleSlot(slot.id)}
+                      className={cn(
+                        "rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition",
+                        selected
+                          ? "border-yellow bg-yellow text-black"
+                          : taken
+                            ? "cursor-not-allowed border-zinc-100 text-zinc-300"
+                            : "border-zinc-200 text-zinc-700 hover:border-yellow/60",
+                      )}
+                    >
+                      {slot.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          <p className="text-xs text-zinc-500 sm:col-span-2">
-            Total due on site:{" "}
-            <span className="font-semibold text-yellow">₱{total}</span>
-            {" · "}
-            Saved as approved
-          </p>
+          {slotsLocked ? null : (
+            <p className="text-xs text-zinc-500 sm:col-span-2">
+              Total due on site:{" "}
+              <span className="font-semibold text-yellow">₱{total}</span>
+              {" · "}
+              Saved as approved
+            </p>
+          )}
 
           {error ? (
             <p className="text-xs text-maroon sm:col-span-2" role="alert">
