@@ -24,6 +24,19 @@ Copy `.env.example` to `.env`.
 | `http://localhost:3000/admin/queues`        | Bull Board (requires `REDIS_URL`)                        |
 | `http://localhost:3000/admin/activity-logs` | Activity log list (Timescale; 503 if store unset)        |
 | `http://localhost:3000/admin/waitlist`      | Waitlist leads (Postgres; Basic Auth when configured)    |
+| `http://localhost:3000/admin/bookings`      | Bookings inbox (Postgres; Basic Auth when configured)    |
+| `http://localhost:3000/admin/users`         | Users list e.g. `?role=student` (Basic Auth when set)    |
+
+Public product routes (no Basic Auth):
+
+| Method          | Path                          | Notes                                                 |
+| --------------- | ----------------------------- | ----------------------------------------------------- |
+| `POST`          | `/auth/signup`, `/auth/login` | Sets HttpOnly cookie `pe_session`                     |
+| `POST`          | `/auth/logout`                | Clears session                                        |
+| `GET` / `PATCH` | `/auth/me`                    | Requires session cookie                               |
+| `POST`          | `/bookings`                   | Public pending booking (opening date floor for court) |
+| `GET`           | `/bookings/occupancy?date=`   | Calendar blocks (no guest PII)                        |
+| `GET`           | `/me/bookings`                | Requires session cookie                               |
 
 All of these routes live on the **same API server** as your product routes. Activity-log reads use the same basic-auth policy as Swagger. The **support** SPA (`http://localhost:5174`) is the operator UI.
 
@@ -37,6 +50,15 @@ Timescale boot enables compression after **7 days** and retention of **30 days**
 Set both `ADMIN_BASIC_AUTH_USER` and `ADMIN_BASIC_AUTH_PASSWORD` on deployed environments.
 
 Public waitlist capture (no Basic Auth): `POST /waitlist`.
+
+### Session cookies (player portal)
+
+| Detail      | Value                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| Cookie name | `pe_session`                                                                              |
+| Flags       | `HttpOnly`, `SameSite=Lax`, `Secure` when `NODE_ENV=production`                           |
+| CORS        | `credentials: true` already enabled; set `API_CORS_ORIGIN` to the **exact** web origin(s) |
+| Client      | Fetch/XHR must use `credentials: "include"`                                               |
 
 Railway (API + Postgres + web SPA): see [railway-deploy.md](./railway-deploy.md).
 
@@ -66,10 +88,10 @@ Leave `REDIS_URL` unset for Minimal SaaS Mode.
 
 ## Optional: Admin basic auth
 
-| Variable                    | Purpose                                                                                                       |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_BASIC_AUTH_USER`     | HTTP Basic Auth user for `/docs`, `/openapi.json`, `/admin/queues`, `/admin/activity-logs`, `/admin/waitlist` |
-| `ADMIN_BASIC_AUTH_PASSWORD` | HTTP Basic Auth password (set both or neither)                                                                |
+| Variable                    | Purpose                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ADMIN_BASIC_AUTH_USER`     | HTTP Basic Auth user for `/docs`, `/openapi.json`, `/admin/queues`, `/admin/activity-logs`, `/admin/waitlist`, `/admin/bookings`, `/admin/users` |
+| `ADMIN_BASIC_AUTH_PASSWORD` | HTTP Basic Auth password (set both or neither)                                                                                                   |
 
 ## Optional: R2 uploads
 

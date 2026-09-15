@@ -5,6 +5,8 @@ import {
 } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { registerActivityLogsOpenApi } from "../modules/activity-logs/activity-logs.openapi.js";
+import { registerAuthOpenApi } from "../modules/auth/auth.openapi.js";
+import { registerBookingsOpenApi } from "../modules/bookings/bookings.openapi.js";
 import { registerExamplesOpenApi } from "../modules/examples/examples.openapi.js";
 import { registerHealthOpenApi } from "../modules/health/health.openapi.js";
 import { registerUploadsOpenApi } from "../modules/uploads/uploads.openapi.js";
@@ -20,6 +22,8 @@ export function buildOpenApiRegistry() {
   registerUploadsOpenApi(registry);
   registerActivityLogsOpenApi(registry);
   registerWaitlistOpenApi(registry);
+  registerAuthOpenApi(registry);
+  registerBookingsOpenApi(registry);
 
   return registry;
 }

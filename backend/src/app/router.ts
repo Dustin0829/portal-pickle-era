@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { protectAdminTools, shouldMountAdminTools } from "../middleware/adminBasicAuth.js";
 import { activityLogsRouter } from "../modules/activity-logs/activity-logs.routes.js";
+import { authRouter } from "../modules/auth/auth.routes.js";
+import {
+  bookingsAdminRouter,
+  bookingsMeRouter,
+  bookingsPublicRouter,
+  usersAdminRouter,
+} from "../modules/bookings/bookings.routes.js";
 import { examplesRouter } from "../modules/examples/examples.routes.js";
 import { healthRouter } from "../modules/health/health.routes.js";
 import { uploadsRouter } from "../modules/uploads/uploads.routes.js";
@@ -13,10 +20,15 @@ export function createApiRouter() {
   apiRouter.use("/examples", examplesRouter);
   apiRouter.use("/uploads", uploadsRouter);
   apiRouter.use("/waitlist", waitlistPublicRouter);
+  apiRouter.use("/auth", authRouter);
+  apiRouter.use("/bookings", bookingsPublicRouter);
+  apiRouter.use("/me/bookings", bookingsMeRouter);
 
   if (shouldMountAdminTools()) {
     apiRouter.use("/admin/activity-logs", protectAdminTools, activityLogsRouter);
     apiRouter.use("/admin/waitlist", protectAdminTools, waitlistAdminRouter);
+    apiRouter.use("/admin/bookings", protectAdminTools, bookingsAdminRouter);
+    apiRouter.use("/admin/users", protectAdminTools, usersAdminRouter);
   }
 
   return apiRouter;
