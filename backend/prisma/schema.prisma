@@ -45,3 +45,74 @@ model WaitlistEntry {
   @@index([email])
   @@map("waitlist_entries")
 }
+
+enum UserRole {
+  student
+  admin
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         UserRole  @default(student)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  sessions     Session[]
+  bookings     Booking[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique @map("token_hash")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+enum BookingPlan {
+  court
+  open_play
+  clinic
+}
+
+enum BookingStatus {
+  pending
+  approved
+  rejected
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  plan            BookingPlan
+  date            String
+  courtId         String        @map("court_id")
+  slotIds         String[]      @map("slot_ids")
+  name            String
+  email           String
+  userId          String?       @map("user_id")
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  referenceId     String        @default("") @map("reference_id")
+  receiptName     String?       @map("receipt_name")
+  receiptKey      String?       @map("receipt_key")
+  receiptMimeType String?       @map("receipt_mime_type")
+  status          BookingStatus @default(pending)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([date, courtId])
+  @@index([status])
+  @@index([email])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("bookings")
+}
