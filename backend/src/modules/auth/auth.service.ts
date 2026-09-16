@@ -1,113 +1,139 @@
-import type { CookieOptions, Response } from "express";
+import type { Request } from "express";
+import { APIError } from "better-auth";
+import { fromNodeHeaders } from "better-auth/node";
 import { prisma } from "../../app/prisma.js";
-import { env } from "../../app/env.js";
 import { ConflictError, UnauthorizedError } from "../../lib/errors.js";
-import {
-  createSessionToken,
-  hashPassword,
-  hashSessionToken,
-  verifyPassword,
-} from "./auth.crypto.js";
-import { SESSION_COOKIE, SESSION_TTL_MS } from "./auth.constants.js";
+import { auth } from "./auth.js";
+import { isUserRole, type AuthUser } from "./auth.constants.js";
 import { normalizeEmail, toUserDto, userPublicSelect } from "./auth.mapper.js";
 import type { LoginBody, PatchMeBody, SignupBody, UserDto } from "./auth.schema.js";
 
-function cookieOptions(expires: Date): CookieOptions {
+type AuthHeaderResult<T> = {
+  headers: Headers;
+  response: T;
+};
+
+function mapAuthError(error: unknown): never {
+  if (error instanceof APIError) {
+    const status = typeof error.statusCode === "number" ? error.statusCode : Number(error.status);
+    const message = error.message || "Authentication failed";
+    if (status === 401) {
+      throw new UnauthorizedError(
+        message.includes("Invalid") ? "Invalid email or password" : message,
+      );
+    }
+    if (status === 409 || /already|exist/i.test(message)) {
+      throw new ConflictError("An account with this email already exists");
+    }
+    if (status === 422 || status === 400) {
+      throw new UnauthorizedError(message);
+    }
+  }
+  throw error;
+}
+
+async function callWithHeaders<T>(
+  run: () => Promise<AuthHeaderResult<T> | T>,
+): Promise<AuthHeaderResult<T>> {
+  try {
+    const result = await run();
+    if (result && typeof result === "object" && "headers" in result && "response" in result) {
+      return result;
+    }
+    return { headers: new Headers(), response: result };
+  } catch (error) {
+    mapAuthError(error);
+  }
+}
+
+function roleFromUser(user: { role?: unknown }): AuthUser["role"] {
+  return isUserRole(user.role) ? user.role : "student";
+}
+
+export function toAuthUser(user: {
+  id: string;
+  name: string;
+  email: string;
+  role?: unknown;
+}): AuthUser {
   return {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
-    path: "/",
-    expires,
-  };
-}
-
-export function setSessionCookie(res: Response, token: string, expiresAt: Date) {
-  res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt));
-}
-
-export function clearSessionCookie(res: Response) {
-  res.clearCookie(SESSION_COOKIE, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
-    path: "/",
-  });
-}
-
-export async function signupUser(
-  body: SignupBody,
-): Promise<{ user: UserDto; token: string; expiresAt: Date }> {
-  const email = normalizeEmail(body.email);
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) {
-    throw new ConflictError("An account with this email already exists");
-  }
-
-  const passwordHash = await hashPassword(body.password);
-  const user = await prisma.user.create({
-    data: {
-      name: body.name.trim(),
-      email,
-      passwordHash,
-      role: "student",
-    },
-    select: userPublicSelect,
-  });
-
-  const session = await createSessionForUser(user.id);
-  return { user: toUserDto(user), token: session.token, expiresAt: session.expiresAt };
-}
-
-export async function loginUser(
-  body: LoginBody,
-): Promise<{ user: UserDto; token: string; expiresAt: Date }> {
-  const email = normalizeEmail(body.email);
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { ...userPublicSelect, passwordHash: true },
-  });
-
-  if (!user || !(await verifyPassword(body.password, user.passwordHash))) {
-    throw new UnauthorizedError("Invalid email or password");
-  }
-
-  const publicUser = {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
+    role: roleFromUser(user),
   };
-  const session = await createSessionForUser(publicUser.id);
-  return { user: toUserDto(publicUser), token: session.token, expiresAt: session.expiresAt };
 }
 
-export async function logoutSession(token: string | undefined) {
-  if (!token) return;
-  const tokenHash = hashSessionToken(token);
-  await prisma.session.deleteMany({ where: { tokenHash } });
-}
+export async function signupWithBetterAuth(
+  body: SignupBody,
+  req: Request,
+): Promise<{ user: UserDto; headers: Headers }> {
+  const email = normalizeEmail(body.email);
+  const { headers, response } = await callWithHeaders(() =>
+    auth.api.signUpEmail({
+      body: {
+        name: body.name.trim(),
+        email,
+        password: body.password,
+      },
+      headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
+    }),
+  );
 
-export async function getUserForSessionToken(token: string | undefined): Promise<UserDto | null> {
-  if (!token) return null;
-  const tokenHash = hashSessionToken(token);
-  const session = await prisma.session.findUnique({
-    where: { tokenHash },
-    select: {
-      expiresAt: true,
-      user: { select: userPublicSelect },
-    },
+  const userRow = await prisma.user.findUniqueOrThrow({
+    where: { id: response.user.id },
+    select: userPublicSelect,
   });
 
-  if (!session) return null;
-  if (session.expiresAt.getTime() <= Date.now()) {
-    await prisma.session.deleteMany({ where: { tokenHash } });
-    return null;
-  }
+  return { user: toUserDto(userRow), headers };
+}
 
-  return toUserDto(session.user);
+export async function loginWithBetterAuth(
+  body: LoginBody,
+  req: Request,
+): Promise<{ user: UserDto; headers: Headers }> {
+  const email = normalizeEmail(body.email);
+  const { headers, response } = await callWithHeaders(() =>
+    auth.api.signInEmail({
+      body: {
+        email,
+        password: body.password,
+      },
+      headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
+    }),
+  );
+
+  const userRow = await prisma.user.findUniqueOrThrow({
+    where: { id: response.user.id },
+    select: userPublicSelect,
+  });
+
+  return { user: toUserDto(userRow), headers };
+}
+
+export async function logoutWithBetterAuth(req: Request): Promise<Headers> {
+  try {
+    const { headers } = await callWithHeaders(() =>
+      auth.api.signOut({
+        headers: fromNodeHeaders(req.headers),
+        returnHeaders: true,
+      }),
+    );
+    return headers;
+  } catch {
+    // Idempotent logout when no session is present
+    return new Headers();
+  }
+}
+
+export async function getSessionUser(req: Request): Promise<AuthUser | null> {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  if (!session?.user) return null;
+  return toAuthUser(session.user);
 }
 
 export async function updateMe(userId: string, body: PatchMeBody): Promise<UserDto> {
@@ -119,15 +145,10 @@ export async function updateMe(userId: string, body: PatchMeBody): Promise<UserD
   return toUserDto(user);
 }
 
-async function createSessionForUser(userId: string) {
-  const token = createSessionToken();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await prisma.session.create({
-    data: {
-      userId,
-      tokenHash: hashSessionToken(token),
-      expiresAt,
-    },
+export async function getUserDtoById(userId: string): Promise<UserDto> {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: userPublicSelect,
   });
-  return { token, expiresAt };
+  return toUserDto(user);
 }

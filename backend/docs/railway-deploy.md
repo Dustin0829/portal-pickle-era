@@ -28,6 +28,9 @@ Typical Nixpacks / custom:
 | `NODE_ENV`                                                                              | `production`                                                                                                          |
 | `PORT`                                                                                  | Railway injects; ensure app listens on it                                                                             |
 | `API_CORS_ORIGIN`                                                                       | Public **web** service origin(s), comma-separated                                                                     |
+| `BETTER_AUTH_SECRET`                                                                    | Required in production (session signing)                                                                              |
+| `BETTER_AUTH_URL`                                                                       | Public API origin, e.g. `https://api.pickleera.co`                                                                    |
+| `AUTH_COOKIE_DOMAIN`                                                                    | Shared cookie domain, e.g. `.pickleera.co`                                                                            |
 | `ADMIN_BASIC_AUTH_USER` / `ADMIN_BASIC_AUTH_PASSWORD`                                   | Required in production to mount `/docs`, `/admin/waitlist`, `/admin/bookings`, `/admin/users`, `/admin/activity-logs` |
 | `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_BUCKET` / `S3_REGION` | Railway Bucket Credentials mapped into the API service (optional; uploads soft-fail when unset)                       |
 
@@ -47,7 +50,7 @@ Leave Basic Auth unset only for local/dev. In production without both vars, admi
 
 ## Seed (admin / demo users)
 
-Production image must include `src/generated/prisma` and `src/modules/auth/auth.crypto.ts` (see `Dockerfile` runtime stage). Prefer seeding via Railway CLI from `backend/` so you use prod `DATABASE_URL` without SSHing:
+Production image must include `src/generated/prisma` (see `Dockerfile` runtime stage). After Better Auth migrate, **re-seed** so admin/demo passwords use Better Auth hashing. Prefer seeding via Railway CLI from `backend/` so you use prod `DATABASE_URL` without SSHing:
 
 ```bash
 cd backend
@@ -60,6 +63,6 @@ railway run --service pickle-era-backend --environment production -- pnpm db:see
 ## Waitlist / bookings / auth
 
 - Public capture: `POST /waitlist`, `POST /bookings`, `POST /auth/signup|login`
-- Session cookie `pe_session` for `/auth/me` and `/me/bookings` (SPA needs `credentials: "include"`)
+- Better Auth session cookie for `/auth/me` and `/me/bookings` (SPA needs `credentials: "include"`; set `AUTH_COOKIE_DOMAIN=.pickleera.co` in prod)
 - Admin list (ops): `GET /admin/waitlist`, `GET /admin/bookings` — Swagger `/docs` or curl with Basic Auth when configured
 - Receipt upload: `POST /uploads/presign` then PUT to the bucket; store object `key` as `receiptKey`

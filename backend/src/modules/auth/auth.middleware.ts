@@ -1,19 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import { UnauthorizedError } from "../../lib/errors.js";
-import { SESSION_COOKIE } from "./auth.constants.js";
-import { getUserForSessionToken } from "./auth.service.js";
+import { getSessionUser } from "./auth.service.js";
 
 export async function loadSession(req: Request, _res: Response, next: NextFunction) {
   try {
-    const token = req.cookies?.[SESSION_COOKIE] as string | undefined;
-    const user = await getUserForSessionToken(token);
+    const user = await getSessionUser(req);
     if (user) {
-      req.authUser = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      };
+      req.authUser = user;
     }
     next();
   } catch (error) {

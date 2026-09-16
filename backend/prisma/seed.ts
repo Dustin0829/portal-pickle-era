@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../src/generated/prisma/client.js";
-import { hashPassword } from "../src/modules/auth/auth.crypto.js";
 
 const labels = [
   "First example",
@@ -38,7 +39,7 @@ const PLAYER_FIXTURES = [
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-async function upsertUser(input: {
+async function upsertCredentialUser(input: {
   name: string;
   email: string;
   password: string;
@@ -46,20 +47,45 @@ async function upsertUser(input: {
 }) {
   const email = input.email.trim().toLowerCase();
   const passwordHash = await hashPassword(input.password);
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, accounts: { where: { providerId: "credential" }, select: { id: true } } },
+  });
+
+  const userId = existing?.id ?? randomUUID();
   await prisma.user.upsert({
     where: { email },
     create: {
+      id: userId,
       name: input.name,
       email,
-      passwordHash,
+      emailVerified: true,
       role: input.role,
     },
     update: {
       name: input.name,
-      passwordHash,
       role: input.role,
+      emailVerified: true,
     },
   });
+
+  const accountId = existing?.accounts[0]?.id ?? randomUUID();
+  if (existing?.accounts[0]) {
+    await prisma.account.update({
+      where: { id: accountId },
+      data: { password: passwordHash },
+    });
+  } else {
+    await prisma.account.create({
+      data: {
+        id: accountId,
+        accountId: userId,
+        providerId: "credential",
+        userId,
+        password: passwordHash,
+      },
+    });
+  }
 }
 
 async function main() {
@@ -67,11 +93,12 @@ async function main() {
 
   await prisma.example.createMany({
     data: labels.map((label) => ({ label })),
+    skipDuplicates: true,
   });
 
-  await upsertUser({ ...ADMIN_FIXTURE, role: "admin" });
+  await upsertCredentialUser({ ...ADMIN_FIXTURE, role: "admin" });
   for (const player of PLAYER_FIXTURES) {
-    await upsertUser({ ...player, role: "student" });
+    await upsertCredentialUser({ ...player, role: "student" });
   }
 }
 

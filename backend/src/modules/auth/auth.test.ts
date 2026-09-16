@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { hashPassword, verifyPassword } from "./auth.crypto.js";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+import { isUserRole } from "./auth.constants.js";
 import { loginBodySchema, signupBodySchema } from "./auth.schema.js";
 import { normalizeEmail, toUserDto } from "./auth.mapper.js";
+import { toAuthUser } from "./auth.service.js";
 
 test("signup schema requires password length 8+", () => {
   assert.equal(
@@ -35,13 +37,13 @@ test("normalizeEmail lowercases", () => {
   assert.equal(normalizeEmail("  Ada@Example.COM "), "ada@example.com");
 });
 
-test("password hash verifies", async () => {
+test("better-auth password hash verifies", async () => {
   const hash = await hashPassword("password1");
-  assert.equal(await verifyPassword("password1", hash), true);
-  assert.equal(await verifyPassword("wrong", hash), false);
+  assert.equal(await verifyPassword({ hash, password: "password1" }), true);
+  assert.equal(await verifyPassword({ hash, password: "wrong" }), false);
 });
 
-test("user mapper omits password", () => {
+test("user mapper omits secrets", () => {
   const dto = toUserDto({
     id: "u1",
     name: "Ada",
@@ -52,4 +54,17 @@ test("user mapper omits password", () => {
   });
   assert.equal(dto.email, "ada@example.com");
   assert.equal("passwordHash" in dto, false);
+});
+
+test("toAuthUser defaults unknown role to student", () => {
+  assert.equal(toAuthUser({ id: "1", name: "A", email: "a@b.co", role: "admin" }).role, "admin");
+  assert.equal(toAuthUser({ id: "1", name: "A", email: "a@b.co", role: "nope" }).role, "student");
+  assert.equal(isUserRole("admin"), true);
+  assert.equal(isUserRole("nope"), false);
+});
+
+test("patch me schema is name-only strict", async () => {
+  const { patchMeBodySchema } = await import("./auth.schema.js");
+  assert.equal(patchMeBodySchema.safeParse({ name: "New" }).success, true);
+  assert.equal(patchMeBodySchema.safeParse({ name: "New", role: "admin" }).success, false);
 });
