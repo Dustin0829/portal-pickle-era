@@ -5,7 +5,6 @@ import type {
   CreatePublicBookingBody,
   ListBookingsQuery,
   ListUsersQuery,
-  OccupancyQuery,
   PatchBookingBody,
 } from "./bookings.schema.js";
 import {
@@ -24,7 +23,7 @@ export async function createPublicBookingController(req: Request, res: Response)
 }
 
 export async function occupancyController(req: Request, res: Response) {
-  const items = await listOccupancy(req.query as unknown as OccupancyQuery);
+  const items = await listOccupancy(req.query);
   return sendSuccess(res, { items }, "ok", 200);
 }
 

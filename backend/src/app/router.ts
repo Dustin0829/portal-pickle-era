@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { protectAdminTools, shouldMountAdminTools } from "../middleware/adminBasicAuth.js";
+import { protectProductAdmin } from "../middleware/protectProductAdmin.js";
 import { activityLogsRouter } from "../modules/activity-logs/activity-logs.routes.js";
 import { authRouter } from "../modules/auth/auth.routes.js";
 import {
@@ -26,9 +27,9 @@ export function createApiRouter() {
 
   if (shouldMountAdminTools()) {
     apiRouter.use("/admin/activity-logs", protectAdminTools, activityLogsRouter);
-    apiRouter.use("/admin/waitlist", protectAdminTools, waitlistAdminRouter);
-    apiRouter.use("/admin/bookings", protectAdminTools, bookingsAdminRouter);
-    apiRouter.use("/admin/users", protectAdminTools, usersAdminRouter);
+    apiRouter.use("/admin/waitlist", protectProductAdmin, waitlistAdminRouter);
+    apiRouter.use("/admin/bookings", protectProductAdmin, bookingsAdminRouter);
+    apiRouter.use("/admin/users", protectProductAdmin, usersAdminRouter);
   }
 
   return apiRouter;

@@ -1,15 +1,21 @@
 import { z } from "zod";
-import { paginatedQuerySchema } from "../../lib/pagination.schema.js";
+import { nonEmptyString } from "@/api/schema/primitives.schema";
+import { paginatedQuerySchema } from "@/api/schema/primitives.schema";
 
-export const OPENING_DATE = "2026-10-05";
-
-export const bookingPlanApiSchema = z.enum(["court", "open-play", "clinic"]);
+export const bookingPlanSchema = z.enum(["court", "open-play", "clinic"]);
 export const bookingStatusSchema = z.enum(["pending", "approved", "rejected"]);
-export const courtIdSchema = z.enum(["in-1", "in-2", "in-3", "out-1", "out-2", "out-3"]);
+export const courtIdSchema = z.enum([
+  "in-1",
+  "in-2",
+  "in-3",
+  "out-1",
+  "out-2",
+  "out-3",
+]);
 
 export const bookingDtoSchema = z.object({
   id: z.string(),
-  plan: bookingPlanApiSchema,
+  plan: bookingPlanSchema,
   date: z.string(),
   courtId: z.string(),
   slotIds: z.array(z.string()).min(1),
@@ -21,13 +27,13 @@ export const bookingDtoSchema = z.object({
   receiptKey: z.string().nullable(),
   receiptMimeType: z.string().nullable(),
   status: bookingStatusSchema,
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const bookingOccupancyItemSchema = z.object({
   id: z.string(),
-  plan: bookingPlanApiSchema,
+  plan: bookingPlanSchema,
   date: z.string(),
   courtId: z.string(),
   slotIds: z.array(z.string()).min(1),
@@ -36,13 +42,13 @@ export const bookingOccupancyItemSchema = z.object({
 
 const bookingBodyBase = z
   .object({
-    plan: bookingPlanApiSchema.default("court"),
+    plan: bookingPlanSchema.default("court"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     courtId: courtIdSchema,
     slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),
-    name: z.string().trim().min(1).max(120),
-    email: z.string().trim().email().max(254),
-    referenceId: z.string().trim().max(120).optional().default(""),
+    name: nonEmptyString.max(120),
+    email: nonEmptyString.email("Enter a valid email address").max(254),
+    referenceId: z.string().trim().max(120).optional(),
     receiptName: z.string().trim().max(180).optional(),
     receiptKey: z.string().trim().max(512).optional(),
     receiptMimeType: z.string().trim().max(120).optional(),
@@ -50,11 +56,11 @@ const bookingBodyBase = z
   .strict();
 
 export const createPublicBookingBodySchema = bookingBodyBase;
-
 export const createAdminBookingBodySchema = bookingBodyBase;
 
 export const listBookingsQuerySchema = paginatedQuerySchema.extend({
   sort: z.enum(["createdAt", "date"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
   search: z.string().trim().min(2).max(100).optional(),
   status: bookingStatusSchema.optional(),
 });
@@ -74,29 +80,6 @@ export const occupancyQuerySchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
   })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.date) return;
-    if (value.from && value.to) {
-      if (value.from > value.to) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "from must be on or before to",
-          path: ["from"],
-        });
-      }
-      return;
-    }
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Provide date or from and to",
-    });
-  });
-
-export const bookingIdParamsSchema = z
-  .object({
-    id: z.string().min(1),
-  })
   .strict();
 
 export const patchBookingBodySchema = z
@@ -106,14 +89,19 @@ export const patchBookingBodySchema = z
   .strict();
 
 export const listUsersQuerySchema = paginatedQuerySchema.extend({
-  role: z.enum(["student", "admin"]).optional().default("student"),
+  role: z.enum(["student", "admin"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 export type BookingDto = z.infer<typeof bookingDtoSchema>;
 export type BookingOccupancyItem = z.infer<typeof bookingOccupancyItemSchema>;
-export type CreatePublicBookingBody = z.infer<typeof createPublicBookingBodySchema>;
-export type CreateAdminBookingBody = z.infer<typeof createAdminBookingBodySchema>;
-export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
+export type CreatePublicBookingBody = z.infer<
+  typeof createPublicBookingBodySchema
+>;
+export type CreateAdminBookingBody = z.infer<
+  typeof createAdminBookingBodySchema
+>;
+export type ListBookingsQuery = z.input<typeof listBookingsQuerySchema>;
 export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
-export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
+export type ListUsersQuery = z.input<typeof listUsersQuerySchema>;

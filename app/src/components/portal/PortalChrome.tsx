@@ -63,7 +63,7 @@ export function PortalChrome({
               userName={user?.name}
               onLogout={() => {
                 setMobileOpen(false);
-                logout();
+                void logout();
               }}
             />
           </aside>
@@ -174,7 +174,7 @@ function SidebarFooter({
   onLogout,
 }: {
   userName?: string;
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
 }) {
   return (
     <div className="mt-auto border-t border-white/10 px-4 py-4">
@@ -183,7 +183,7 @@ function SidebarFooter({
       ) : null}
       <button
         type="button"
-        onClick={onLogout}
+        onClick={() => void onLogout()}
         className="mt-3 inline-flex items-center gap-2 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55 transition hover:text-yellow"
       >
         <LogOut size={12} aria-hidden />

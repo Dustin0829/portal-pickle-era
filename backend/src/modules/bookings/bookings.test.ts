@@ -51,9 +51,17 @@ test("public booking schema rejects bad date", () => {
   );
 });
 
-test("occupancy query requires date", () => {
+test("occupancy query requires date or from+to", () => {
   assert.equal(occupancyQuerySchema.safeParse({}).success, false);
   assert.equal(occupancyQuerySchema.safeParse({ date: "2026-10-05" }).success, true);
+  assert.equal(
+    occupancyQuerySchema.safeParse({ from: "2026-10-01", to: "2026-10-31" }).success,
+    true,
+  );
+  assert.equal(
+    occupancyQuerySchema.safeParse({ from: "2026-10-31", to: "2026-10-01" }).success,
+    false,
+  );
 });
 
 test("patch status only approved or rejected", () => {

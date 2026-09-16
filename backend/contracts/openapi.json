@@ -431,6 +431,9 @@
               "clinic"
             ]
           },
+          "date": {
+            "type": "string"
+          },
           "courtId": {
             "type": "string"
           },
@@ -452,6 +455,7 @@
         "required": [
           "id",
           "plan",
+          "date",
           "courtId",
           "slotIds",
           "status"
@@ -4404,8 +4408,26 @@
               "type": "string",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             },
-            "required": true,
+            "required": false,
             "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
             "in": "query"
           }
         ],
@@ -4445,6 +4467,9 @@
                                   "clinic"
                                 ]
                               },
+                              "date": {
+                                "type": "string"
+                              },
                               "courtId": {
                                 "type": "string"
                               },
@@ -4466,6 +4491,7 @@
                             "required": [
                               "id",
                               "plan",
+                              "date",
                               "courtId",
                               "slotIds",
                               "status"

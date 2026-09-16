@@ -1,3 +1,6 @@
+import { createPublicBooking } from "@/api/features/bookings/bookings.service";
+import { listOccupancy } from "@/api/features/bookings/bookings.service";
+import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { useLenis } from "lenis/react";
 import {
   Check,
@@ -21,20 +24,19 @@ import {
   SLOTS,
   allowsMultiSlot,
   bookingTotal,
-  courtHasOpening,
   courtLabel,
   dateKey,
   OPENING_DATE,
   earliestBookableDateKey,
   formatLongDate,
-  isSlotOpen,
+  isSlotPast,
   parseDateKey,
-  saveBooking,
   selectedSlotLabels,
   type BookingPlan,
+  type TimeSlot,
 } from "@/lib/booking/booking";
-import { createWaitlistEntry } from "@/api/features/waitlist/waitlist.service";
 import { useAuth } from "@/providers/AuthProvider";
+import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 
 type Step = "schedule" | "pay" | "done";
 
@@ -73,14 +75,51 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const [receiptName, setReceiptName] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [takenKeys, setTakenKeys] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (!user) return;
-    // Prefill identity fields once when session becomes available.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form defaults from auth session
     setName((current) => current || user.name);
     setEmail((current) => current || user.email);
   }, [user]);
+
+  useEffect(() => {
+    if (!open || !date) return;
+    const controller = new AbortController();
+    void listOccupancy({ date }, controller.signal)
+      .then((items) => {
+        const next = new Set<string>();
+        for (const item of items) {
+          for (const slotId of item.slotIds) {
+            next.add(`${item.courtId}|${slotId}`);
+          }
+        }
+        setTakenKeys(next);
+      })
+      .catch(() => {
+        setTakenKeys(new Set());
+      });
+    return () => controller.abort();
+  }, [open, date]);
+
+  function isTaken(court: string, slotId: string) {
+    return takenKeys.has(`${court}|${slotId}`);
+  }
+
+  function isOpenSlot(slot: TimeSlot) {
+    if (!courtId || !plan) return false;
+    if (isSlotPast(date, slot.hour)) return false;
+    return !isTaken(courtId, slot.id);
+  }
+
+  function courtHasOpenHour(court: string) {
+    if (!plan) return false;
+    return SLOTS[plan].some(
+      (slot) => !isSlotPast(date, slot.hour) && !isTaken(court, slot.id),
+    );
+  }
 
   useEffect(() => {
     if (!open) {
@@ -170,44 +209,41 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       return;
     }
 
-    let receiptDataUrl: string | undefined;
-    if (receiptFile.size <= 1_500_000) {
-      receiptDataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () =>
-          resolve(typeof reader.result === "string" ? reader.result : "");
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(receiptFile);
-      }).catch(() => undefined);
-    }
-
-    saveBooking({
-      plan,
-      date,
-      courtId,
-      slotIds: slots
-        .filter((slot) => slotIds.includes(slot.id))
-        .map((slot) => slot.id),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      referenceId: referenceId.trim(),
-      receiptName,
-      receiptDataUrl: receiptDataUrl || undefined,
-      receiptMimeType: receiptFile.type || undefined,
-    });
-
-    const leadEmail = email.trim().toLowerCase();
-    if (leadEmail) {
-      void createWaitlistEntry({
+    setSubmitError("");
+    setSubmitting(true);
+    try {
+      const upload = await uploadReceiptFile(receiptFile);
+      await createPublicBooking({
+        plan,
+        date,
+        courtId: courtId as
+          | "in-1"
+          | "in-2"
+          | "in-3"
+          | "out-1"
+          | "out-2"
+          | "out-3",
+        slotIds: slots
+          .filter((slot) => slotIds.includes(slot.id))
+          .map((slot) => slot.id),
         name: name.trim(),
-        email: leadEmail,
-        source: "booking",
-      }).catch(() => {
-        // Soft-fail: booking confirmation is primary.
+        email: email.trim().toLowerCase(),
+        referenceId: referenceId.trim(),
+        receiptName,
+        ...(upload?.receiptKey ? { receiptKey: upload.receiptKey } : {}),
+        ...(upload?.receiptMimeType || receiptFile.type
+          ? {
+              receiptMimeType:
+                upload?.receiptMimeType || receiptFile.type || undefined,
+            }
+          : {}),
       });
+      setStep("done");
+    } catch (error) {
+      setSubmitError(getUserFacingApiErrorMessage(error));
+    } finally {
+      setSubmitting(false);
     }
-
-    setStep("done");
   }
 
   if (!open || !plan || !meta) return null;
@@ -372,18 +408,16 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 <CourtGroup
                   label="Indoor"
                   courts={indoor}
-                  plan={plan}
-                  date={date}
                   selected={courtId}
                   onSelect={selectCourt}
+                  hasOpening={courtHasOpenHour}
                 />
                 <CourtGroup
                   label="Outdoor"
                   courts={outdoor}
-                  plan={plan}
-                  date={date}
                   selected={courtId}
                   onSelect={selectCourt}
+                  hasOpening={courtHasOpenHour}
                 />
 
                 <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
@@ -398,8 +432,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {slots.map((slot) => {
-                    const openSlot =
-                      Boolean(courtId) && isSlotOpen(plan, date, courtId, slot);
+                    const openSlot = Boolean(courtId) && isOpenSlot(slot);
                     const selected = slotIds.includes(slot.id);
                     return (
                       <button
@@ -576,11 +609,17 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 </button>
                 <button
                   type="submit"
-                  className="pay-action w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white sm:flex-1"
+                  disabled={submitting}
+                  className="pay-action w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:opacity-60 sm:flex-1"
                 >
-                  Submit proof · ₱{total}
+                  {submitting ? "Submitting…" : `Submit proof · ₱${total}`}
                 </button>
               </div>
+              {submitError ? (
+                <p className="mt-3 text-sm text-red-400" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
             </div>
           </form>
         ) : null}
@@ -592,17 +631,15 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
 function CourtGroup({
   label,
   courts,
-  plan,
-  date,
   selected,
   onSelect,
+  hasOpening,
 }: {
   label: string;
   courts: typeof COURTS;
-  plan: BookingPlan;
-  date: string;
   selected: string;
   onSelect: (id: string) => void;
+  hasOpening: (courtId: string) => boolean;
 }) {
   return (
     <div className="mt-4">
@@ -611,7 +648,7 @@ function CourtGroup({
       </p>
       <div className="flex flex-wrap gap-2">
         {courts.map((court) => {
-          const available = courtHasOpening(plan, date, court.id);
+          const available = hasOpening(court.id);
           const active = selected === court.id;
           return (
             <button
