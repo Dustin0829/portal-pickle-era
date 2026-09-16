@@ -29,6 +29,8 @@ Prisma agent skills (`prisma-client-api`, `prisma-cli`) are included under `.cur
 
 ## Local Environment Setup
 
+**Local stage before Railway:** follow [docs/local-stage.md](./docs/local-stage.md) (Docker → smoke auth/bookings → then deploy).
+
 ### 1. Install dependencies
 
 ```bash

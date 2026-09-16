@@ -47,7 +47,11 @@ export function Navbar() {
             <Link to={portalTo} className={portalLinkClass}>
               Portal
             </Link>
-            <button type="button" onClick={logout} className={loginClass}>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className={loginClass}
+            >
               Log out
             </button>
           </div>
@@ -93,7 +97,7 @@ export function Navbar() {
                   type="button"
                   className={loginMobileClass}
                   onClick={() => {
-                    logout();
+                    void logout();
                     setOpen(false);
                   }}
                 >

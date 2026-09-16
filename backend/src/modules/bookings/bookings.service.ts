@@ -99,13 +99,19 @@ export async function createAdminBooking(body: CreateAdminBookingBody) {
 }
 
 export async function listOccupancy(query: OccupancyQuery) {
+  const from = query.date ?? query.from;
+  const to = query.date ?? query.to;
+  if (!from || !to) {
+    throw new ValidationError("Provide date or from and to");
+  }
+
   const rows = await prisma.booking.findMany({
     where: {
-      date: query.date,
+      date: { gte: from, lte: to },
       status: { in: ["pending", "approved"] },
     },
     select: bookingOccupancySelect,
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   });
   return rows.map(toOccupancyItem);
 }

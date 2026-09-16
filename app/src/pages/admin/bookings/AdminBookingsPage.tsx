@@ -11,6 +11,10 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import {
+  useAdminBookings,
+  usePatchAdminBooking,
+} from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
@@ -24,14 +28,12 @@ import {
   PLAN_META,
   bookingTotal,
   dateKey,
-  ensureBookingFixtures,
   formatHour,
   formatLongDate,
-  listBookings,
-  updateBookingStatus,
   type BookingRequest,
   type BookingStatus,
 } from "@/lib/booking/booking";
+import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
 
 type RecentPreset = PortalRangeValue;
@@ -60,17 +62,20 @@ export function AdminBookingsPage() {
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<RecentPreset>("today");
-  const [tick, setTick] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const { data, refetch } = useAdminBookings({
+    page: 1,
+    limit: 100,
+    sort: "createdAt",
+    order: "desc",
+  });
+  const patchBooking = usePatchAdminBooking();
 
-  const bookings = useMemo(() => {
-    ensureBookingFixtures();
-    void tick;
-    return listBookings().sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
-    );
-  }, [tick]);
+  const bookings = useMemo(
+    () => (data?.items ?? []).map(bookingDtoToRequest),
+    [data?.items],
+  );
 
   const rangeStart = recentStart(recent);
 
@@ -99,9 +104,13 @@ export function AdminBookingsPage() {
     PORTAL_RANGE_OPTIONS.find((item) => item.value === recent)?.label ??
     "Recent";
 
-  function setStatus(id: string, status: BookingStatus) {
-    updateBookingStatus(id, status);
-    setTick((value) => value + 1);
+  function setStatus(
+    id: string,
+    status: Extract<BookingStatus, "approved" | "rejected">,
+  ) {
+    void patchBooking.mutateAsync({ id, status }).then(() => {
+      void refetch();
+    });
   }
 
   return (
@@ -242,7 +251,7 @@ export function AdminBookingsPage() {
             setCreateOpen(false);
             setFilter("all");
             setRecent("today");
-            setTick((value) => value + 1);
+            void refetch();
             setDetailId(booking.id);
           }}
         />

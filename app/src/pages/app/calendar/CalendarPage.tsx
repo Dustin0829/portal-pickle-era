@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
-import { ensureBookingFixtures, listBookings } from "@/lib/booking/booking";
+import { useOccupancy } from "@/api/features/bookings/use-bookings";
+import { occupancyToBookingRequest } from "@/lib/booking/mapBooking";
 import { useBookingModal } from "@/providers/BookingModalProvider";
 
 function todayIso() {
@@ -12,11 +13,23 @@ function todayIso() {
   return `${year}-${month}-${day}`;
 }
 
+function monthBounds(iso: string) {
+  const [year, month] = iso.split("-").map(Number);
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const last = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  return { from, to };
+}
+
 export function CalendarPage() {
   const { openBookingModal } = useBookingModal();
   const [date, setDate] = useState(todayIso);
-  ensureBookingFixtures();
-  const bookings = listBookings();
+  const bounds = useMemo(() => monthBounds(date), [date]);
+  const occupancy = useOccupancy(bounds);
+  const bookings = useMemo(
+    () => (occupancy.data ?? []).map(occupancyToBookingRequest),
+    [occupancy.data],
+  );
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">

@@ -7,21 +7,21 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
-import {
-  PLAN_META,
-  listBookingsByEmail,
-  type BookingRequest,
-} from "@/lib/booking/booking";
+import { PLAN_META, type BookingRequest } from "@/lib/booking/booking";
+import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { useBookingModal } from "@/providers/BookingModalProvider";
+import { useMemo } from "react";
 
 export function OverviewPage() {
   const { user } = useAuth();
   const { openBookingModal } = useBookingModal();
-  const bookings = user ? listBookingsByEmail(user.email) : [];
+  const { data } = useMyBookings(Boolean(user));
+  const bookings = useMemo(() => (data ?? []).map(bookingDtoToRequest), [data]);
   const pending = bookings.filter((item) => item.status === "pending").length;
   const approved = bookings.filter((item) => item.status === "approved").length;
   const firstName = user?.name.split(" ")[0] ?? "there";

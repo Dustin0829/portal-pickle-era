@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { ClipboardList, PhilippinePeso, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  useAdminBookings,
+  useAdminUsers,
+} from "@/api/features/bookings/use-bookings";
+import { useAdminWaitlistList } from "@/api/features/waitlist/use-waitlist";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
@@ -8,20 +13,14 @@ import {
   PORTAL_RANGE_OPTIONS,
   type PortalRangeValue,
 } from "@/components/portal/portalRange";
-import { listStudents } from "@/lib/auth/auth";
 import {
   PLAN_META,
   bookingTotal,
   dateKey,
-  ensureBookingFixtures,
-  listBookings,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
-import {
-  ensureWaitlistFixtures,
-  listWaitlistEntries,
-} from "@/lib/waitlist/waitlistStorage";
 
 type RangePreset = PortalRangeValue;
 
@@ -85,16 +84,37 @@ export function AdminDashboardPage() {
   const end = dateKey(new Date());
   const start = startOfRange(preset);
 
-  const bookings = useMemo(() => {
-    ensureBookingFixtures();
-    return listBookings();
-  }, []);
+  const bookingsQuery = useAdminBookings({
+    page: 1,
+    limit: 100,
+    sort: "createdAt",
+    order: "desc",
+  });
+  const waitlistQuery = useAdminWaitlistList("");
+  const usersQuery = useAdminUsers({
+    page: 1,
+    limit: 100,
+    role: "student",
+  });
 
-  const waitlist = useMemo(() => {
-    ensureWaitlistFixtures();
-    return listWaitlistEntries();
-  }, []);
-  const students = useMemo(() => listStudents(), []);
+  const bookings = useMemo(
+    () => (bookingsQuery.data?.items ?? []).map(bookingDtoToRequest),
+    [bookingsQuery.data?.items],
+  );
+
+  const waitlist = useMemo(
+    () =>
+      (waitlistQuery.data?.items ?? []).map((item) => ({
+        joinedAt: item.createdAt,
+        email: item.email,
+        name: item.name,
+      })),
+    [waitlistQuery.data?.items],
+  );
+  const students = useMemo(
+    () => usersQuery.data?.items ?? [],
+    [usersQuery.data?.items],
+  );
 
   const rangedBookings = useMemo(
     () =>

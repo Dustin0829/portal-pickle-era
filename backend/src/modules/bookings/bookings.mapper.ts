@@ -22,6 +22,7 @@ export const bookingPublicSelect = {
 export const bookingOccupancySelect = {
   id: true,
   plan: true,
+  date: true,
   courtId: true,
   slotIds: true,
   status: true,
@@ -69,6 +70,7 @@ export function toOccupancyItem(row: BookingOccupancyRow): BookingOccupancyItem 
   return {
     id: row.id,
     plan: planToApi(row.plan),
+    date: row.date,
     courtId: row.courtId,
     slotIds: row.slotIds,
     status: row.status as "pending" | "approved",

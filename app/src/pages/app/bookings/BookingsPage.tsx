@@ -10,6 +10,7 @@ import {
   MapPin,
   X,
 } from "lucide-react";
+import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import {
@@ -18,9 +19,9 @@ import {
   bookingTotal,
   formatHour,
   formatLongDate,
-  listBookingsByEmail,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { useBookingModal } from "@/providers/BookingModalProvider";
@@ -176,10 +177,11 @@ export function BookingsPage() {
   const [filter, setFilter] = useState<BookingFilter>("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { data } = useMyBookings(Boolean(user));
   const bookings = useMemo(() => {
-    const list = user ? listBookingsByEmail(user.email) : [];
+    const list = (data ?? []).map(bookingDtoToRequest);
     return [...list].sort((a, b) => b.date.localeCompare(a.date));
-  }, [user]);
+  }, [data]);
 
   const visible =
     filter === "all"

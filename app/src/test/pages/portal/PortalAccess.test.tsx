@@ -7,6 +7,45 @@ import { AdminBookingsPage } from "@/pages/admin/bookings/AdminBookingsPage";
 import * as AuthProvider from "@/providers/AuthProvider";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
 
+vi.mock("@/api/features/auth/auth.service", () => ({
+  getMe: vi.fn(async () => {
+    const raw = localStorage.getItem("pickle-era-session");
+    if (!raw) {
+      const err = new Error("Unauthorized") as Error & { statusCode: number };
+      err.statusCode = 401;
+      throw err;
+    }
+    return JSON.parse(raw) as {
+      id: string;
+      name: string;
+      email: string;
+      role: "student" | "admin";
+    };
+  }),
+  login: vi.fn(),
+  signup: vi.fn(),
+  logout: vi.fn(),
+  patchMe: vi.fn(),
+}));
+
+vi.mock("@/api/features/bookings/use-bookings", () => ({
+  useMyBookings: () => ({ data: [], isLoading: false }),
+  useAdminBookings: () => ({
+    data: { items: [] },
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+  useAdminUsers: () => ({ data: { items: [] }, isLoading: false }),
+  useOccupancy: () => ({ data: [], isLoading: false }),
+  usePatchAdminBooking: () => ({ mutateAsync: vi.fn() }),
+  useCreateAdminBooking: () => ({ mutateAsync: vi.fn() }),
+  useCreatePublicBooking: () => ({ mutateAsync: vi.fn() }),
+  myBookingsQueryKey: ["me-bookings"],
+  occupancyQueryKey: ["bookings-occupancy"],
+  adminBookingsQueryKey: ["admin-bookings"],
+  adminUsersQueryKey: ["admin-users"],
+}));
+
 function seedSession(role: "student" | "admin") {
   localStorage.setItem(
     "pickle-era-session",
@@ -57,7 +96,6 @@ describe("portal access gates", () => {
         screen.getByRole("heading", { name: /log in/i }),
       ).toBeInTheDocument();
     });
-    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
   });
 
   it("blocks non-admin users from /admin", async () => {
@@ -72,20 +110,17 @@ describe("portal access gates", () => {
     expect(screen.queryByText(/bookings inbox/i)).not.toBeInTheDocument();
   });
 
-  it("shows Coming soon for signed-in players on /app", async () => {
+  it("shows player overview for signed-in players on /app", async () => {
     seedSession("student");
     renderWithProviders(<App />, { route: "/app" });
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: /coming soon/i }),
+        screen.getByRole("heading", { name: /hi, test/i }),
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByRole("button", { name: /join the club/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: /hi, test/i }),
+      screen.queryByRole("heading", { name: /coming soon/i }),
     ).not.toBeInTheDocument();
   });
 });
@@ -114,6 +149,19 @@ describe("portal smoke", () => {
 
   it("renders player overview empty state when mounted directly", async () => {
     seedSession("student");
+    vi.spyOn(AuthProvider, "useAuth").mockReturnValue({
+      user: {
+        id: "test-user",
+        name: "Test Student",
+        email: "student@example.com",
+        role: "student",
+      },
+      status: "authenticated",
+      login: vi.fn(),
+      signup: vi.fn(),
+      logout: vi.fn(),
+      resetPassword: vi.fn(),
+    });
     renderWithProviders(<OverviewPage />);
 
     await waitFor(() => {

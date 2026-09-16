@@ -2,6 +2,8 @@
 
 Same monorepo — do **not** split repos. Deploy the API from the `backend/` package root.
 
+**Before Railway:** run the [local stage](./local-stage.md) (Docker + smoke tests) on `main`.
+
 ## Services
 
 | Railway resource | Root Directory | Role                   |
@@ -20,12 +22,12 @@ Typical Nixpacks / custom:
 
 ## Env (API)
 
-| Variable                                              | Notes                                                                              |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                        | Railway Postgres connection string                                                 |
-| `NODE_ENV`                                            | `production`                                                                       |
-| `PORT`                                                | Railway injects; ensure app listens on it                                          |
-| `API_CORS_ORIGIN`                                     | Public **web** service origin(s), comma-separated                                  |
+| Variable                                              | Notes                                                                                                                 |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                        | Railway Postgres connection string                                                                                    |
+| `NODE_ENV`                                            | `production`                                                                                                          |
+| `PORT`                                                | Railway injects; ensure app listens on it                                                                             |
+| `API_CORS_ORIGIN`                                     | Public **web** service origin(s), comma-separated                                                                     |
 | `ADMIN_BASIC_AUTH_USER` / `ADMIN_BASIC_AUTH_PASSWORD` | Required in production to mount `/docs`, `/admin/waitlist`, `/admin/bookings`, `/admin/users`, `/admin/activity-logs` |
 
 Leave Basic Auth unset only for local/dev. In production without both vars, admin tools (including `GET /admin/waitlist` and `/admin/bookings`) are **not mounted**.

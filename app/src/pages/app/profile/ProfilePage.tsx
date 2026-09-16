@@ -3,7 +3,7 @@ import { Info, LogOut, Pencil, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
-import { ADMIN_FIXTURE } from "@/lib/auth/auth";
+import { ADMIN_FIXTURE, PLAYER_FIXTURE } from "@/lib/auth/auth";
 import { useAuth } from "@/providers/AuthProvider";
 
 function roleLabel(role: string | undefined) {
@@ -26,7 +26,7 @@ export function ProfilePage() {
             Profile
           </h1>
           <p className="text-sm text-zinc-500">
-            Account details from the local auth stub.
+            Account details from your Pickle Era session.
           </p>
         </header>
 
@@ -80,7 +80,7 @@ export function ProfilePage() {
 
           {editNote ? (
             <p className="mt-4 text-xs text-zinc-500" role="status">
-              Profile editing isn’t available in the local stub yet.
+              Profile editing isn’t available yet.
             </p>
           ) : null}
         </section>
@@ -88,8 +88,9 @@ export function ProfilePage() {
         <div className="mt-4 flex gap-3 rounded-2xl border border-yellow/40 bg-yellow/5 px-4 py-3">
           <Info size={16} className="mt-0.5 shrink-0 text-yellow" aria-hidden />
           <p className="text-xs leading-relaxed text-zinc-600">
-            Demo facility admin (local only): {ADMIN_FIXTURE.email} /{" "}
-            {ADMIN_FIXTURE.password}. Gates are UX stubs, not real security.
+            Local seed accounts (after `pnpm db:seed`): {ADMIN_FIXTURE.email} /{" "}
+            {ADMIN_FIXTURE.password}, or {PLAYER_FIXTURE.email} /{" "}
+            {PLAYER_FIXTURE.password}.
           </p>
         </div>
 
@@ -104,7 +105,7 @@ export function ProfilePage() {
 
         <button
           type="button"
-          onClick={logout}
+          onClick={() => void logout()}
           className="mx-auto mt-8 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500 transition hover:text-yellow"
         >
           <LogOut size={14} aria-hidden />

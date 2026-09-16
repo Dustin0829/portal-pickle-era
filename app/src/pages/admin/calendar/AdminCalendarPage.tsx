@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
-import { ensureBookingFixtures, listBookings } from "@/lib/booking/booking";
+import { useAdminBookings } from "@/api/features/bookings/use-bookings";
+import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 
 function todayIso() {
   const now = new Date();
@@ -19,8 +20,16 @@ export function AdminCalendarPage() {
     courtId: string;
     slotIds: string[];
   } | null>(null);
-  ensureBookingFixtures();
-  const bookings = listBookings();
+  const { data, refetch } = useAdminBookings({
+    page: 1,
+    limit: 100,
+    sort: "date",
+    order: "asc",
+  });
+  const bookings = useMemo(
+    () => (data?.items ?? []).map(bookingDtoToRequest),
+    [data?.items],
+  );
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
@@ -52,7 +61,10 @@ export function AdminCalendarPage() {
         <WalkInBookingModal
           initial={{ plan: "court", ...walkIn }}
           onClose={() => setWalkIn(null)}
-          onCreated={() => setWalkIn(null)}
+          onCreated={() => {
+            setWalkIn(null);
+            void refetch();
+          }}
         />
       ) : null}
     </div>

@@ -8,17 +8,12 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ensureAdminFixture,
-  ensureStudentFixtures,
-  getSession,
-  loginAccount,
-  logoutAccount,
-  resetAccountPassword,
-  signupAccount,
-  type AuthUser,
-} from "@/lib/auth/auth";
-import { ensureBookingFixtures } from "@/lib/booking/booking";
-import { ensureWaitlistFixtures } from "@/lib/waitlist/waitlistStorage";
+  getMe,
+  login as loginRequest,
+  logout as logoutRequest,
+  signup as signupRequest,
+} from "@/api/features/auth/auth.service";
+import type { AuthUser } from "@/api/features/auth/auth.types";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -31,7 +26,7 @@ type AuthContextValue = {
     email: string;
     password: string;
   }) => Promise<AuthUser>;
-  logout: () => void;
+  logout: () => Promise<void>;
   resetPassword: (input: { email: string; password: string }) => Promise<void>;
 };
 
@@ -43,24 +38,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+
     void (async () => {
-      await ensureAdminFixture();
-      await ensureStudentFixtures();
-      ensureBookingFixtures();
-      ensureWaitlistFixtures();
-      if (cancelled) return;
-      const session = getSession();
-      setUser(session);
-      setStatus(session ? "authenticated" : "unauthenticated");
+      try {
+        const session = await getMe(controller.signal);
+        if (cancelled) return;
+        setUser(session);
+        setStatus("authenticated");
+      } catch {
+        if (cancelled || controller.signal.aborted) return;
+        setUser(null);
+        setStatus("unauthenticated");
+      }
     })();
+
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, []);
 
   const login = useCallback(
     async (input: { email: string; password: string }) => {
-      const next = await loginAccount(input);
+      const next = await loginRequest(input);
       setUser(next);
       setStatus("authenticated");
       return next;
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = useCallback(
     async (input: { name: string; email: string; password: string }) => {
-      const next = await signupAccount(input);
+      const next = await signupRequest(input);
       setUser(next);
       setStatus("authenticated");
       return next;
@@ -78,15 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const logout = useCallback(() => {
-    logoutAccount();
+  const logout = useCallback(async () => {
+    try {
+      await logoutRequest();
+    } catch {
+      // Clear local session even if the API call fails.
+    }
     setUser(null);
     setStatus("unauthenticated");
   }, []);
 
   const resetPassword = useCallback(
-    async (input: { email: string; password: string }) => {
-      await resetAccountPassword(input);
+    async (_input: { email: string; password: string }) => {
+      void _input;
+      throw new Error(
+        "Password reset is not available yet. Contact the facility.",
+      );
     },
     [],
   );
