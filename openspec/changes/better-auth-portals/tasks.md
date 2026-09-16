@@ -27,5 +27,5 @@
 - [x] 4.1 Branch `feat/better-auth-portals` from repo root
 - [x] 4.2 Set Railway prod vars (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://api.pickleera.co`, `AUTH_COOKIE_DOMAIN=.pickleera.co`); confirm `API_CORS_ORIGIN` / `VITE_API_URL`
 - [ ] 4.3 Deploy API (migrate) → re-seed admin → deploy web if needed → smoke login on `https://pickleera.co` and `/admin/bookings`
-- [ ] 4.4 `/opsx-verify` (api + web `pnpm verify` + merge-readiness)
-- [ ] 4.5 `/opsx-pr` (one monorepo PR)
+- [x] 4.4 `/opsx-verify` (api + web `pnpm verify` + merge-readiness)
+- [x] 4.5 `/opsx-pr` (one monorepo PR)
