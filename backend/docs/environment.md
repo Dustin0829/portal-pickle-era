@@ -93,15 +93,18 @@ Leave `REDIS_URL` unset for Minimal SaaS Mode.
 | `ADMIN_BASIC_AUTH_USER`     | HTTP Basic Auth user for `/docs`, `/openapi.json`, `/admin/queues`, `/admin/activity-logs`, `/admin/waitlist`, `/admin/bookings`, `/admin/users` |
 | `ADMIN_BASIC_AUTH_PASSWORD` | HTTP Basic Auth password (set both or neither)                                                                                                   |
 
-## Optional: R2 uploads
+## Optional: S3 / Railway Bucket uploads
 
-Set these only when using `POST /uploads/presign`:
+Set these for `POST /uploads/presign` and `GET /admin/bookings/:id/receipt-url`.
+Map Railway Bucket Credentials into the API service:
 
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET`
-- `R2_PUBLIC_BASE_URL`
+- `S3_ENDPOINT` ← `ENDPOINT`
+- `S3_ACCESS_KEY_ID` ← `ACCESS_KEY_ID`
+- `S3_SECRET_ACCESS_KEY` ← `SECRET_ACCESS_KEY`
+- `S3_BUCKET` ← `BUCKET`
+- `S3_REGION` ← `REGION` (usually `auto`)
+
+Legacy `R2_*` vars are unused by the current storage adapter.
 
 ## Optional: Discord alerts
 

@@ -78,3 +78,18 @@ export async function listAdminUsers(
   const meta = metaRaw ? paginationMetaSchema.parse(metaRaw) : undefined;
   return { items, meta };
 }
+
+const bookingReceiptUrlSchema = z.object({
+  url: z.string().url(),
+  expiresAt: z.string(),
+});
+
+export async function getAdminBookingReceiptUrl(
+  id: string,
+  signal?: AbortSignal,
+) {
+  const { data } = await api.get(`/admin/bookings/${id}/receipt-url`, {
+    signal,
+  });
+  return bookingReceiptUrlSchema.parse(data);
+}

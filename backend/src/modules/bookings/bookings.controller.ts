@@ -10,6 +10,7 @@ import type {
 import {
   createAdminBooking,
   createPublicBooking,
+  getBookingReceiptUrl,
   listAdminBookings,
   listAdminUsers,
   listMyBookings,
@@ -45,6 +46,11 @@ export async function createAdminBookingController(req: Request, res: Response) 
 export async function patchBookingController(req: Request, res: Response) {
   const booking = await patchBookingStatus(req.params.id as string, req.body as PatchBookingBody);
   return sendSuccess(res, booking, "ok", 200);
+}
+
+export async function bookingReceiptUrlController(req: Request, res: Response) {
+  const result = await getBookingReceiptUrl(req.params.id as string);
+  return sendSuccess(res, result, "ok", 200);
 }
 
 export async function listAdminUsersController(req: Request, res: Response) {

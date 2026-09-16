@@ -25,9 +25,11 @@ export type BookingRequest = {
   email: string;
   referenceId: string;
   receiptName: string;
-  /** Optional local preview (data URL) for stub uploads. */
+  /** Optional local preview (data URL) or short-lived signed URL. */
   receiptDataUrl?: string;
   receiptMimeType?: string;
+  /** Private object storage key when using S3/Railway Bucket. */
+  receiptKey?: string | null;
   status: BookingStatus;
   createdAt: string;
 };

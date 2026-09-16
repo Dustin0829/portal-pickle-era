@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createPresignedUpload } from "../../lib/storage/r2.js";
+import { createPresignedUpload } from "../../lib/storage/s3.js";
 import type { PresignUploadBody } from "./uploads.schema.js";
 
 export async function presignUpload(body: PresignUploadBody) {

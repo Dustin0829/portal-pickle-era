@@ -19,7 +19,7 @@ export function registerUploadsOpenApi(registry: OpenAPIRegistry) {
     },
     responses: {
       200: {
-        description: "Presigned R2 upload URL",
+        description: "Presigned object-storage upload URL",
         content: {
           "application/json": {
             schema: successResponseSchema(presignUploadResponseSchema),

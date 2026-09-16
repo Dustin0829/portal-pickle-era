@@ -6,6 +6,7 @@ import {
   ValidationError,
 } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
+import { createPresignedDownload } from "../../lib/storage/s3.js";
 import { upsertWaitlistEntry } from "../waitlist/waitlist.service.js";
 import type { AuthUser } from "../auth/auth.constants.js";
 import { toUserDto, userPublicSelect } from "../auth/auth.mapper.js";
@@ -179,6 +180,21 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
     select: bookingPublicSelect,
   });
   return toBookingDto(row);
+}
+
+export async function getBookingReceiptUrl(id: string) {
+  const row = await prisma.booking.findUnique({
+    where: { id },
+    select: { id: true, receiptKey: true },
+  });
+  if (!row) {
+    throw new NotFoundError("Booking not found");
+  }
+  if (!row.receiptKey) {
+    throw new NotFoundError("Receipt not found");
+  }
+
+  return createPresignedDownload({ key: row.receiptKey });
 }
 
 export async function listAdminUsers(query: ListUsersQuery) {

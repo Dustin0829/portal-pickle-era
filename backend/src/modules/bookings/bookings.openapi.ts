@@ -10,6 +10,7 @@ import {
   bookingDtoSchema,
   bookingIdParamsSchema,
   bookingOccupancyItemSchema,
+  bookingReceiptUrlResponseSchema,
   createAdminBookingBodySchema,
   createPublicBookingBodySchema,
   listBookingsQuerySchema,
@@ -22,6 +23,7 @@ import { z } from "zod";
 export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
   registry.register("Booking", bookingDtoSchema);
   registry.register("BookingOccupancyItem", bookingOccupancyItemSchema);
+  registry.register("BookingReceiptUrl", bookingReceiptUrlResponseSchema);
 
   registry.registerPath({
     method: "post",
@@ -132,6 +134,27 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
       200: {
         description: "Updated booking status",
         content: { "application/json": { schema: successResponseSchema(bookingDtoSchema) } },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/admin/bookings/{id}/receipt-url",
+    operationId: "getAdminBookingReceiptUrl",
+    tags: ["Bookings"],
+    request: {
+      params: bookingIdParamsSchema,
+    },
+    responses: {
+      200: {
+        description: "Short-lived presigned GET URL for the booking receipt",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(bookingReceiptUrlResponseSchema),
+          },
+        },
       },
       ...standardErrorResponses,
     },
