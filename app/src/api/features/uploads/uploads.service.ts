@@ -44,9 +44,7 @@ export async function uploadReceiptFile(file: File): Promise<{
 }> {
   const contentType = inferReceiptContentType(file);
   if (!contentType) {
-    throw new Error(
-      "Receipt must be a JPEG, PNG, WebP, or PDF file.",
-    );
+    throw new Error("Receipt must be a JPEG, PNG, WebP, or PDF file.");
   }
   const presign = await presignUpload({
     filename: file.name || "receipt",
