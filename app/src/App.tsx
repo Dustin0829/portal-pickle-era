@@ -1,10 +1,19 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { SmoothScroll } from "@/components/marketing/SmoothScroll";
 import RootLayout from "@/layouts/RootLayout";
 import { StudentPortalLayout } from "@/layouts/StudentPortalLayout";
 import { AdminPortalLayout } from "@/layouts/AdminPortalLayout";
 import { HomePage } from "@/pages/home/HomePage";
+import { OverviewPage } from "@/pages/app/overview/OverviewPage";
+import { BookingsPage } from "@/pages/app/bookings/BookingsPage";
+import { CalendarPage } from "@/pages/app/calendar/CalendarPage";
+import { ProfilePage } from "@/pages/app/profile/ProfilePage";
+import { AdminDashboardPage } from "@/pages/admin/dashboard/AdminDashboardPage";
+import { AdminBookingsPage } from "@/pages/admin/bookings/AdminBookingsPage";
+import { AdminCalendarPage } from "@/pages/admin/calendar/AdminCalendarPage";
+import { AdminPlayersPage } from "@/pages/admin/waitlist/AdminWaitlistPage";
+import { AdminSettingsPage } from "@/pages/admin/settings/AdminSettingsPage";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const LoginPage = lazy(() =>
@@ -29,53 +38,6 @@ const NotFoundPage = lazy(() =>
   })),
 );
 
-const OverviewPage = lazy(() =>
-  import("@/pages/app/overview/OverviewPage").then((m) => ({
-    default: m.OverviewPage,
-  })),
-);
-const BookingsPage = lazy(() =>
-  import("@/pages/app/bookings/BookingsPage").then((m) => ({
-    default: m.BookingsPage,
-  })),
-);
-const CalendarPage = lazy(() =>
-  import("@/pages/app/calendar/CalendarPage").then((m) => ({
-    default: m.CalendarPage,
-  })),
-);
-const ProfilePage = lazy(() =>
-  import("@/pages/app/profile/ProfilePage").then((m) => ({
-    default: m.ProfilePage,
-  })),
-);
-
-const AdminDashboardPage = lazy(() =>
-  import("@/pages/admin/dashboard/AdminDashboardPage").then((m) => ({
-    default: m.AdminDashboardPage,
-  })),
-);
-const AdminBookingsPage = lazy(() =>
-  import("@/pages/admin/bookings/AdminBookingsPage").then((m) => ({
-    default: m.AdminBookingsPage,
-  })),
-);
-const AdminCalendarPage = lazy(() =>
-  import("@/pages/admin/calendar/AdminCalendarPage").then((m) => ({
-    default: m.AdminCalendarPage,
-  })),
-);
-const AdminPlayersPage = lazy(() =>
-  import("@/pages/admin/waitlist/AdminWaitlistPage").then((m) => ({
-    default: m.AdminPlayersPage,
-  })),
-);
-const AdminSettingsPage = lazy(() =>
-  import("@/pages/admin/settings/AdminSettingsPage").then((m) => ({
-    default: m.AdminSettingsPage,
-  })),
-);
-
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -94,42 +56,79 @@ function RouteFallback() {
   );
 }
 
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+}
+
 export default function App() {
   return (
     <SmoothScroll>
       <ScrollToTop />
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route element={<RootLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="signup" element={<SignupPage />} />
-            <Route path="forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="reset-password" element={<ResetPasswordPage />} />
+      <Routes>
+        <Route element={<RootLayout />}>
+          <Route index element={<HomePage />} />
+          <Route
+            path="login"
+            element={
+              <LazyPage>
+                <LoginPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="signup"
+            element={
+              <LazyPage>
+                <SignupPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="forgot-password"
+            element={
+              <LazyPage>
+                <ForgotPasswordPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="reset-password"
+            element={
+              <LazyPage>
+                <ResetPasswordPage />
+              </LazyPage>
+            }
+          />
 
-            <Route path="app" element={<StudentPortalLayout />}>
-              <Route index element={<OverviewPage />} />
-              <Route path="bookings" element={<BookingsPage />} />
-              <Route path="calendar" element={<CalendarPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-            </Route>
-
-            <Route path="admin" element={<AdminPortalLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="bookings" element={<AdminBookingsPage />} />
-              <Route path="calendar" element={<AdminCalendarPage />} />
-              <Route path="players" element={<AdminPlayersPage />} />
-              <Route
-                path="waitlist"
-                element={<Navigate to="/admin/players" replace />}
-              />
-              <Route path="settings" element={<AdminSettingsPage />} />
-            </Route>
-
-            <Route path="*" element={<NotFoundPage />} />
+          <Route path="app" element={<StudentPortalLayout />}>
+            <Route index element={<OverviewPage />} />
+            <Route path="bookings" element={<BookingsPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="profile" element={<ProfilePage />} />
           </Route>
-        </Routes>
-      </Suspense>
+
+          <Route path="admin" element={<AdminPortalLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="bookings" element={<AdminBookingsPage />} />
+            <Route path="calendar" element={<AdminCalendarPage />} />
+            <Route path="players" element={<AdminPlayersPage />} />
+            <Route
+              path="waitlist"
+              element={<Navigate to="/admin/players" replace />}
+            />
+            <Route path="settings" element={<AdminSettingsPage />} />
+          </Route>
+
+          <Route
+            path="*"
+            element={
+              <LazyPage>
+                <NotFoundPage />
+              </LazyPage>
+            }
+          />
+        </Route>
+      </Routes>
     </SmoothScroll>
   );
 }

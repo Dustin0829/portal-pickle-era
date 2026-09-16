@@ -233,13 +233,8 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
         email: email.trim().toLowerCase(),
         referenceId: referenceId.trim(),
         receiptName,
-        ...(upload?.receiptKey ? { receiptKey: upload.receiptKey } : {}),
-        ...(upload?.receiptMimeType || receiptFile.type
-          ? {
-              receiptMimeType:
-                upload?.receiptMimeType || receiptFile.type || undefined,
-            }
-          : {}),
+        receiptKey: upload.receiptKey,
+        receiptMimeType: upload.receiptMimeType,
       });
       setStep("done");
     } catch (error) {

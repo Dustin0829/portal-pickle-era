@@ -47,6 +47,8 @@ Leave Basic Auth unset only for local/dev. In production without both vars, admi
    - `BUCKET` → `S3_BUCKET`
    - `REGION` → `S3_REGION` (usually `auto`)
 4. Admin inbox uses `GET /admin/bookings/:id/receipt-url` for short-lived preview URLs (bucket stays private)
+5. **CORS (required for browser uploads):** allow `PUT`/`GET` from the web origin(s), e.g. `https://pickleera.co`. Without this, bookings save with `receiptName` only and the admin modal cannot preview the image.
+5. **CORS (required for browser uploads):** allow `PUT`/`GET` from the web origin(s), e.g. `https://pickleera.co`. Without this, bookings save with `receiptName` only and the admin modal cannot preview the image.
 
 ## Seed (admin / demo users)
 

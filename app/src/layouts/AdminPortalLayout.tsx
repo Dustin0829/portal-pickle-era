@@ -5,9 +5,11 @@ import {
   Settings,
   Users,
 } from "lucide-react";
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { ProtectedRoute } from "@/components/guards/ProtectedRoute";
 import { PortalChrome } from "@/components/portal/PortalChrome";
+import { PortalRouteFallback } from "@/components/portal/PortalRouteFallback";
 
 const items = [
   { to: "/admin", label: "Dashboard", end: true, icon: LayoutDashboard },
@@ -21,7 +23,9 @@ export function AdminPortalLayout() {
   return (
     <ProtectedRoute requireRole="admin">
       <PortalChrome title="Facility admin" items={items} homeTo="/admin">
-        <Outlet />
+        <Suspense fallback={<PortalRouteFallback />}>
+          <Outlet />
+        </Suspense>
       </PortalChrome>
     </ProtectedRoute>
   );
