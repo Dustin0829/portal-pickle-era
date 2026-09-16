@@ -1,0 +1,67 @@
+import { Router } from "express";
+import { asyncHandler } from "../../lib/api-response.js";
+import { validateBody, validateParams, validateQuery } from "../../middleware/validate.js";
+import { loadSession, requireSession } from "../auth/auth.middleware.js";
+import {
+  createAdminBookingController,
+  createPublicBookingController,
+  listAdminBookingsController,
+  listAdminUsersController,
+  myBookingsController,
+  occupancyController,
+  patchBookingController,
+} from "./bookings.controller.js";
+import {
+  bookingIdParamsSchema,
+  createAdminBookingBodySchema,
+  createPublicBookingBodySchema,
+  listBookingsQuerySchema,
+  listUsersQuerySchema,
+  occupancyQuerySchema,
+  patchBookingBodySchema,
+} from "./bookings.schema.js";
+
+export const bookingsPublicRouter = Router();
+export const bookingsMeRouter = Router();
+export const bookingsAdminRouter = Router();
+export const usersAdminRouter = Router();
+
+bookingsPublicRouter.use(loadSession);
+
+bookingsPublicRouter.post(
+  "/",
+  validateBody(createPublicBookingBodySchema),
+  asyncHandler(createPublicBookingController),
+);
+
+bookingsPublicRouter.get(
+  "/occupancy",
+  validateQuery(occupancyQuerySchema),
+  asyncHandler(occupancyController),
+);
+
+bookingsMeRouter.use(loadSession, requireSession);
+bookingsMeRouter.get("/", asyncHandler(myBookingsController));
+
+bookingsAdminRouter.get(
+  "/",
+  validateQuery(listBookingsQuerySchema),
+  asyncHandler(listAdminBookingsController),
+);
+bookingsAdminRouter.post(
+  "/",
+  validateBody(createAdminBookingBodySchema),
+  asyncHandler(createAdminBookingController),
+);
+bookingsAdminRouter.patch(
+  "/:id",
+  validateParams(bookingIdParamsSchema),
+  validateBody(patchBookingBodySchema),
+  asyncHandler(patchBookingController),
+);
+
+usersAdminRouter.get(
+  "/",
+  validateQuery(listUsersQuerySchema),
+  asyncHandler(listAdminUsersController),
+);

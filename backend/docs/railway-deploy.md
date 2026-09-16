@@ -26,13 +26,12 @@ Typical Nixpacks / custom:
 | `NODE_ENV`                                            | `production`                                                                       |
 | `PORT`                                                | Railway injects; ensure app listens on it                                          |
 | `API_CORS_ORIGIN`                                     | Public **web** service origin(s), comma-separated                                  |
-| `ADMIN_BASIC_AUTH_USER` / `ADMIN_BASIC_AUTH_PASSWORD` | Required in production to mount `/docs`, `/admin/waitlist`, `/admin/activity-logs` |
+| `ADMIN_BASIC_AUTH_USER` / `ADMIN_BASIC_AUTH_PASSWORD` | Required in production to mount `/docs`, `/admin/waitlist`, `/admin/bookings`, `/admin/users`, `/admin/activity-logs` |
 
-Leave Basic Auth unset only for local/dev. In production without both vars, admin tools (including `GET /admin/waitlist`) are **not mounted**.
+Leave Basic Auth unset only for local/dev. In production without both vars, admin tools (including `GET /admin/waitlist` and `/admin/bookings`) are **not mounted**.
 
-## Waitlist
+## Waitlist / bookings / auth
 
-- Public capture: `POST /waitlist`
-- Admin list (ops): `GET /admin/waitlist` — use Swagger `/docs` or curl with Basic Auth when configured
-
-No Supabase or Vercel required for the API.
+- Public capture: `POST /waitlist`, `POST /bookings`, `POST /auth/signup|login`
+- Session cookie `pe_session` for `/auth/me` and `/me/bookings` (SPA needs `credentials: "include"`)
+- Admin list (ops): `GET /admin/waitlist`, `GET /admin/bookings` — Swagger `/docs` or curl with Basic Auth when configured
