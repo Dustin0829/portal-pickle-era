@@ -32,6 +32,9 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
+# Seed (`pnpm db:seed`) imports generated client + auth.crypto from src/
+COPY --from=build /app/src/generated/prisma ./src/generated/prisma
+COPY --from=build /app/src/modules/auth/auth.crypto.ts ./src/modules/auth/auth.crypto.ts
 COPY --from=build /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 RUN chmod +x ./scripts/docker-entrypoint.sh
 EXPOSE 3000

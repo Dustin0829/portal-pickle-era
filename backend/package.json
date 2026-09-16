@@ -19,7 +19,7 @@
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "test:run": "pnpm test",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:run && pnpm openapi:check && pnpm build",
-    "db:seed": "prisma db seed",
+    "db:seed": "prisma generate && prisma db seed",
     "setup": "prisma generate && prisma migrate dev && pnpm db:seed",
     "prisma:generate": "prisma generate",
     "openapi:generate": "tsx scripts/generate-openapi.ts",

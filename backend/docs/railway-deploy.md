@@ -45,6 +45,18 @@ Leave Basic Auth unset only for local/dev. In production without both vars, admi
    - `REGION` → `S3_REGION` (usually `auto`)
 4. Admin inbox uses `GET /admin/bookings/:id/receipt-url` for short-lived preview URLs (bucket stays private)
 
+## Seed (admin / demo users)
+
+Production image must include `src/generated/prisma` and `src/modules/auth/auth.crypto.ts` (see `Dockerfile` runtime stage). Prefer seeding via Railway CLI from `backend/` so you use prod `DATABASE_URL` without SSHing:
+
+```bash
+cd backend
+pnpm prisma generate   # if client missing locally
+railway run --service pickle-era-backend --environment production -- pnpm db:seed
+```
+
+`pnpm db:seed` runs `prisma generate` then the seed. Demo admin: `admin@pickleera.local` / `password1`.
+
 ## Waitlist / bookings / auth
 
 - Public capture: `POST /waitlist`, `POST /bookings`, `POST /auth/signup|login`
