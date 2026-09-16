@@ -31,7 +31,7 @@ Public product routes (no Basic Auth):
 
 | Method          | Path                          | Notes                                                 |
 | --------------- | ----------------------------- | ----------------------------------------------------- |
-| `POST`          | `/auth/signup`, `/auth/login` | Sets HttpOnly cookie `pe_session`                     |
+| `POST`          | `/auth/signup`, `/auth/login` | Sets Better Auth session cookie (product envelope)    |
 | `POST`          | `/auth/logout`                | Clears session                                        |
 | `GET` / `PATCH` | `/auth/me`                    | Requires session cookie                               |
 | `POST`          | `/bookings`                   | Public pending booking (opening date floor for court) |
@@ -53,12 +53,15 @@ Public waitlist capture (no Basic Auth): `POST /waitlist`.
 
 ### Session cookies (player portal)
 
-| Detail      | Value                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------- |
-| Cookie name | `pe_session`                                                                              |
-| Flags       | `HttpOnly`, `SameSite=Lax`, `Secure` when `NODE_ENV=production`                           |
-| CORS        | `credentials: true` already enabled; set `API_CORS_ORIGIN` to the **exact** web origin(s) |
-| Client      | Fetch/XHR must use `credentials: "include"`                                               |
+| Detail  | Value                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------- |
+| Library | Better Auth (email/password)                                                              |
+| Cookie  | Better Auth session cookie (HttpOnly); clears legacy `pe_session` on login/logout         |
+| Domain  | Set `AUTH_COOKIE_DOMAIN=.pickleera.co` in production for web+API subdomains               |
+| Flags   | `Secure` when `NODE_ENV=production`                                                       |
+| Env     | `BETTER_AUTH_SECRET` (required in production), `BETTER_AUTH_URL`, `AUTH_COOKIE_DOMAIN`    |
+| CORS    | `credentials: true` already enabled; set `API_CORS_ORIGIN` to the **exact** web origin(s) |
+| Client  | Fetch/XHR must use `credentials: "include"`                                               |
 
 Railway (API + Postgres + web SPA): see [railway-deploy.md](./railway-deploy.md).
 

@@ -24,6 +24,8 @@ export async function listAdminWaitlist(signal?: AbortSignal, search?: string) {
     params: {
       page: 1,
       limit: 50,
+      sort: "createdAt",
+      order: "desc",
       ...(search && search.trim().length >= 2 ? { search: search.trim() } : {}),
     },
     signal,

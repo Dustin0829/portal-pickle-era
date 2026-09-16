@@ -36,6 +36,9 @@ const envSchema = z
     DISCORD_ALERT_SLOW_MS: optionalNumber(5000),
     ADMIN_BASIC_AUTH_USER: z.string().min(1).optional(),
     ADMIN_BASIC_AUTH_PASSWORD: z.string().min(1).optional(),
+    BETTER_AUTH_SECRET: z.string().min(16).optional(),
+    BETTER_AUTH_URL: z.string().url().optional(),
+    AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
   })
   .superRefine((data, ctx) => {
     const hasUser = Boolean(data.ADMIN_BASIC_AUTH_USER);
@@ -45,6 +48,14 @@ const envSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "ADMIN_BASIC_AUTH_USER and ADMIN_BASIC_AUTH_PASSWORD must both be set",
+      });
+    }
+
+    if (data.NODE_ENV === "production" && !data.BETTER_AUTH_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["BETTER_AUTH_SECRET"],
+        message: "BETTER_AUTH_SECRET is required in production",
       });
     }
   });
@@ -58,4 +69,18 @@ export function parseCorsOrigins(raw: string): string[] {
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
+}
+
+/** Dev default when BETTER_AUTH_SECRET is unset (tests / local). */
+export function resolveBetterAuthSecret(): string {
+  if (env.BETTER_AUTH_SECRET) return env.BETTER_AUTH_SECRET;
+  if (env.NODE_ENV === "production") {
+    throw new Error("BETTER_AUTH_SECRET is required in production");
+  }
+  return "dev-only-better-auth-secret-min-16";
+}
+
+export function resolveBetterAuthUrl(): string {
+  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
+  return `http://localhost:${env.PORT}`;
 }

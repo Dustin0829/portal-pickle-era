@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   Check,
+  Clock3,
+  CreditCard,
   Eye,
-  ExternalLink,
   FileText,
   Mail,
   Plus,
@@ -62,7 +63,7 @@ function formatSlotTime(slotId: string) {
 export function AdminBookingsPage() {
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [query, setQuery] = useState("");
-  const [recent, setRecent] = useState<RecentPreset>("today");
+  const [recent, setRecent] = useState<RecentPreset>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const { data, refetch } = useAdminBookings({
@@ -88,16 +89,19 @@ export function AdminBookingsPage() {
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return bookings.filter((item) => {
-      if (filter === "pending" && item.status !== "pending") return false;
-      if (rangeStart && createdDay(item.createdAt) < rangeStart) return false;
-      if (!q) return true;
-      return (
-        item.name.toLowerCase().includes(q) ||
-        item.email.toLowerCase().includes(q) ||
-        item.referenceId.toLowerCase().includes(q)
-      );
-    });
+    return bookings
+      .filter((item) => {
+        if (filter === "pending" && item.status !== "pending") return false;
+        if (rangeStart && createdDay(item.createdAt) < rangeStart) return false;
+        if (!q) return true;
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.email.toLowerCase().includes(q) ||
+          item.referenceId.toLowerCase().includes(q)
+        );
+      })
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [bookings, filter, query, rangeStart]);
 
   const selected = bookings.find((item) => item.id === detailId) ?? null;
@@ -118,11 +122,11 @@ export function AdminBookingsPage() {
     <div className="relative min-h-full overflow-hidden">
       <PortalBackdrop variant="top" />
 
-      <AppPageShell width="full" className="relative z-10 max-w-5xl">
+      <AppPageShell width="full" className="relative z-10 max-w-6xl">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
-              Bookings <span className="text-yellow">inbox</span>
+              Bookings <span className="text-amber-600">inbox</span>
             </h1>
             <p className="text-sm text-zinc-500">
               Review GCash requests or add walk-in bookings on the spot.
@@ -137,7 +141,7 @@ export function AdminBookingsPage() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-yellow/90"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-amber-500"
             >
               <Plus size={15} aria-hidden />
               Walk-in booking
@@ -159,7 +163,7 @@ export function AdminBookingsPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search by name, email, or reference number…"
-                className="h-11 w-full rounded-xl border border-zinc-200 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-amber-400"
               />
             </label>
 
@@ -176,7 +180,7 @@ export function AdminBookingsPage() {
                 className={cn(
                   "rounded-xl px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition",
                   filter === "pending"
-                    ? "bg-yellow text-black"
+                    ? "bg-amber-400 text-zinc-900"
                     : "text-zinc-500 hover:text-zinc-900",
                 )}
               >
@@ -190,7 +194,7 @@ export function AdminBookingsPage() {
                 className={cn(
                   "rounded-xl px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition",
                   filter === "all"
-                    ? "bg-yellow text-black"
+                    ? "bg-amber-400 text-zinc-900"
                     : "text-zinc-500 hover:text-zinc-900",
                 )}
               >
@@ -252,7 +256,7 @@ export function AdminBookingsPage() {
           onCreated={(booking) => {
             setCreateOpen(false);
             setFilter("all");
-            setRecent("today");
+            setRecent("all");
             void refetch();
             setDetailId(booking.id);
           }}
@@ -275,85 +279,82 @@ function AdminBookingRow({
   onOpenDetail: () => void;
 }) {
   const court = COURTS.find((item) => item.id === booking.courtId);
-  const meta = PLAN_META[booking.plan];
-  const timeLabel =
-    booking.slotIds.length > 0
-      ? booking.slotIds.map(formatSlotTime).join(", ")
-      : "Time TBD";
+  const scheduleDate = formatLongDate(booking.date);
+  const timeRange =
+    booking.slotIds.length === 0
+      ? "Time TBD"
+      : booking.slotIds.length === 1
+        ? formatSlotTime(booking.slotIds[0]!)
+        : `${formatSlotTime(booking.slotIds[0]!)} – ${formatSlotTime(booking.slotIds[booking.slotIds.length - 1]!)}`;
+  const courtLabel = court?.name ?? booking.courtId;
 
   return (
-    <li className="rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
-      <div className="flex items-center gap-3 p-4 sm:gap-4 sm:p-5">
-        <div className="grid size-11 shrink-0 place-items-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-500">
-          <UserRound size={20} aria-hidden />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-zinc-900">
-              {booking.name} · {meta.title}
-            </p>
-            <StatusBadge status={booking.status} />
+    <li className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:gap-0 lg:p-0">
+        <div className="flex min-w-0 flex-1 items-center gap-3 lg:px-4 lg:py-4">
+          <div className="grid size-11 shrink-0 place-items-center rounded-full bg-green/15 text-zinc-600">
+            <UserRound size={20} aria-hidden />
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="min-w-0">
+          <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-0">
+            <div className="min-w-0 lg:border-r lg:border-zinc-100 lg:px-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
                 Email
               </p>
-              <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-zinc-600">
+              <p className="mt-1.5 flex items-center gap-1.5 truncate text-sm text-zinc-700">
                 <Mail
-                  size={12}
+                  size={14}
                   className="shrink-0 text-zinc-400"
                   aria-hidden
                 />
                 <span className="truncate">{booking.email}</span>
               </p>
             </div>
-            <div className="min-w-0">
+
+            <div className="min-w-0 lg:border-r lg:border-zinc-100 lg:px-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Name
+              </p>
+              <p className="mt-1.5 truncate text-sm font-medium text-zinc-800">
+                {booking.name}
+              </p>
+            </div>
+
+            <div className="min-w-0 sm:col-span-2 lg:col-span-1 lg:border-r lg:border-zinc-100 lg:px-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
                 Schedule
               </p>
-              <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-zinc-600">
+              <div className="mt-1.5 flex items-start gap-1.5">
                 <CalendarDays
-                  size={12}
-                  className="shrink-0 text-zinc-400"
+                  size={14}
+                  className="mt-0.5 shrink-0 text-zinc-400"
                   aria-hidden
                 />
-                <span className="truncate">
-                  {booking.date}
-                  {court ? ` · ${court.name}` : ""}
-                  {` · ${timeLabel}`}
-                </span>
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                Reference
-              </p>
-              <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-zinc-600">
-                <FileText
-                  size={12}
-                  className="shrink-0 text-zinc-400"
-                  aria-hidden
-                />
-                <span className="truncate">
-                  {booking.referenceId}
-                  {booking.receiptName ? ` · ${booking.receiptName}` : ""}
-                </span>
-              </p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-zinc-800">
+                    {scheduleDate}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-zinc-500">
+                    {timeRange}
+                    {courtLabel ? ` · ${courtLabel}` : ""}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenDetail}
-          className="grid size-10 shrink-0 place-items-center rounded-xl border border-zinc-200 text-zinc-500 transition hover:border-yellow hover:text-yellow"
-          aria-label="View booking details"
-        >
-          <Eye size={18} />
-        </button>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-3 lg:border-t-0 lg:px-4 lg:py-4 lg:pl-5">
+          <StatusBadge status={booking.status} />
+          <button
+            type="button"
+            onClick={onOpenDetail}
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-600 transition hover:bg-amber-100 hover:text-zinc-900"
+            aria-label="View booking details"
+          >
+            <Eye size={18} />
+          </button>
+        </div>
       </div>
     </li>
   );
@@ -374,10 +375,12 @@ function AdminBookingDetailSheet({
   const meta = PLAN_META[booking.plan];
   const hours = bookingHours(booking);
   const total = bookingTotal(booking.plan, hours);
-  const timeLabel =
-    booking.slotIds.length > 0
-      ? booking.slotIds.map(formatSlotTime).join(", ")
-      : "Time TBD";
+  const timeRange =
+    booking.slotIds.length === 0
+      ? "Time TBD"
+      : booking.slotIds.length === 1
+        ? formatSlotTime(booking.slotIds[0]!)
+        : `${formatSlotTime(booking.slotIds[0]!)} – ${formatSlotTime(booking.slotIds[booking.slotIds.length - 1]!)}`;
   const [signedReceiptUrl, setSignedReceiptUrl] = useState<
     string | undefined
   >();
@@ -449,18 +452,18 @@ function AdminBookingDetailSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-booking-detail-title"
-        className="relative z-10 flex w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200/80 bg-white shadow-2xl sm:rounded-2xl"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200/80 bg-white shadow-2xl sm:rounded-2xl"
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 sm:px-5">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-5">
           <div className="min-w-0">
             <h2
               id="admin-booking-detail-title"
-              className="text-lg font-semibold text-zinc-900"
+              className="text-xl font-semibold text-zinc-900"
             >
               Booking details
             </h2>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <p className="font-mono text-xs text-zinc-600">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <p className="font-mono text-xs text-zinc-500">
                 <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
                   ID
                 </span>
@@ -472,128 +475,126 @@ function AdminBookingDetailSheet({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-8 shrink-0 place-items-center rounded-lg border border-maroon/40 text-maroon transition hover:bg-maroon/10"
+            className="grid size-8 shrink-0 place-items-center rounded-lg border border-maroon/35 text-maroon transition hover:bg-maroon/10"
             aria-label="Close"
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2">
-          <div className="flex flex-col gap-2.5 border-b border-zinc-200 p-4 md:border-b-0 md:border-r sm:p-5">
-            <InfoCard title="Customer information">
-              <InfoRow label="Name" value={booking.name} />
-              <InfoRow label="Email" value={booking.email} />
-              <InfoRow label="Phone" value="—" />
-            </InfoCard>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid md:grid-cols-[1.05fr_0.95fr]">
+            <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 md:border-b-0 md:border-r sm:p-5">
+              <InfoCard
+                title="Customer information"
+                icon={<UserRound size={16} aria-hidden />}
+              >
+                <InfoRow label="Name" value={booking.name} />
+                <InfoRow label="Email" value={booking.email} />
+                <InfoRow label="Phone" value="—" />
+              </InfoCard>
 
-            <InfoCard title="Booking information">
-              <InfoRow label="Type" value={meta.title} />
-              <InfoRow
-                label="Court"
-                value={
-                  court ? `${court.name} · ${court.group}` : "Not specified"
-                }
-              />
-              <InfoRow label="Date" value={formatLongDate(booking.date)} />
-              <InfoRow
-                label="Schedule"
-                value={`${timeLabel} · ${hours} ${hours === 1 ? "hour" : "hours"}`}
-              />
-            </InfoCard>
+              <InfoCard
+                title="Booking information"
+                icon={<CalendarDays size={16} aria-hidden />}
+              >
+                <InfoRow label="Type" value={meta.title} />
+                <InfoRow
+                  label="Court"
+                  value={
+                    court ? `${court.name} · ${court.group}` : "Not specified"
+                  }
+                />
+                <InfoRow label="Date" value={formatLongDate(booking.date)} />
+                <InfoRow
+                  label="Schedule"
+                  value={`${timeRange} · ${hours} ${hours === 1 ? "hour" : "hours"}`}
+                />
+              </InfoCard>
 
-            <InfoCard title="Payment information">
-              <InfoRow label="Amount" value={`₱${total}`} />
-              <InfoRow label="Payment channel" value="GCash" />
-              <InfoRow
-                label="Reference ID"
-                value={booking.referenceId || "—"}
-              />
-              <InfoRow label="Proof submitted" value={submittedAt} />
-              <InfoRow
-                label="Receipt file"
-                value={booking.receiptName || "None"}
-              />
-            </InfoCard>
-          </div>
+              <InfoCard
+                title="Payment information"
+                icon={<CreditCard size={16} aria-hidden />}
+              >
+                <InfoRow label="Amount" value={`₱${total}`} />
+                <InfoRow label="Payment channel" value="GCash" />
+                <InfoRow
+                  label="Reference ID"
+                  value={booking.referenceId || "—"}
+                />
+                <InfoRow label="Proof submitted" value={submittedAt} />
+                <InfoRow
+                  label="Receipt file"
+                  value={booking.receiptName || "None"}
+                />
+              </InfoCard>
+            </div>
 
-          <div className="flex flex-col p-4 sm:p-5">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            <div className="flex min-h-0 flex-col p-4 sm:p-5">
+              <h3 className="mb-3 text-sm font-semibold text-zinc-900">
                 Payment receipt
               </h3>
-              {receiptUrl ? (
-                <a
-                  href={receiptUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-maroon hover:text-yellow"
-                >
-                  Open full size
-                  <ExternalLink size={11} aria-hidden />
-                </a>
-              ) : null}
-            </div>
-            <div className="flex h-[220px] items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 sm:h-[260px]">
-              {isImage ? (
-                <img
-                  src={receiptUrl}
-                  alt={booking.receiptName || "Payment receipt"}
-                  className="h-full w-full object-contain object-center p-2"
-                  onError={() => {
-                    setReceiptLoadFailed(true);
-                    refetchReceiptOnce();
-                  }}
-                />
-              ) : isPdf ? (
-                <iframe
-                  title={booking.receiptName || "Payment receipt"}
-                  src={receiptUrl}
-                  className="h-full w-full border-0 bg-white"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2 px-5 text-center">
-                  <span className="grid size-11 place-items-center rounded-xl bg-yellow/15 text-yellow">
-                    <FileText size={20} aria-hidden />
-                  </span>
-                  <p className="text-sm font-medium text-zinc-900">
-                    {booking.receiptKey
-                      ? receiptLoadFailed
-                        ? "Could not load receipt"
-                        : "Loading receipt…"
-                      : booking.receiptName || "No receipt attached"}
-                  </p>
-                  <p className="max-w-xs text-[11px] text-zinc-500">
-                    {booking.receiptKey
-                      ? receiptLoadFailed
-                        ? "Storage may be unset or the signed URL expired."
-                        : "Fetching a short-lived preview link…"
-                      : booking.receiptName
-                        ? "Only the filename was saved for this request."
-                        : "No payment proof was attached."}
-                  </p>
-                </div>
-              )}
+              <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 sm:min-h-[360px]">
+                {isImage ? (
+                  <img
+                    src={receiptUrl}
+                    alt={booking.receiptName || "Payment receipt"}
+                    className="h-full max-h-[420px] w-full object-contain object-center"
+                    onError={() => {
+                      setReceiptLoadFailed(true);
+                      refetchReceiptOnce();
+                    }}
+                  />
+                ) : isPdf ? (
+                  <iframe
+                    title={booking.receiptName || "Payment receipt"}
+                    src={receiptUrl}
+                    className="h-full min-h-[360px] w-full border-0 bg-white"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+                    <span className="grid size-12 place-items-center rounded-xl bg-amber-100 text-amber-800">
+                      <FileText size={22} aria-hidden />
+                    </span>
+                    <p className="max-w-xs text-sm font-medium text-zinc-800">
+                      {booking.receiptKey
+                        ? receiptLoadFailed
+                          ? "Could not load receipt"
+                          : "Loading receipt…"
+                        : booking.receiptName || "No receipt attached"}
+                    </p>
+                    <p className="max-w-xs text-[11px] leading-relaxed text-zinc-500">
+                      {booking.receiptKey
+                        ? receiptLoadFailed
+                          ? "Storage may be unset or the signed URL expired."
+                          : "Fetching a short-lived preview link…"
+                        : booking.receiptName
+                          ? "Only the filename was saved for this request."
+                          : "No payment proof was attached."}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {booking.status === "pending" ? (
-          <div className="flex shrink-0 flex-wrap gap-2 border-t border-zinc-200 px-4 py-3 sm:px-5">
+          <div className="flex shrink-0 flex-wrap gap-2 border-t border-zinc-200 px-4 py-3.5 sm:px-5">
             <button
               type="button"
               onClick={onApprove}
-              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-yellow/90 sm:flex-none"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-amber-500 sm:flex-none sm:min-w-[140px]"
             >
-              <Check size={14} aria-hidden />
+              <Check size={15} aria-hidden />
               Approve
             </button>
             <button
               type="button"
               onClick={onReject}
-              className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-700 transition hover:border-maroon hover:text-maroon sm:flex-none"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 transition hover:border-maroon/40 hover:text-maroon sm:flex-none sm:min-w-[120px]"
             >
-              <X size={14} aria-hidden />
+              <X size={15} aria-hidden />
               Reject
             </button>
           </div>
@@ -605,17 +606,26 @@ function AdminBookingDetailSheet({
 
 function InfoCard({
   title,
+  icon,
   children,
 }: {
   title: string;
+  icon: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5">
-      <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-yellow">
-        {title}
-      </h3>
-      <dl className="mt-2 flex flex-col gap-1.5">{children}</dl>
+    <section className="rounded-xl border border-zinc-200/90 bg-white px-3.5 py-3 shadow-sm">
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-800">
+          {icon}
+        </span>
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-800">
+          {title}
+        </h3>
+      </div>
+      <dl className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-2.5">
+        {children}
+      </dl>
     </section>
   );
 }
@@ -624,7 +634,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 text-xs">
       <dt className="shrink-0 text-zinc-500">{label}</dt>
-      <dd className="truncate text-right font-medium text-zinc-900">{value}</dd>
+      <dd className="min-w-0 truncate text-right font-medium text-zinc-900">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -633,12 +645,13 @@ function StatusBadge({ status }: { status: BookingStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
-        status === "pending" && "border-yellow/50 bg-yellow/10 text-yellow",
-        status === "approved" && "border-green/40 bg-green/10 text-green",
-        status === "rejected" && "border-maroon/40 bg-maroon/10 text-maroon",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+        status === "pending" && "bg-amber-100 text-amber-900",
+        status === "approved" && "bg-green/15 text-green",
+        status === "rejected" && "bg-maroon/10 text-maroon",
       )}
     >
+      {status === "pending" ? <Clock3 size={12} aria-hidden /> : null}
       {status}
     </span>
   );

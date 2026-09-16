@@ -33,7 +33,6 @@ import {
   parseDateKey,
   selectedSlotLabels,
   type BookingPlan,
-  type TimeSlot,
 } from "@/lib/booking/booking";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
@@ -77,7 +76,9 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const [copied, setCopied] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [takenKeys, setTakenKeys] = useState<Set<string>>(() => new Set());
+  const [slotStatusByKey, setSlotStatusByKey] = useState<
+    Map<string, "pending" | "approved">
+  >(() => new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -90,34 +91,36 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
     const controller = new AbortController();
     void listOccupancy({ date }, controller.signal)
       .then((items) => {
-        const next = new Set<string>();
+        const next = new Map<string, "pending" | "approved">();
         for (const item of items) {
           for (const slotId of item.slotIds) {
-            next.add(`${item.courtId}|${slotId}`);
+            const key = `${item.courtId}|${slotId}`;
+            const existing = next.get(key);
+            // Approved wins over pending when both somehow exist.
+            if (existing === "approved") continue;
+            next.set(key, item.status);
           }
         }
-        setTakenKeys(next);
+        setSlotStatusByKey(next);
       })
       .catch(() => {
-        setTakenKeys(new Set());
+        setSlotStatusByKey(new Map());
       });
     return () => controller.abort();
   }, [open, date]);
 
-  function isTaken(court: string, slotId: string) {
-    return takenKeys.has(`${court}|${slotId}`);
-  }
-
-  function isOpenSlot(slot: TimeSlot) {
-    if (!courtId || !plan) return false;
-    if (isSlotPast(date, slot.hour)) return false;
-    return !isTaken(courtId, slot.id);
+  function slotHold(
+    court: string,
+    slotId: string,
+  ): "pending" | "approved" | null {
+    return slotStatusByKey.get(`${court}|${slotId}`) ?? null;
   }
 
   function courtHasOpenHour(court: string) {
     if (!plan) return false;
     return SLOTS[plan].some(
-      (slot) => !isSlotPast(date, slot.hour) && !isTaken(court, slot.id),
+      (slot) =>
+        !isSlotPast(date, slot.hour) && slotHold(court, slot.id) === null,
     );
   }
 
@@ -432,23 +435,38 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {slots.map((slot) => {
-                    const openSlot = Boolean(courtId) && isOpenSlot(slot);
+                    const hold = courtId ? slotHold(courtId, slot.id) : null;
+                    const past = courtId ? isSlotPast(date, slot.hour) : true;
+                    const openSlot = Boolean(courtId) && !past && hold === null;
                     const selected = slotIds.includes(slot.id);
+                    const pending = hold === "pending";
+                    const approved = hold === "approved";
                     return (
                       <button
                         key={slot.id}
                         type="button"
                         disabled={!openSlot}
                         onClick={() => toggleSlot(slot.id)}
-                        className={`h-10 px-3 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
+                        className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
                           selected
                             ? "bg-yellow text-black"
                             : openSlot
                               ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                              : "border border-white/10 text-white/25"
+                              : pending
+                                ? "border border-amber-400/45 bg-amber-400/10 text-amber-100"
+                                : approved
+                                  ? "border border-white/10 text-white/35"
+                                  : "border border-white/10 text-white/25"
                         }`}
                       >
-                        {slot.label}
+                        <span className={approved ? "line-through" : undefined}>
+                          {slot.label}
+                        </span>
+                        {pending ? (
+                          <span className="text-[9px] font-bold tracking-[0.16em] text-amber-300">
+                            Pending
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}

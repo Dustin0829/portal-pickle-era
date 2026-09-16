@@ -1,5 +1,4 @@
-export const SESSION_COOKIE = "pe_session";
-export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const LEGACY_SESSION_COOKIE = "pe_session";
 
 export type AuthUser = {
   id: string;
@@ -7,3 +6,7 @@ export type AuthUser = {
   email: string;
   role: "student" | "admin";
 };
+
+export function isUserRole(value: unknown): value is AuthUser["role"] {
+  return value === "student" || value === "admin";
+}

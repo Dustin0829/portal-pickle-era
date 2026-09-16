@@ -89,7 +89,7 @@ describe("AdminCalendarPage walk-in booking", () => {
     await user.click(screen.getByText("14"));
 
     expect(
-      screen.getByRole("heading", { name: /wednesday, oct 14, 2026/i }),
+      screen.getByRole("heading", { name: /wednesday, october 14, 2026/i }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "8:00 AM – 9:00 AM" }));

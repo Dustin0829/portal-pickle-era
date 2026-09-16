@@ -1,10 +1,7 @@
 import { useMemo, useState } from "react";
 import { ClipboardList, PhilippinePeso, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import {
-  useAdminBookings,
-  useAdminUsers,
-} from "@/api/features/bookings/use-bookings";
+import { useAdminBookings } from "@/api/features/bookings/use-bookings";
 import { useAdminWaitlistList } from "@/api/features/waitlist/use-waitlist";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
@@ -80,7 +77,7 @@ function formatActivityTime(iso: string) {
 }
 
 export function AdminDashboardPage() {
-  const [preset, setPreset] = useState<RangePreset>("today");
+  const [preset, setPreset] = useState<RangePreset>("all");
   const end = dateKey(new Date());
   const start = startOfRange(preset);
 
@@ -91,11 +88,6 @@ export function AdminDashboardPage() {
     order: "desc",
   });
   const waitlistQuery = useAdminWaitlistList("");
-  const usersQuery = useAdminUsers({
-    page: 1,
-    limit: 100,
-    role: "student",
-  });
 
   const bookings = useMemo(
     () => (bookingsQuery.data?.items ?? []).map(bookingDtoToRequest),
@@ -111,10 +103,6 @@ export function AdminDashboardPage() {
       })),
     [waitlistQuery.data?.items],
   );
-  const students = useMemo(
-    () => usersQuery.data?.items ?? [],
-    [usersQuery.data?.items],
-  );
 
   const rangedBookings = useMemo(
     () =>
@@ -122,12 +110,6 @@ export function AdminDashboardPage() {
         inRange(createdDay(item.createdAt), start, end),
       ),
     [bookings, start, end],
-  );
-
-  const rangedWaitlist = useMemo(
-    () =>
-      waitlist.filter((item) => inRange(createdDay(item.joinedAt), start, end)),
-    [waitlist, start, end],
   );
 
   const totalSales = useMemo(
@@ -140,19 +122,8 @@ export function AdminDashboardPage() {
 
   const totalBookings = rangedBookings.length;
 
-  const totalPlayers = useMemo(() => {
-    const emails = new Set<string>();
-    for (const student of students) {
-      emails.add(student.email.toLowerCase());
-    }
-    for (const booking of rangedBookings) {
-      if (booking.email) emails.add(booking.email.toLowerCase());
-    }
-    for (const lead of rangedWaitlist) {
-      emails.add(lead.email.toLowerCase());
-    }
-    return emails.size;
-  }, [students, rangedBookings, rangedWaitlist]);
+  // Match /admin/players (waitlist leads), not seeded student accounts.
+  const totalPlayers = waitlist.length;
 
   const activities = useMemo(() => {
     const items: ActivityItem[] = [];
@@ -179,22 +150,11 @@ export function AdminDashboardPage() {
       });
     }
 
-    for (const lead of waitlist) {
-      items.push({
-        id: `waitlist-${lead.email}`,
-        at: lead.joinedAt || new Date(0).toISOString(),
-        title: "New player lead",
-        detail: `${lead.name || "No name"} · ${lead.email}`,
-        tone: "yellow",
-        href: "/admin/players",
-      });
-    }
-
     return items
       .filter((item) => inRange(createdDay(item.at), start, end))
       .sort((a, b) => b.at.localeCompare(a.at))
       .slice(0, 10);
-  }, [bookings, waitlist, start, end]);
+  }, [bookings, start, end]);
 
   const rangeLabel =
     PORTAL_RANGE_OPTIONS.find((item) => item.value === preset)?.label ??
@@ -242,7 +202,7 @@ export function AdminDashboardPage() {
           <StatCard
             label="Total players"
             value={String(totalPlayers)}
-            hint="Accounts, bookings & leads"
+            hint="Newsletter & booking leads"
             icon={<Users size={18} aria-hidden />}
             iconClass="bg-green/15 text-green"
             to="/admin/players"
@@ -273,12 +233,26 @@ export function AdminDashboardPage() {
                   {item.href ? (
                     <Link
                       to={item.href}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 shadow-sm transition hover:border-yellow/40"
+                      className={cn(
+                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 shadow-sm transition hover:border-yellow/50",
+                        item.tone === "yellow" &&
+                          "border-l-[3px] border-l-yellow",
+                        item.tone === "green" &&
+                          "border-l-[3px] border-l-green",
+                      )}
                     >
                       <ActivityBody item={item} />
                     </Link>
                   ) : (
-                    <div className="flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 shadow-sm">
+                    <div
+                      className={cn(
+                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 shadow-sm",
+                        item.tone === "yellow" &&
+                          "border-l-[3px] border-l-yellow",
+                        item.tone === "green" &&
+                          "border-l-[3px] border-l-green",
+                      )}
+                    >
                       <ActivityBody item={item} />
                     </div>
                   )}
@@ -298,13 +272,23 @@ function ActivityBody({ item }: { item: ActivityItem }) {
       <div className="min-w-0">
         <p
           className={cn(
-            "text-sm font-semibold",
-            item.tone === "yellow" && "text-yellow",
+            "text-sm font-semibold tracking-tight",
+            item.tone === "yellow" && "text-zinc-900",
             item.tone === "green" && "text-green",
-            item.tone === "zinc" && "text-zinc-900",
+            item.tone === "zinc" && "text-zinc-600",
           )}
         >
-          {item.title}
+          {item.tone === "yellow" ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-yellow shadow-[0_0_0_3px_rgba(245,237,90,0.35)]"
+                aria-hidden
+              />
+              {item.title}
+            </span>
+          ) : (
+            item.title
+          )}
         </p>
         <p className="mt-0.5 truncate text-xs text-zinc-500">{item.detail}</p>
       </div>
