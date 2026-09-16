@@ -17,10 +17,9 @@ export function bookingDtoToRequest(dto: BookingDto): BookingRequest {
     email: dto.email,
     referenceId: dto.referenceId,
     receiptName: dto.receiptName ?? "",
-    receiptDataUrl: dto.receiptKey?.startsWith("http")
-      ? dto.receiptKey
-      : undefined,
+    receiptDataUrl: undefined,
     receiptMimeType: dto.receiptMimeType ?? undefined,
+    receiptKey: dto.receiptKey,
     status: dto.status,
     createdAt: dto.createdAt,
   };

@@ -11,6 +11,7 @@ import {
 } from "./bookings.mapper.js";
 import {
   OPENING_DATE,
+  bookingReceiptUrlResponseSchema,
   createPublicBookingBodySchema,
   occupancyQuerySchema,
   patchBookingBodySchema,
@@ -67,6 +68,29 @@ test("occupancy query requires date or from+to", () => {
 test("patch status only approved or rejected", () => {
   assert.equal(patchBookingBodySchema.safeParse({ status: "pending" }).success, false);
   assert.equal(patchBookingBodySchema.safeParse({ status: "approved" }).success, true);
+});
+
+test("receipt url response schema", () => {
+  assert.equal(
+    bookingReceiptUrlResponseSchema.safeParse({
+      url: "https://storage.example/object?X-Amz-Signature=abc",
+      expiresAt: "2026-01-01T00:05:00.000Z",
+    }).success,
+    true,
+  );
+  assert.equal(
+    bookingReceiptUrlResponseSchema.safeParse({
+      url: "not-a-url",
+      expiresAt: "soon",
+    }).success,
+    false,
+  );
+  assert.equal(
+    bookingReceiptUrlResponseSchema.safeParse({
+      url: "https://storage.example/object",
+    }).success,
+    false,
+  );
 });
 
 test("booking mapper serializes", () => {

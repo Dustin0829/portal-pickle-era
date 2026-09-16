@@ -1,10 +1,16 @@
 import api from "@/api/client";
 import { z } from "zod";
 
+const ALLOWED_RECEIPT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
+
 const presignResponseSchema = z.object({
   key: z.string(),
   uploadUrl: z.string().url(),
-  publicUrl: z.string().url().optional(),
 });
 
 export async function presignUpload(input: {
@@ -19,25 +25,27 @@ export async function presignUpload(input: {
 export async function uploadReceiptFile(file: File): Promise<{
   receiptKey?: string;
   receiptMimeType?: string;
-  publicUrl?: string;
 } | null> {
   try {
+    const contentType = file.type || "application/octet-stream";
+    if (!ALLOWED_RECEIPT_TYPES.has(contentType)) {
+      return null;
+    }
     const presign = await presignUpload({
       filename: file.name || "receipt",
-      contentType: file.type || "application/octet-stream",
+      contentType,
     });
     const put = await fetch(presign.uploadUrl, {
       method: "PUT",
       headers: {
-        "Content-Type": file.type || "application/octet-stream",
+        "Content-Type": contentType,
       },
       body: file,
     });
     if (!put.ok) return null;
     return {
-      receiptKey: presign.publicUrl ?? presign.key,
-      receiptMimeType: file.type || undefined,
-      publicUrl: presign.publicUrl,
+      receiptKey: presign.key,
+      receiptMimeType: contentType,
     };
   } catch {
     return null;

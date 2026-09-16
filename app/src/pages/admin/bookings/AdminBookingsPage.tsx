@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -15,6 +15,7 @@ import {
   useAdminBookings,
   usePatchAdminBooking,
 } from "@/api/features/bookings/use-bookings";
+import { getAdminBookingReceiptUrl } from "@/api/features/bookings/bookings.service";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
@@ -231,6 +232,7 @@ export function AdminBookingsPage() {
 
       {selected ? (
         <AdminBookingDetailSheet
+          key={selected.id}
           booking={selected}
           onClose={() => setDetailId(null)}
           onApprove={() => {
@@ -376,14 +378,60 @@ function AdminBookingDetailSheet({
     booking.slotIds.length > 0
       ? booking.slotIds.map(formatSlotTime).join(", ")
       : "Time TBD";
+  const [signedReceiptUrl, setSignedReceiptUrl] = useState<
+    string | undefined
+  >();
+  const [receiptLoadFailed, setReceiptLoadFailed] = useState(false);
+  const [didRefetch, setDidRefetch] = useState(false);
+  const receiptUrl = booking.receiptKey
+    ? signedReceiptUrl
+    : booking.receiptDataUrl;
+
+  useEffect(() => {
+    if (!booking.receiptKey) return;
+    const controller = new AbortController();
+    void getAdminBookingReceiptUrl(booking.id, controller.signal)
+      .then((result) => {
+        setSignedReceiptUrl(result.url);
+        setReceiptLoadFailed(false);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        if (
+          error &&
+          typeof error === "object" &&
+          "name" in error &&
+          error.name === "CanceledError"
+        ) {
+          return;
+        }
+        setSignedReceiptUrl(undefined);
+        setReceiptLoadFailed(true);
+      });
+    return () => controller.abort();
+  }, [booking.id, booking.receiptKey]);
+
+  function refetchReceiptOnce() {
+    if (!booking.receiptKey || didRefetch) return;
+    setDidRefetch(true);
+    void getAdminBookingReceiptUrl(booking.id)
+      .then((result) => {
+        setSignedReceiptUrl(result.url);
+        setReceiptLoadFailed(false);
+      })
+      .catch(() => {
+        setReceiptLoadFailed(true);
+      });
+  }
+
   const isImage =
-    !!booking.receiptDataUrl &&
+    !!receiptUrl &&
     (booking.receiptMimeType?.startsWith("image/") ||
-      booking.receiptDataUrl.startsWith("data:image/"));
+      receiptUrl.startsWith("data:image/"));
   const isPdf =
-    !!booking.receiptDataUrl &&
+    !!receiptUrl &&
     (booking.receiptMimeType === "application/pdf" ||
-      booking.receiptDataUrl.startsWith("data:application/pdf"));
+      receiptUrl.startsWith("data:application/pdf"));
   const submittedAt = new Date(booking.createdAt).toLocaleDateString(
     undefined,
     { month: "short", day: "numeric", year: "numeric" },
@@ -474,9 +522,9 @@ function AdminBookingDetailSheet({
               <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
                 Payment receipt
               </h3>
-              {booking.receiptDataUrl ? (
+              {receiptUrl ? (
                 <a
-                  href={booking.receiptDataUrl}
+                  href={receiptUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-maroon hover:text-yellow"
@@ -489,14 +537,18 @@ function AdminBookingDetailSheet({
             <div className="flex h-[220px] items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 sm:h-[260px]">
               {isImage ? (
                 <img
-                  src={booking.receiptDataUrl}
+                  src={receiptUrl}
                   alt={booking.receiptName || "Payment receipt"}
                   className="h-full w-full object-contain object-center p-2"
+                  onError={() => {
+                    setReceiptLoadFailed(true);
+                    refetchReceiptOnce();
+                  }}
                 />
               ) : isPdf ? (
                 <iframe
                   title={booking.receiptName || "Payment receipt"}
-                  src={booking.receiptDataUrl}
+                  src={receiptUrl}
                   className="h-full w-full border-0 bg-white"
                 />
               ) : (
@@ -505,12 +557,20 @@ function AdminBookingDetailSheet({
                     <FileText size={20} aria-hidden />
                   </span>
                   <p className="text-sm font-medium text-zinc-900">
-                    {booking.receiptName || "No receipt attached"}
+                    {booking.receiptKey
+                      ? receiptLoadFailed
+                        ? "Could not load receipt"
+                        : "Loading receipt…"
+                      : booking.receiptName || "No receipt attached"}
                   </p>
                   <p className="max-w-xs text-[11px] text-zinc-500">
-                    {booking.receiptName
-                      ? "Only the filename was saved for this request."
-                      : "No payment proof was attached."}
+                    {booking.receiptKey
+                      ? receiptLoadFailed
+                        ? "Storage may be unset or the signed URL expired."
+                        : "Fetching a short-lived preview link…"
+                      : booking.receiptName
+                        ? "Only the filename was saved for this request."
+                        : "No payment proof was attached."}
                   </p>
                 </div>
               )}

@@ -95,7 +95,8 @@ Marketing/portal UIs may still use localStorage until a wiring change. Local sta
 
 1. Railway: Postgres plugin + API service (`backend` root) + web (`app` root) — see [railway-deploy.md](./railway-deploy.md)
 2. Set `DATABASE_URL`, `API_CORS_ORIGIN`, production `ADMIN_BASIC_AUTH_*`
-3. Deploy API first (migrate on start), then web with `VITE_API_URL`
+3. Optional: inject Railway Bucket credentials as `S3_*` (see [railway-deploy.md](./railway-deploy.md))
+4. Deploy API first (migrate on start), then web with `VITE_API_URL`
 
 ## Reset local DB
 

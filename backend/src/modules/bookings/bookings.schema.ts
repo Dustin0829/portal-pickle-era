@@ -105,6 +105,11 @@ export const patchBookingBodySchema = z
   })
   .strict();
 
+export const bookingReceiptUrlResponseSchema = z.object({
+  url: z.string().url(),
+  expiresAt: z.string().datetime(),
+});
+
 export const listUsersQuerySchema = paginatedQuerySchema.extend({
   role: z.enum(["student", "admin"]).optional().default("student"),
 });
@@ -116,4 +121,5 @@ export type CreateAdminBookingBody = z.infer<typeof createAdminBookingBodySchema
 export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
 export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
+export type BookingReceiptUrlResponse = z.infer<typeof bookingReceiptUrlResponseSchema>;
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;

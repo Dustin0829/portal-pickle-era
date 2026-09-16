@@ -5,6 +5,7 @@ import { loadSession, requireSession } from "../auth/auth.middleware.js";
 import {
   createAdminBookingController,
   createPublicBookingController,
+  bookingReceiptUrlController,
   listAdminBookingsController,
   listAdminUsersController,
   myBookingsController,
@@ -52,6 +53,11 @@ bookingsAdminRouter.post(
   "/",
   validateBody(createAdminBookingBodySchema),
   asyncHandler(createAdminBookingController),
+);
+bookingsAdminRouter.get(
+  "/:id/receipt-url",
+  validateParams(bookingIdParamsSchema),
+  asyncHandler(bookingReceiptUrlController),
 );
 bookingsAdminRouter.patch(
   "/:id",
