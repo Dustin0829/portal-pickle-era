@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Info,
   User,
   X,
@@ -306,8 +307,8 @@ function DayScheduleModal({
     [bookings, date],
   );
 
-  const takenKeys = useMemo(() => {
-    const keys = new Set<string>();
+  const slotHoldByKey = useMemo(() => {
+    const keys = new Map<string, "pending" | "approved">();
     for (const booking of dayBookings) {
       const slots =
         booking.slotIds?.length > 0
@@ -316,7 +317,12 @@ function DayScheduleModal({
             ? [booking.slotId]
             : [];
       for (const slotId of slots) {
-        keys.add(`${booking.courtId}|${slotId}`);
+        const key = `${booking.courtId}|${slotId}`;
+        const existing = keys.get(key);
+        if (existing === "approved") continue;
+        if (booking.status === "approved" || booking.status === "pending") {
+          keys.set(key, booking.status);
+        }
       }
     }
     return keys;
@@ -325,15 +331,15 @@ function DayScheduleModal({
   const courts = useMemo(() => {
     return COURTS.map((court) => {
       const slots = DAY_SLOTS.map((slot) => {
-        const booked = takenKeys.has(`${court.id}|${slot.id}`);
+        const hold = slotHoldByKey.get(`${court.id}|${slot.id}`) ?? null;
         const past = isSlotPast(date, slot.hour);
         return {
           slotId: slot.id,
           label: `${formatHour(slot.hour)} – ${formatHour(slot.hour + 1)}`,
-          booked,
+          hold,
           past,
           hour: slot.hour,
-          open: !booked && !past,
+          open: hold === null && !past,
         };
       });
       return {
@@ -343,10 +349,11 @@ function DayScheduleModal({
         group: court.group,
         slots,
         openSlots: slots.filter((slot) => slot.open),
+        visibleSlots: slots.filter((slot) => !slot.past),
         availableCount: slots.filter((slot) => slot.open).length,
       };
     });
-  }, [date, takenKeys]);
+  }, [date, slotHoldByKey]);
 
   const availableCount = courts.reduce(
     (total, court) => total + court.availableCount,
@@ -394,7 +401,7 @@ function DayScheduleModal({
 
   const scheduleLabel = parseIsoDate(date).toLocaleDateString(undefined, {
     weekday: "long",
-    month: "short",
+    month: "long",
     day: "numeric",
     year: "numeric",
   });
@@ -431,8 +438,8 @@ function DayScheduleModal({
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 sm:px-6 sm:py-5">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-yellow">
-              <CalendarDays size={18} className="text-black" aria-hidden />
+            <div className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-amber-100">
+              <CalendarDays size={18} className="text-zinc-900" aria-hidden />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
@@ -450,7 +457,7 @@ function DayScheduleModal({
                 hours
                 {canBook
                   ? isWalkIn
-                    ? " · tap open hours to book a walk-in"
+                    ? " · tap open hours"
                     : " · tap open hours to multi-select"
                   : ""}
               </p>
@@ -467,30 +474,7 @@ function DayScheduleModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 lg:overflow-hidden">
-          <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)] lg:gap-8">
-            <section className="flex min-h-0 flex-col lg:h-full">
-              <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-maroon">
-                  Booked
-                </h3>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  {dayBookings.length} booking
-                  {dayBookings.length === 1 ? "" : "s"}
-                </p>
-              </div>
-              {dayBookings.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 px-4 py-6 text-sm text-zinc-500">
-                  No bookings for this day.
-                </p>
-              ) : (
-                <ul className="flex min-h-0 flex-col gap-3 lg:flex-1 lg:overflow-y-auto lg:pr-1">
-                  {dayBookings.map((booking) => (
-                    <DayBookingRow key={booking.id} booking={booking} />
-                  ))}
-                </ul>
-              )}
-            </section>
-
+          <div className="grid gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-8">
             <section className="shrink-0 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 sm:p-5 lg:min-h-0 lg:overflow-hidden">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-green">
@@ -500,7 +484,7 @@ function DayScheduleModal({
                   {canBook
                     ? isWalkIn
                       ? "Tap to select · then book walk-in"
-                      : "Tap to select · booked hours on the left"
+                      : "Tap to select · booked hours on the right"
                     : "Open only"}
                 </p>
               </div>
@@ -522,7 +506,7 @@ function DayScheduleModal({
                       className={cn(
                         "flex flex-col items-center justify-center rounded-xl border px-2 py-2.5 transition",
                         selected
-                          ? "border-yellow bg-yellow text-black shadow-sm"
+                          ? "border-amber-400 bg-amber-400 text-zinc-900 shadow-sm"
                           : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900",
                       )}
                     >
@@ -532,7 +516,7 @@ function DayScheduleModal({
                       <span
                         className={cn(
                           "mt-0.5 text-[11px] font-semibold",
-                          selected ? "text-black/70" : "text-zinc-400",
+                          selected ? "text-zinc-900/70" : "text-zinc-400",
                         )}
                       >
                         {court.availableCount}
@@ -558,15 +542,18 @@ function DayScheduleModal({
                         : `${activeCourt.availableCount} open`}
                     </p>
                   </div>
-                  {activeCourt.openSlots.length === 0 ? (
+                  {activeCourt.visibleSlots.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-zinc-200 bg-white px-4 py-6 text-sm text-zinc-500">
-                      No open hours on this court.
+                      No hours left on this court today.
                     </p>
                   ) : (
                     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {activeCourt.openSlots.map((slot) => {
-                        const bookable = canBook && Boolean(onBookSlot);
+                      {activeCourt.visibleSlots.map((slot) => {
+                        const bookable =
+                          canBook && Boolean(onBookSlot) && slot.open;
                         const picked = selectedSorted.includes(slot.slotId);
+                        const pending = slot.hold === "pending";
+                        const approved = slot.hold === "approved";
 
                         if (bookable) {
                           return (
@@ -576,9 +563,9 @@ function DayScheduleModal({
                                 aria-pressed={picked}
                                 onClick={() => toggleSlot(slot.slotId)}
                                 className={cn(
-                                  "w-full rounded-xl border-2 px-3 py-3 text-center text-[12px] font-bold tracking-tight transition",
+                                  "flex w-full flex-col items-center justify-center rounded-xl border-2 px-3 py-3 text-center text-[12px] font-bold tracking-tight transition",
                                   picked
-                                    ? "border-yellow bg-yellow text-black shadow-md"
+                                    ? "border-amber-400 bg-amber-400 text-zinc-900 shadow-md"
                                     : "border-green/40 bg-green text-white shadow-sm shadow-green/25 hover:brightness-110",
                                 )}
                               >
@@ -591,9 +578,27 @@ function DayScheduleModal({
                         return (
                           <li
                             key={slot.slotId}
-                            className="rounded-xl border-2 border-green/40 bg-green px-3 py-3 text-center text-[12px] font-bold tracking-tight text-white shadow-sm shadow-green/25"
+                            className={cn(
+                              "flex flex-col items-center justify-center rounded-xl border-2 px-3 py-3 text-center text-[12px] font-bold tracking-tight",
+                              pending &&
+                                "border-amber-300/80 bg-amber-50 text-amber-900",
+                              approved &&
+                                "border-zinc-200 bg-zinc-100 text-zinc-400",
+                              !pending &&
+                                !approved &&
+                                "border-green/40 bg-green text-white shadow-sm shadow-green/25",
+                            )}
                           >
-                            {slot.label}
+                            <span
+                              className={approved ? "line-through" : undefined}
+                            >
+                              {slot.label}
+                            </span>
+                            {pending ? (
+                              <span className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-amber-700">
+                                Pending
+                              </span>
+                            ) : null}
                           </li>
                         );
                       })}
@@ -601,6 +606,29 @@ function DayScheduleModal({
                   )}
                 </div>
               ) : null}
+            </section>
+
+            <section className="flex min-h-0 flex-col lg:h-full">
+              <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-maroon">
+                  Booked
+                </h3>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  {dayBookings.length} booking
+                  {dayBookings.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              {dayBookings.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 px-4 py-6 text-sm text-zinc-500">
+                  No bookings for this day.
+                </p>
+              ) : (
+                <ul className="flex min-h-0 flex-col gap-3 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+                  {dayBookings.map((booking) => (
+                    <DayBookingRow key={booking.id} booking={booking} />
+                  ))}
+                </ul>
+              )}
             </section>
           </div>
         </div>
@@ -629,7 +657,7 @@ function DayScheduleModal({
                       slotIds: selectedSorted,
                     })
                   }
-                  className="inline-flex h-10 items-center rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-yellow/90"
+                  className="inline-flex h-10 items-center rounded-xl bg-amber-400 px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-amber-500"
                 >
                   {isWalkIn
                     ? `Book walk-in · ₱${payTotal}`
@@ -638,15 +666,10 @@ function DayScheduleModal({
               </div>
             </>
           ) : (
-            <>
-              <p className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
-                <Info size={13} className="shrink-0" aria-hidden />
-                All times are in Philippine Standard Time (PHT).
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
-                Play more together
-              </p>
-            </>
+            <p className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
+              <Info size={13} className="shrink-0" aria-hidden />
+              All times are in Philippine Standard Time (PHT).
+            </p>
           )}
         </div>
       </div>
@@ -663,30 +686,51 @@ function DayBookingRow({ booking }: { booking: BookingRequest }) {
   const planTitle = PLAN_META[booking.plan]?.title ?? booking.plan;
 
   return (
-    <li className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white pl-1 shadow-sm">
-      <div className="absolute inset-y-0 left-0 w-1 bg-maroon/70" aria-hidden />
-      <div className="px-4 py-3.5 pl-3.5">
-        <p className="text-sm font-semibold text-zinc-900">
-          {time}
-          {court ? ` · ${court.name}` : ""}
-        </p>
-        <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-zinc-500">
-          <User size={12} className="shrink-0 text-zinc-400" aria-hidden />
-          {planTitle}
-          {booking.name ? ` · ${booking.name}` : ""}
-        </p>
-        <span
-          className={cn(
-            "mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
-            booking.status === "pending"
-              ? "border-yellow bg-yellow text-black"
-              : booking.status === "approved"
-                ? "bg-green/15 text-green"
-                : "bg-maroon/10 text-maroon",
-          )}
-        >
-          {STATUS_LABEL[booking.status]}
-        </span>
+    <li className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+      <div className="absolute inset-y-0 left-0 w-1 bg-maroon" aria-hidden />
+      <div className="pl-1">
+        <div className="flex items-center gap-3 px-3.5 py-3.5">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-maroon text-white">
+            <Clock3 size={14} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-zinc-900">{time}</p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {court?.name ?? "Court"}
+            </p>
+          </div>
+          <span
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-zinc-300"
+            aria-hidden
+          >
+            <ChevronRight size={18} />
+          </span>
+        </div>
+
+        <div className="border-t border-zinc-100" />
+
+        <div className="flex items-center gap-3 px-3.5 py-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-500">
+            <User size={14} aria-hidden />
+          </span>
+          <p className="min-w-0 flex-1 truncate text-sm text-zinc-800">
+            {planTitle}
+            {booking.name ? ` · ${booking.name}` : ""}
+          </p>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+              booking.status === "pending" && "bg-amber-100 text-amber-900",
+              booking.status === "approved" && "bg-green/15 text-green",
+              booking.status === "rejected" && "bg-maroon/10 text-maroon",
+            )}
+          >
+            {booking.status === "pending" ? (
+              <Clock3 size={11} aria-hidden />
+            ) : null}
+            {STATUS_LABEL[booking.status]}
+          </span>
+        </div>
       </div>
     </li>
   );
