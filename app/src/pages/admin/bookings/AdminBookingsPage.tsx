@@ -430,11 +430,13 @@ function AdminBookingDetailSheet({
   const isImage =
     !!receiptUrl &&
     (booking.receiptMimeType?.startsWith("image/") ||
-      receiptUrl.startsWith("data:image/"));
+      receiptUrl.startsWith("data:image/") ||
+      /\.(jpe?g|png|webp|gif)$/i.test(booking.receiptName ?? ""));
   const isPdf =
     !!receiptUrl &&
     (booking.receiptMimeType === "application/pdf" ||
-      receiptUrl.startsWith("data:application/pdf"));
+      receiptUrl.startsWith("data:application/pdf") ||
+      /\.pdf$/i.test(booking.receiptName ?? ""));
   const submittedAt = new Date(booking.createdAt).toLocaleDateString(
     undefined,
     { month: "short", day: "numeric", year: "numeric" },
