@@ -26,4 +26,4 @@
 
 - [x] 4.1 `openspec validate railway-bucket-uploads` (or `openspec validate --specs` as applicable)
 - [x] 4.2 `/opsx-verify` for in-scope `api` + `web`
-- [ ] 4.3 `/opsx-pr` on branch `feat/railway-bucket-uploads`
+- [x] 4.3 `/opsx-pr` on branch `feat/railway-bucket-uploads`
