@@ -26,6 +26,17 @@ export function PortalChrome({
 }: PortalChromeProps) {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <div className="portal-shell flex h-svh overflow-hidden bg-black text-white">
@@ -35,7 +46,11 @@ export function PortalChrome({
       >
         <SidebarBrand homeTo={homeTo} title={title} />
         <SidebarNav items={items} onNavigate={() => setMobileOpen(false)} />
-        <SidebarFooter userName={user?.name} onLogout={logout} />
+        <SidebarFooter
+          userName={user?.name}
+          loggingOut={loggingOut}
+          onLogout={handleLogout}
+        />
       </aside>
 
       {mobileOpen ? (
@@ -61,9 +76,10 @@ export function PortalChrome({
             <SidebarNav items={items} onNavigate={() => setMobileOpen(false)} />
             <SidebarFooter
               userName={user?.name}
+              loggingOut={loggingOut}
               onLogout={() => {
                 setMobileOpen(false);
-                void logout();
+                void handleLogout();
               }}
             />
           </aside>
@@ -171,9 +187,11 @@ function SidebarNav({
 
 function SidebarFooter({
   userName,
+  loggingOut,
   onLogout,
 }: {
   userName?: string;
+  loggingOut: boolean;
   onLogout: () => void | Promise<void>;
 }) {
   return (
@@ -183,11 +201,12 @@ function SidebarFooter({
       ) : null}
       <button
         type="button"
+        disabled={loggingOut}
         onClick={() => void onLogout()}
-        className="mt-3 inline-flex items-center gap-2 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55 transition hover:text-yellow"
+        className="mt-3 inline-flex items-center gap-2 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55 transition hover:text-yellow disabled:cursor-not-allowed disabled:opacity-50"
       >
         <LogOut size={12} aria-hidden />
-        Log out
+        {loggingOut ? "Logging out…" : "Log out"}
       </button>
     </div>
   );

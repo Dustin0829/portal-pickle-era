@@ -7,14 +7,25 @@ import {
   Wifi,
 } from "lucide-react";
 import { BookingButton } from "@/components/marketing/BookingButton";
+import { PLAN_META, type BookingPlan } from "@/lib/booking/booking";
+import { usePlanPrices } from "@/lib/booking/planPrices";
 
-const plans = [
+const planCopy: Array<{
+  n: string;
+  image: string;
+  title: string;
+  body: string;
+  unit: string;
+  points: string[];
+  cta: string;
+  featured: boolean;
+  plan: BookingPlan;
+}> = [
   {
     n: "01",
     image: "/pricing-court.jpg",
     title: "Court Rental",
     body: "Private court for you and your crew.",
-    price: "300",
     unit: "/ hour",
     points: [
       "Good for up to 4 players",
@@ -31,7 +42,6 @@ const plans = [
     image: "/pricing-paddle.jpg",
     title: "Open Play",
     body: "Meet players. All skill levels welcome.",
-    price: "150",
     unit: "/ session",
     points: [
       "Great for individuals or small groups",
@@ -48,7 +58,6 @@ const plans = [
     image: "/pricing-clinics.jpg",
     title: "Clinics & Coaching",
     body: "Learn, improve, and level up.",
-    price: "500",
     unit: "/ session",
     points: [
       "Beginner to advanced sessions",
@@ -165,6 +174,8 @@ function PaddleIcon({ size = 22 }: { size?: number }) {
 }
 
 export function Pricing() {
+  const savedPlans = usePlanPrices();
+
   return (
     <section id="pricing" className="bg-black px-5 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-6xl xl:max-w-7xl">
@@ -203,66 +214,71 @@ export function Pricing() {
           </div>
 
           <div className="grid items-stretch gap-4 md:grid-cols-3 lg:col-span-8">
-            {plans.map((plan) => (
-              <article
-                key={plan.title}
-                className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#141413]"
-              >
-                <div className="relative h-40 shrink-0 overflow-hidden sm:h-44">
-                  <img
-                    src={plan.image}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                  <span className="absolute left-4 top-4 text-[11px] font-bold tracking-[0.22em] text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.8)]">
-                    {plan.n}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col px-5 py-5">
-                  <h3 className="min-h-[2.6em] text-[15px] font-bold uppercase leading-tight tracking-[0.08em] text-white">
-                    {plan.title}
-                  </h3>
-                  <p className="mt-1.5 min-h-[2.6em] text-[13px] leading-snug text-white/60">
-                    {plan.body}
-                  </p>
-                  <p className="mt-4 text-white">
-                    <span className="display text-[40px] leading-none">
-                      <span className="align-top text-[22px]">₱</span>
-                      {plan.price}
+            {planCopy.map((plan) => {
+              const displayPrice = String(
+                savedPlans[plan.plan]?.price ?? PLAN_META[plan.plan].price,
+              );
+              return (
+                <article
+                  key={plan.title}
+                  className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#141413]"
+                >
+                  <div className="relative h-40 shrink-0 overflow-hidden sm:h-44">
+                    <img
+                      src={plan.image}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                    <span className="absolute left-4 top-4 text-[11px] font-bold tracking-[0.22em] text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.8)]">
+                      {plan.n}
                     </span>
-                    <span className="ml-1 text-sm text-white/50">
-                      {plan.unit}
-                    </span>
-                  </p>
-                  <ul className="mt-5 flex-1 space-y-2.5">
-                    {plan.points.map((point) => (
-                      <li
-                        key={point}
-                        className="flex min-h-[2.5em] items-start gap-2.5 text-[13px] leading-snug text-white/80"
-                      >
-                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-yellow text-black">
-                          <Check size={10} strokeWidth={3.5} />
-                        </span>
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto pt-6">
-                    <BookingButton
-                      plan={plan.plan}
-                      className={`inline-flex h-11 w-full items-center justify-center gap-2 px-4 text-[11px] font-bold uppercase leading-none tracking-[0.14em] transition ${
-                        plan.featured
-                          ? "bg-yellow text-black hover:bg-white"
-                          : "border border-white/25 text-white hover:border-yellow hover:text-yellow"
-                      }`}
-                    >
-                      {plan.cta}
-                      <ArrowRight size={13} />
-                    </BookingButton>
                   </div>
-                </div>
-              </article>
-            ))}
+                  <div className="flex flex-1 flex-col px-5 py-5">
+                    <h3 className="min-h-[2.6em] text-[15px] font-bold uppercase leading-tight tracking-[0.08em] text-white">
+                      {plan.title}
+                    </h3>
+                    <p className="mt-1.5 min-h-[2.6em] text-[13px] leading-snug text-white/60">
+                      {plan.body}
+                    </p>
+                    <p className="mt-4 text-white">
+                      <span className="display text-[40px] leading-none">
+                        <span className="align-top text-[22px]">₱</span>
+                        {displayPrice}
+                      </span>
+                      <span className="ml-1 text-sm text-white/50">
+                        {plan.unit}
+                      </span>
+                    </p>
+                    <ul className="mt-5 flex-1 space-y-2.5">
+                      {plan.points.map((point) => (
+                        <li
+                          key={point}
+                          className="flex min-h-[2.5em] items-start gap-2.5 text-[13px] leading-snug text-white/80"
+                        >
+                          <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-yellow text-black">
+                            <Check size={10} strokeWidth={3.5} />
+                          </span>
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-auto pt-6">
+                      <BookingButton
+                        plan={plan.plan}
+                        className={`inline-flex h-11 w-full items-center justify-center gap-2 px-4 text-[11px] font-bold uppercase leading-none tracking-[0.14em] transition ${
+                          plan.featured
+                            ? "bg-yellow text-black hover:bg-white"
+                            : "border border-white/25 text-white hover:border-yellow hover:text-yellow"
+                        }`}
+                      >
+                        {plan.cta}
+                        <ArrowRight size={13} />
+                      </BookingButton>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
           <aside className="flex flex-col gap-6 lg:col-span-4">

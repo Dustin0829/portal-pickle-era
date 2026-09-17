@@ -10,6 +10,10 @@ import { Link } from "react-router-dom";
 import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import {
+  PortalListSkeleton,
+  PortalStatSkeleton,
+} from "@/components/portal/portal-skeletons";
 import { PLAN_META, type BookingRequest } from "@/lib/booking/booking";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
@@ -20,12 +24,13 @@ import { useMemo } from "react";
 export function OverviewPage() {
   const { user } = useAuth();
   const { openBookingModal } = useBookingModal();
-  const { data } = useMyBookings(Boolean(user));
+  const { data, isPending, isError } = useMyBookings(Boolean(user));
   const bookings = useMemo(() => (data ?? []).map(bookingDtoToRequest), [data]);
   const pending = bookings.filter((item) => item.status === "pending").length;
   const approved = bookings.filter((item) => item.status === "approved").length;
   const firstName = user?.name.split(" ")[0] ?? "there";
   const recent = bookings.slice(0, 5);
+  const loading = isPending && !data;
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -52,29 +57,33 @@ export function OverviewPage() {
           </button>
         </header>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <StatCard
-            to="/app/bookings"
-            label="Total requests"
-            value={String(bookings.length)}
-            icon={<ClipboardList size={18} />}
-            iconClass="bg-green/15 text-green"
-          />
-          <StatCard
-            to="/app/bookings"
-            label="Pending"
-            value={String(pending)}
-            icon={<Clock3 size={18} />}
-            iconClass="bg-yellow/20 text-yellow"
-          />
-          <StatCard
-            to="/app/bookings"
-            label="Approved"
-            value={String(approved)}
-            icon={<CheckCircle2 size={18} />}
-            iconClass="bg-green/15 text-green"
-          />
-        </div>
+        {loading ? (
+          <PortalStatSkeleton className="mt-8" />
+        ) : (
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <StatCard
+              to="/app/bookings"
+              label="Total requests"
+              value={String(bookings.length)}
+              icon={<ClipboardList size={18} />}
+              iconClass="bg-green/15 text-green"
+            />
+            <StatCard
+              to="/app/bookings"
+              label="Pending"
+              value={String(pending)}
+              icon={<Clock3 size={18} />}
+              iconClass="bg-yellow/20 text-yellow"
+            />
+            <StatCard
+              to="/app/bookings"
+              label="Approved"
+              value={String(approved)}
+              icon={<CheckCircle2 size={18} />}
+              iconClass="bg-green/15 text-green"
+            />
+          </div>
+        )}
 
         <section className="mt-10 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
@@ -90,7 +99,16 @@ export function OverviewPage() {
             </Link>
           </div>
 
-          {recent.length === 0 ? (
+          {loading ? (
+            <PortalListSkeleton rows={3} />
+          ) : isError && !data ? (
+            <div
+              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+              role="alert"
+            >
+              Could not load your bookings.
+            </div>
+          ) : recent.length === 0 ? (
             <EmptyOverview onBook={() => openBookingModal("court")} />
           ) : (
             <ul className="flex flex-col gap-3">

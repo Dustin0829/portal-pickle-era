@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalCalendarSkeleton } from "@/components/portal/portal-skeletons";
 import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
 import { useAdminBookings } from "@/api/features/bookings/use-bookings";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
@@ -20,7 +21,7 @@ export function AdminCalendarPage() {
     courtId: string;
     slotIds: string[];
   } | null>(null);
-  const { data, refetch } = useAdminBookings({
+  const { data, isPending, isError, refetch } = useAdminBookings({
     page: 1,
     limit: 100,
     sort: "date",
@@ -30,6 +31,7 @@ export function AdminCalendarPage() {
     () => (data?.items ?? []).map(bookingDtoToRequest),
     [data?.items],
   );
+  const calendarPending = isPending && !data;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
@@ -46,15 +48,26 @@ export function AdminCalendarPage() {
           </p>
         </header>
 
-        <CourtDayGrid
-          date={date}
-          onDateChange={setDate}
-          bookings={bookings}
-          readOnly={false}
-          bookIntent="walk-in"
-          keepOpenOnBook
-          onBookSlot={setWalkIn}
-        />
+        {calendarPending ? (
+          <PortalCalendarSkeleton />
+        ) : isError && !data ? (
+          <div
+            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+            role="alert"
+          >
+            Could not load calendar bookings.
+          </div>
+        ) : (
+          <CourtDayGrid
+            date={date}
+            onDateChange={setDate}
+            bookings={bookings}
+            readOnly={false}
+            bookIntent="walk-in"
+            keepOpenOnBook
+            onBookSlot={setWalkIn}
+          />
+        )}
       </div>
 
       {walkIn ? (

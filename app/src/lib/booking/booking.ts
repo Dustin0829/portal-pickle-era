@@ -147,8 +147,20 @@ export function allowsMultiSlot(plan: BookingPlan) {
   return plan === "court";
 }
 
-export function bookingTotal(plan: BookingPlan, count: number) {
-  return PLAN_META[plan].price * Math.max(count, 0);
+/** Unit price for a plan; optional override (e.g. facility settings). */
+export function getPlanUnitPrice(plan: BookingPlan, unitPrice?: number | null) {
+  if (typeof unitPrice === "number" && Number.isFinite(unitPrice)) {
+    return unitPrice;
+  }
+  return PLAN_META[plan].price;
+}
+
+export function bookingTotal(
+  plan: BookingPlan,
+  count: number,
+  unitPrice?: number | null,
+) {
+  return getPlanUnitPrice(plan, unitPrice) * Math.max(count, 0);
 }
 
 export function selectedSlotLabels(plan: BookingPlan, slotIds: string[]) {

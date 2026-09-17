@@ -13,6 +13,7 @@ import {
 import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import {
   COURTS,
   PLAN_META,
@@ -21,6 +22,7 @@ import {
   formatLongDate,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
@@ -177,11 +179,12 @@ export function BookingsPage() {
   const [filter, setFilter] = useState<BookingFilter>("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data } = useMyBookings(Boolean(user));
+  const { data, isPending, isError } = useMyBookings(Boolean(user));
   const bookings = useMemo(() => {
     const list = (data ?? []).map(bookingDtoToRequest);
     return [...list].sort((a, b) => b.date.localeCompare(a.date));
   }, [data]);
+  const listPending = isPending && !data;
 
   const visible =
     filter === "all"
@@ -233,7 +236,16 @@ export function BookingsPage() {
         </header>
 
         <section className="mt-8 flex flex-col gap-3">
-          {visible.length === 0 ? (
+          {listPending ? (
+            <PortalListSkeleton rows={4} />
+          ) : isError && !data ? (
+            <div
+              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-md"
+              role="alert"
+            >
+              Could not load your bookings.
+            </div>
+          ) : visible.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 shadow-md">
               <p className="text-sm text-zinc-500">
                 {bookings.length === 0
@@ -401,7 +413,11 @@ function BookingDetailSheet({
   const meta = PLAN_META[booking.plan];
   const bucket = displayBucket(booking);
   const hours = bookingHours(booking);
-  const total = bookingTotal(booking.plan, hours);
+  const total = bookingTotal(
+    booking.plan,
+    hours,
+    readPlanUnitPrice(booking.plan),
+  );
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {

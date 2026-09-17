@@ -34,8 +34,10 @@ import {
   selectedSlotLabels,
   type BookingPlan,
 } from "@/lib/booking/booking";
+import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Step = "schedule" | "pay" | "done";
 
@@ -79,6 +81,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const [slotStatusByKey, setSlotStatusByKey] = useState<
     Map<string, "pending" | "approved">
   >(() => new Map());
+  const [occupancyLoading, setOccupancyLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -89,6 +92,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   useEffect(() => {
     if (!open || !date) return;
     const controller = new AbortController();
+    setOccupancyLoading(true);
     void listOccupancy({ date }, controller.signal)
       .then((items) => {
         const next = new Map<string, "pending" | "approved">();
@@ -105,6 +109,9 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       })
       .catch(() => {
         setSlotStatusByKey(new Map());
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOccupancyLoading(false);
       });
     return () => controller.abort();
   }, [open, date]);
@@ -150,9 +157,10 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const days = useMemo(() => monthCells(month), [month]);
   const earliestMonth = startOfMonth(parseDateKey(bookableFloor));
   const meta = plan ? PLAN_META[plan] : null;
+  const unitPrice = usePlanUnitPrice(plan ?? "court");
   const slots = plan ? SLOTS[plan] : [];
   const multiSlot = plan ? allowsMultiSlot(plan) : false;
-  const total = plan ? bookingTotal(plan, slotIds.length) : 0;
+  const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
   const selectedLabels = plan ? selectedSlotLabels(plan, slotIds) : [];
   const indoor = COURTS.filter((court) => court.group === "Indoor");
   const outdoor = COURTS.filter((court) => court.group === "Outdoor");
@@ -318,7 +326,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                   {meta.title}
                 </h2>
                 <p className="mt-1 text-sm text-white/60">
-                  ₱{meta.price} {meta.unit}. Pick a day, court, and time.
+                  ₱{unitPrice} {meta.unit}. Pick a day, court, and time.
                 </p>
                 {dateKey(new Date()) < OPENING_DATE ? (
                   <p className="mt-2 text-xs leading-relaxed text-yellow/90">
@@ -403,80 +411,114 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                   Available courts · {formatLongDate(date)}
                 </p>
 
-                <CourtGroup
-                  label="Indoor"
-                  courts={indoor}
-                  selected={courtId}
-                  onSelect={selectCourt}
-                  hasOpening={courtHasOpenHour}
-                />
-                <CourtGroup
-                  label="Outdoor"
-                  courts={outdoor}
-                  selected={courtId}
-                  onSelect={selectCourt}
-                  hasOpening={courtHasOpenHour}
-                />
+                {occupancyLoading ? (
+                  <div
+                    className="mt-3 space-y-3"
+                    aria-busy="true"
+                    aria-label="Loading courts and times"
+                  >
+                    <div className="grid grid-cols-3 gap-2">
+                      {Array.from({ length: 3 }, (_, index) => (
+                        <Skeleton
+                          key={`court-sk-${index}`}
+                          className="h-10 rounded-lg bg-white/10"
+                        />
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Array.from({ length: 4 }, (_, index) => (
+                        <Skeleton
+                          key={`slot-sk-${index}`}
+                          className="h-10 rounded-lg bg-white/10"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <CourtGroup
+                      label="Indoor"
+                      courts={indoor}
+                      selected={courtId}
+                      onSelect={selectCourt}
+                      hasOpening={courtHasOpenHour}
+                    />
+                    <CourtGroup
+                      label="Outdoor"
+                      courts={outdoor}
+                      selected={courtId}
+                      onSelect={selectCourt}
+                      hasOpening={courtHasOpenHour}
+                    />
 
-                <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
-                  Time slots
-                </p>
-                <p className="mt-1 min-h-5 text-sm text-white/45">
-                  {!courtId
-                    ? "Select a court to see open times."
-                    : multiSlot
-                      ? "Tap hours to add or remove."
-                      : "Pick an open session."}
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {slots.map((slot) => {
-                    const hold = courtId ? slotHold(courtId, slot.id) : null;
-                    const past = courtId ? isSlotPast(date, slot.hour) : true;
-                    const openSlot = Boolean(courtId) && !past && hold === null;
-                    const selected = slotIds.includes(slot.id);
-                    const pending = hold === "pending";
-                    const approved = hold === "approved";
-                    return (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        disabled={!openSlot}
-                        onClick={() => toggleSlot(slot.id)}
-                        className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
-                          selected
-                            ? "bg-yellow text-black"
-                            : openSlot
-                              ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                              : pending
-                                ? "border border-amber-400/45 bg-amber-400/10 text-amber-100"
-                                : approved
-                                  ? "border border-white/10 text-white/35"
-                                  : "border border-white/10 text-white/25"
-                        }`}
-                      >
-                        <span className={approved ? "line-through" : undefined}>
-                          {slot.label}
-                        </span>
-                        {pending ? (
-                          <span className="text-[9px] font-bold tracking-[0.16em] text-amber-300">
-                            Pending
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
+                    <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
+                      Time slots
+                    </p>
+                    <p className="mt-1 min-h-5 text-sm text-white/45">
+                      {!courtId
+                        ? "Select a court to see open times."
+                        : multiSlot
+                          ? "Tap hours to add or remove."
+                          : "Pick an open session."}
+                    </p>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {slots.map((slot) => {
+                        const hold = courtId
+                          ? slotHold(courtId, slot.id)
+                          : null;
+                        const past = courtId
+                          ? isSlotPast(date, slot.hour)
+                          : true;
+                        const openSlot =
+                          Boolean(courtId) && !past && hold === null;
+                        const selected = slotIds.includes(slot.id);
+                        const pending = hold === "pending";
+                        const approved = hold === "approved";
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            disabled={!openSlot}
+                            onClick={() => toggleSlot(slot.id)}
+                            className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
+                              selected
+                                ? "bg-yellow text-black"
+                                : openSlot
+                                  ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
+                                  : pending
+                                    ? "border border-amber-400/45 bg-amber-400/10 text-amber-100"
+                                    : approved
+                                      ? "border border-white/10 text-white/35"
+                                      : "border border-white/10 text-white/25"
+                            }`}
+                          >
+                            <span
+                              className={approved ? "line-through" : undefined}
+                            >
+                              {slot.label}
+                            </span>
+                            {pending ? (
+                              <span className="text-[9px] font-bold tracking-[0.16em] text-amber-300">
+                                Pending
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
 
               <button
                 type="button"
-                disabled={!courtId || slotIds.length === 0}
+                disabled={occupancyLoading || !courtId || slotIds.length === 0}
                 onClick={onBook}
                 className="mt-4 h-12 w-full shrink-0 bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35"
               >
                 {slotIds.length > 1
                   ? `Book · ${slotIds.length} hrs · ₱${total}`
-                  : `Book · ₱${total || meta.price}`}
+                  : `Book · ₱${total || unitPrice}`}
               </button>
             </div>
           </div>
@@ -518,7 +560,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                       : slotIds.length === 1
                         ? "session"
                         : "sessions"}{" "}
-                    × ₱{meta.price}
+                    × ₱{unitPrice}
                   </p>
                   <ul className="mt-2 space-y-0.5 text-sm text-white/55">
                     {selectedLabels.map((label) => (

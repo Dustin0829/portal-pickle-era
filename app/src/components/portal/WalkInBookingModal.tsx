@@ -14,6 +14,7 @@ import {
   type BookingPlan,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import { cn } from "@/lib/utils";
 
 export type WalkInBookingDefaults = {
@@ -50,7 +51,8 @@ export function WalkInBookingModal({
   const slots = SLOTS[plan];
   const multiSlot = allowsMultiSlot(plan);
   const hours = Math.max(slotIds.length, 1);
-  const total = bookingTotal(plan, plan === "court" ? hours : 1);
+  const unitPrice = usePlanUnitPrice(plan);
+  const total = bookingTotal(plan, plan === "court" ? hours : 1, unitPrice);
   const canSubmit =
     name.trim().length > 0 && courtId.length > 0 && slotIds.length > 0;
   const timeSummary = selectedSlotLabels(plan, slotIds).join(", ");

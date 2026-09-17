@@ -1,9 +1,21 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { BookingPlan } from "@/lib/booking/booking";
 import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 
 const PLAN_ORDER: BookingPlan[] = ["court", "open-play", "clinic"];
+
+type PriceDraft = Record<BookingPlan, number>;
+
+function pricesFromPlans(
+  plans: Record<BookingPlan, { price: number }>,
+): PriceDraft {
+  return {
+    court: plans.court.price,
+    "open-play": plans["open-play"].price,
+    clinic: plans.clinic.price,
+  };
+}
 
 export function AdminSettingsPage() {
   const {
@@ -16,12 +28,42 @@ export function AdminSettingsPage() {
     resetDefaults,
   } = useFacilitySettingsStore();
   const [paymentDraft, setPaymentDraft] = useState(payment);
+  const [priceDraft, setPriceDraft] = useState<PriceDraft>(() =>
+    pricesFromPlans(plans),
+  );
   const [saved, setSaved] = useState(false);
+  const [pricesSaved, setPricesSaved] = useState(false);
+  const [savingPrices, setSavingPrices] = useState(false);
+
+  useEffect(() => {
+    setPriceDraft(pricesFromPlans(plans));
+  }, [plans]);
 
   function onSavePayment(event: FormEvent) {
     event.preventDefault();
     setPayment(paymentDraft);
     setSaved(true);
+  }
+
+  function onSavePrices(event: FormEvent) {
+    event.preventDefault();
+    setSavingPrices(true);
+    setPricesSaved(false);
+    for (const plan of PLAN_ORDER) {
+      setPlanPrice(plan, Math.max(0, Number(priceDraft[plan]) || 0));
+    }
+    window.setTimeout(() => {
+      setSavingPrices(false);
+      setPricesSaved(true);
+    }, 200);
+  }
+
+  function onResetDefaults() {
+    resetDefaults();
+    setPaymentDraft(useFacilitySettingsStore.getState().payment);
+    setPriceDraft(pricesFromPlans(useFacilitySettingsStore.getState().plans));
+    setSaved(false);
+    setPricesSaved(false);
   }
 
   return (
@@ -32,15 +74,15 @@ export function AdminSettingsPage() {
             Settings
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Stub catalog and GCash display. Marketing pricing does not sync live
-            yet.
+            Save plan prices and GCash display for marketing Pricing and booking
+            amounts in this browser.
           </p>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={resetDefaults}
+          onClick={onResetDefaults}
           className="shrink-0"
         >
           Reset defaults
@@ -86,40 +128,56 @@ export function AdminSettingsPage() {
           <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
             Plan prices
           </h2>
-          <ul className="mt-3 flex flex-col gap-2.5">
-            {PLAN_ORDER.map((plan) => (
-              <li
-                key={plan}
-                className="flex items-center justify-between gap-3"
-              >
-                <label
-                  className="min-w-0 text-sm text-zinc-600"
-                  htmlFor={`price-${plan}`}
+          <form className="mt-3 flex flex-col gap-2.5" onSubmit={onSavePrices}>
+            <ul className="flex flex-col gap-2.5">
+              {PLAN_ORDER.map((plan) => (
+                <li
+                  key={plan}
+                  className="flex items-center justify-between gap-3"
                 >
-                  {plans[plan].title}
-                  <span className="mt-0.5 block text-[11px] text-zinc-400">
-                    {plans[plan].unit}
-                  </span>
-                </label>
-                <div className="relative shrink-0">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
-                    ₱
-                  </span>
-                  <input
-                    id={`price-${plan}`}
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={plans[plan].price}
-                    onChange={(event) =>
-                      setPlanPrice(plan, Number(event.target.value) || 0)
-                    }
-                    className="h-9 w-28 rounded-xl border border-zinc-200 bg-white pl-7 pr-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+                  <label
+                    className="min-w-0 text-sm text-zinc-600"
+                    htmlFor={`price-${plan}`}
+                  >
+                    {plans[plan].title}
+                    <span className="mt-0.5 block text-[11px] text-zinc-400">
+                      {plans[plan].unit}
+                    </span>
+                  </label>
+                  <div className="relative shrink-0">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
+                      ₱
+                    </span>
+                    <input
+                      id={`price-${plan}`}
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={priceDraft[plan]}
+                      onChange={(event) => {
+                        setPricesSaved(false);
+                        setPriceDraft((prev) => ({
+                          ...prev,
+                          [plan]: Number(event.target.value) || 0,
+                        }));
+                      }}
+                      className="h-9 w-28 rounded-xl border border-zinc-200 bg-white pl-7 pr-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <Button type="submit" className="w-fit" disabled={savingPrices}>
+                {savingPrices ? "Saving…" : "Save"}
+              </Button>
+              {pricesSaved ? (
+                <p className="text-xs text-zinc-500" role="status">
+                  Saved locally.
+                </p>
+              ) : null}
+            </div>
+          </form>
         </section>
 
         <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
