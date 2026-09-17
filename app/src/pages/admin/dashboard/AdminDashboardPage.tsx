@@ -7,6 +7,10 @@ import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
 import {
+  PortalListSkeleton,
+  PortalStatSkeleton,
+} from "@/components/portal/portal-skeletons";
+import {
   PORTAL_RANGE_OPTIONS,
   type PortalRangeValue,
 } from "@/components/portal/portalRange";
@@ -16,6 +20,7 @@ import {
   dateKey,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +41,11 @@ function bookingHours(booking: BookingRequest) {
 }
 
 function bookingAmount(booking: BookingRequest) {
-  return bookingTotal(booking.plan, bookingHours(booking));
+  return bookingTotal(
+    booking.plan,
+    bookingHours(booking),
+    readPlanUnitPrice(booking.plan),
+  );
 }
 
 function startOfRange(preset: RangePreset): string | null {
@@ -160,6 +169,15 @@ export function AdminDashboardPage() {
     PORTAL_RANGE_OPTIONS.find((item) => item.value === preset)?.label ??
     "Recent";
 
+  const statsPending =
+    (bookingsQuery.isPending && !bookingsQuery.data) ||
+    (waitlistQuery.isPending && !waitlistQuery.data);
+  const activityPending = bookingsQuery.isPending && !bookingsQuery.data;
+  const bookingsError =
+    bookingsQuery.isError && !bookingsQuery.data
+      ? "Could not load bookings."
+      : null;
+
   return (
     <div className="relative min-h-full overflow-hidden">
       <PortalBackdrop variant="top" />
@@ -182,32 +200,36 @@ export function AdminDashboardPage() {
           />
         </header>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <StatCard
-            label="Total sales"
-            value={formatMoney(totalSales)}
-            hint="Approved bookings"
-            icon={<PhilippinePeso size={18} aria-hidden />}
-            iconClass="bg-yellow/20 text-yellow"
-            to="/admin/bookings"
-          />
-          <StatCard
-            label="Total bookings"
-            value={String(totalBookings)}
-            hint="Requests in range"
-            icon={<ClipboardList size={18} aria-hidden />}
-            iconClass="bg-green/15 text-green"
-            to="/admin/bookings"
-          />
-          <StatCard
-            label="Total players"
-            value={String(totalPlayers)}
-            hint="Newsletter & booking leads"
-            icon={<Users size={18} aria-hidden />}
-            iconClass="bg-green/15 text-green"
-            to="/admin/players"
-          />
-        </div>
+        {statsPending ? (
+          <PortalStatSkeleton className="mt-6" />
+        ) : (
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <StatCard
+              label="Total sales"
+              value={formatMoney(totalSales)}
+              hint="Approved bookings"
+              icon={<PhilippinePeso size={18} aria-hidden />}
+              iconClass="bg-yellow/20 text-yellow"
+              to="/admin/bookings"
+            />
+            <StatCard
+              label="Total bookings"
+              value={String(totalBookings)}
+              hint="Requests in range"
+              icon={<ClipboardList size={18} aria-hidden />}
+              iconClass="bg-green/15 text-green"
+              to="/admin/bookings"
+            />
+            <StatCard
+              label="Total players"
+              value={String(totalPlayers)}
+              hint="Newsletter & booking leads"
+              icon={<Users size={18} aria-hidden />}
+              iconClass="bg-green/15 text-green"
+              to="/admin/players"
+            />
+          </div>
+        )}
 
         <section className="mt-8 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
@@ -222,7 +244,16 @@ export function AdminDashboardPage() {
             </Link>
           </div>
 
-          {activities.length === 0 ? (
+          {activityPending ? (
+            <PortalListSkeleton rows={5} />
+          ) : bookingsError ? (
+            <div
+              className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+              role="alert"
+            >
+              {bookingsError}
+            </div>
+          ) : activities.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm">
               No activity in this range yet.
             </div>

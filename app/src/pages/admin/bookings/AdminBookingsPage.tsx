@@ -20,6 +20,7 @@ import { getAdminBookingReceiptUrl } from "@/api/features/bookings/bookings.serv
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
+import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
 import {
   PORTAL_RANGE_OPTIONS,
@@ -35,8 +36,10 @@ import {
   type BookingRequest,
   type BookingStatus,
 } from "@/lib/booking/booking";
+import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type RecentPreset = PortalRangeValue;
 
@@ -66,18 +69,21 @@ export function AdminBookingsPage() {
   const [recent, setRecent] = useState<RecentPreset>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const { data, refetch } = useAdminBookings({
+  const { data, isPending, isError, refetch } = useAdminBookings({
     page: 1,
     limit: 100,
     sort: "createdAt",
     order: "desc",
   });
   const patchBooking = usePatchAdminBooking();
+  const [actionError, setActionError] = useState("");
 
   const bookings = useMemo(
     () => (data?.items ?? []).map(bookingDtoToRequest),
     [data?.items],
   );
+
+  const listPending = isPending && !data;
 
   const rangeStart = recentStart(recent);
 
@@ -109,13 +115,22 @@ export function AdminBookingsPage() {
     PORTAL_RANGE_OPTIONS.find((item) => item.value === recent)?.label ??
     "Recent";
 
-  function setStatus(
+  async function setStatus(
     id: string,
     status: Extract<BookingStatus, "approved" | "rejected">,
   ) {
-    void patchBooking.mutateAsync({ id, status }).then(() => {
+    setActionError("");
+    try {
+      await patchBooking.mutateAsync({ id, status });
+      setDetailId(null);
       void refetch();
-    });
+    } catch {
+      setActionError(
+        status === "approved"
+          ? "Could not approve booking. Try again."
+          : "Could not reject booking. Try again.",
+      );
+    }
   }
 
   return (
@@ -209,7 +224,16 @@ export function AdminBookingsPage() {
         </p>
 
         <section className="mt-5 flex flex-col gap-3">
-          {visible.length === 0 ? (
+          {listPending ? (
+            <PortalListSkeleton rows={5} />
+          ) : isError && !data ? (
+            <div
+              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+              role="alert"
+            >
+              Could not load bookings.
+            </div>
+          ) : visible.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm">
               {filter === "pending"
                 ? "No pending booking requests."
@@ -221,7 +245,10 @@ export function AdminBookingsPage() {
                 <AdminBookingRow
                   key={item.id}
                   booking={item}
-                  onOpenDetail={() => setDetailId(item.id)}
+                  onOpenDetail={() => {
+                    setActionError("");
+                    setDetailId(item.id);
+                  }}
                 />
               ))}
             </ul>
@@ -238,14 +265,18 @@ export function AdminBookingsPage() {
         <AdminBookingDetailSheet
           key={selected.id}
           booking={selected}
-          onClose={() => setDetailId(null)}
-          onApprove={() => {
-            setStatus(selected.id, "approved");
+          busy={patchBooking.isPending}
+          actionError={actionError}
+          onClose={() => {
+            if (patchBooking.isPending) return;
             setDetailId(null);
+            setActionError("");
+          }}
+          onApprove={() => {
+            void setStatus(selected.id, "approved");
           }}
           onReject={() => {
-            setStatus(selected.id, "rejected");
-            setDetailId(null);
+            void setStatus(selected.id, "rejected");
           }}
         />
       ) : null}
@@ -362,11 +393,15 @@ function AdminBookingRow({
 
 function AdminBookingDetailSheet({
   booking,
+  busy,
+  actionError,
   onClose,
   onApprove,
   onReject,
 }: {
   booking: BookingRequest;
+  busy: boolean;
+  actionError: string;
   onClose: () => void;
   onApprove: () => void;
   onReject: () => void;
@@ -374,7 +409,11 @@ function AdminBookingDetailSheet({
   const court = COURTS.find((item) => item.id === booking.courtId);
   const meta = PLAN_META[booking.plan];
   const hours = bookingHours(booking);
-  const total = bookingTotal(booking.plan, hours);
+  const total = bookingTotal(
+    booking.plan,
+    hours,
+    readPlanUnitPrice(booking.plan),
+  );
   const timeRange =
     booking.slotIds.length === 0
       ? "Time TBD"
@@ -385,6 +424,9 @@ function AdminBookingDetailSheet({
     string | undefined
   >();
   const [receiptLoadFailed, setReceiptLoadFailed] = useState(false);
+  const [receiptPending, setReceiptPending] = useState(() =>
+    Boolean(booking.receiptKey),
+  );
   const [didRefetch, setDidRefetch] = useState(false);
   const receiptUrl = booking.receiptKey
     ? signedReceiptUrl
@@ -410,6 +452,9 @@ function AdminBookingDetailSheet({
         }
         setSignedReceiptUrl(undefined);
         setReceiptLoadFailed(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setReceiptPending(false);
       });
     return () => controller.abort();
   }, [booking.id, booking.receiptKey]);
@@ -417,6 +462,7 @@ function AdminBookingDetailSheet({
   function refetchReceiptOnce() {
     if (!booking.receiptKey || didRefetch) return;
     setDidRefetch(true);
+    setReceiptPending(true);
     void getAdminBookingReceiptUrl(booking.id)
       .then((result) => {
         setSignedReceiptUrl(result.url);
@@ -424,6 +470,9 @@ function AdminBookingDetailSheet({
       })
       .catch(() => {
         setReceiptLoadFailed(true);
+      })
+      .finally(() => {
+        setReceiptPending(false);
       });
   }
 
@@ -441,6 +490,8 @@ function AdminBookingDetailSheet({
     undefined,
     { month: "short", day: "numeric", year: "numeric" },
   );
+  const showReceiptSkeleton =
+    Boolean(booking.receiptKey) && receiptPending && !receiptUrl;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
@@ -477,7 +528,8 @@ function AdminBookingDetailSheet({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-8 shrink-0 place-items-center rounded-lg border border-maroon/35 text-maroon transition hover:bg-maroon/10"
+            disabled={busy}
+            className="grid size-8 shrink-0 place-items-center rounded-lg border border-maroon/35 text-maroon transition hover:bg-maroon/10 disabled:opacity-50"
             aria-label="Close"
           >
             <X size={15} />
@@ -537,7 +589,16 @@ function AdminBookingDetailSheet({
                 Payment receipt
               </h3>
               <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 sm:min-h-[360px]">
-                {isImage ? (
+                {showReceiptSkeleton ? (
+                  <div
+                    className="flex h-full w-full flex-col items-center justify-center gap-3 p-6"
+                    aria-busy="true"
+                    aria-label="Loading receipt"
+                  >
+                    <Skeleton className="h-48 w-full max-w-xs rounded-xl" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                ) : isImage ? (
                   <img
                     src={receiptUrl}
                     alt={booking.receiptName || "Payment receipt"}
@@ -582,23 +643,32 @@ function AdminBookingDetailSheet({
         </div>
 
         {booking.status === "pending" ? (
-          <div className="flex shrink-0 flex-wrap gap-2 border-t border-zinc-200 px-4 py-3.5 sm:px-5">
-            <button
-              type="button"
-              onClick={onApprove}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-amber-500 sm:flex-none sm:min-w-[140px]"
-            >
-              <Check size={15} aria-hidden />
-              Approve
-            </button>
-            <button
-              type="button"
-              onClick={onReject}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 transition hover:border-maroon/40 hover:text-maroon sm:flex-none sm:min-w-[120px]"
-            >
-              <X size={15} aria-hidden />
-              Reject
-            </button>
+          <div className="flex shrink-0 flex-col gap-2 border-t border-zinc-200 px-4 py-3.5 sm:px-5">
+            {actionError ? (
+              <p className="text-xs text-maroon" role="alert">
+                {actionError}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onApprove}
+                disabled={busy}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[140px]"
+              >
+                <Check size={15} aria-hidden />
+                {busy ? "Saving…" : "Approve"}
+              </button>
+              <button
+                type="button"
+                onClick={onReject}
+                disabled={busy}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 transition hover:border-maroon/40 hover:text-maroon disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[120px]"
+              >
+                <X size={15} aria-hidden />
+                {busy ? "Saving…" : "Reject"}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>

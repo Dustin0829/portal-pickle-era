@@ -6,6 +6,7 @@ import { ApiRequestError } from "@/api/client";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalTableSkeleton } from "@/components/portal/portal-skeletons";
 import { cn } from "@/lib/utils";
 
 function initialsFromName(name: string, email: string) {
@@ -96,8 +97,8 @@ function opsMessage(error: unknown): string {
 
 export function AdminPlayersPage() {
   const [query, setQuery] = useState("");
-  const { data, isPending, isError, error, isFetching } =
-    useAdminWaitlistList(query);
+  const [exporting, setExporting] = useState(false);
+  const { data, isPending, isError, error } = useAdminWaitlistList(query);
 
   const visible = useMemo(() => {
     const entries = data?.items ?? [];
@@ -113,6 +114,17 @@ export function AdminPlayersPage() {
   }, [data?.items, query]);
 
   const entries = data?.items ?? [];
+  const tablePending = isPending && !data;
+
+  function onExport() {
+    if (visible.length === 0 || exporting) return;
+    setExporting(true);
+    try {
+      exportCsv(visible);
+    } finally {
+      window.setTimeout(() => setExporting(false), 250);
+    }
+  }
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -150,21 +162,19 @@ export function AdminPlayersPage() {
             </label>
             <button
               type="button"
-              onClick={() => exportCsv(visible)}
-              disabled={visible.length === 0}
+              onClick={onExport}
+              disabled={visible.length === 0 || exporting}
               className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-yellow/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Download size={15} aria-hidden />
-              Export
+              {exporting ? "Exporting…" : "Export"}
             </button>
           </div>
         </header>
 
         <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
-          {isPending || isFetching ? (
-            <div className="px-5 py-10 text-sm text-zinc-500">
-              Loading players…
-            </div>
+          {tablePending ? (
+            <PortalTableSkeleton />
           ) : isError ? (
             <div className="px-5 py-10 text-sm text-zinc-600" role="alert">
               <p className="font-medium text-zinc-900">

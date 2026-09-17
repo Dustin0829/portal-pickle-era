@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
+import { PortalCalendarSkeleton } from "@/components/portal/portal-skeletons";
 import { useOccupancy } from "@/api/features/bookings/use-bookings";
 import { occupancyToBookingRequest } from "@/lib/booking/mapBooking";
 import { useBookingModal } from "@/providers/BookingModalProvider";
@@ -30,13 +31,14 @@ export function CalendarPage() {
     () => (occupancy.data ?? []).map(occupancyToBookingRequest),
     [occupancy.data],
   );
+  const calendarPending = occupancy.isPending && !occupancy.data;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       <PortalBackdrop variant="top" />
 
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-4 py-4 sm:px-6 sm:py-5">
-        <header className="mb-3 flex shrink-0 max-w-xl flex-col gap-1">
+        <header className="mb-3 flex max-w-xl shrink-0 flex-col gap-1">
           <h1 className="display text-[32px] text-zinc-900 sm:text-[40px]">
             Court <span className="text-yellow">calendar</span>
           </h1>
@@ -45,20 +47,31 @@ export function CalendarPage() {
           </p>
         </header>
 
-        <CourtDayGrid
-          date={date}
-          onDateChange={setDate}
-          bookings={bookings}
-          readOnly={false}
-          onBookSlot={({ date: slotDate, courtId, slotIds }) => {
-            openBookingModal("court", {
-              date: slotDate,
-              courtId,
-              slotIds,
-              step: "pay",
-            });
-          }}
-        />
+        {calendarPending ? (
+          <PortalCalendarSkeleton />
+        ) : occupancy.isError && !occupancy.data ? (
+          <div
+            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+            role="alert"
+          >
+            Could not load court occupancy.
+          </div>
+        ) : (
+          <CourtDayGrid
+            date={date}
+            onDateChange={setDate}
+            bookings={bookings}
+            readOnly={false}
+            onBookSlot={({ date: slotDate, courtId, slotIds }) => {
+              openBookingModal("court", {
+                date: slotDate,
+                courtId,
+                slotIds,
+                step: "pay",
+              });
+            }}
+          />
+        )}
       </div>
     </div>
   );
