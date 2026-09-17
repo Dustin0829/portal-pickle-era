@@ -36,5 +36,5 @@
 
 ## 6. Ship
 
-- [ ] 6.1 `/opsx-verify` (web)
-- [ ] 6.2 `/opsx-pr`
+- [x] 6.1 `/opsx-verify` (web)
+- [x] 6.2 `/opsx-pr`
