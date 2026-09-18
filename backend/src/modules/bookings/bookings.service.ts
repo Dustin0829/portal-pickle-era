@@ -7,6 +7,7 @@ import {
 } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
+import type { Prisma } from "../../generated/prisma/client.js";
 import { upsertWaitlistEntry } from "../waitlist/waitlist.service.js";
 import type { AuthUser } from "../auth/auth.constants.js";
 import { toUserDto, userPublicSelect } from "../auth/auth.mapper.js";
@@ -22,15 +23,78 @@ import {
 } from "./bookings.mapper.js";
 import {
   OPENING_DATE,
+  OPEN_PLAY_CAPACITY,
   type CreateAdminBookingBody,
   type CreatePublicBookingBody,
   type ListBookingsQuery,
   type ListUsersQuery,
   type OccupancyQuery,
+  type OpenPlaySessionsQuery,
   type PatchBookingBody,
 } from "./bookings.schema.js";
 
 const bookingSortFields = ["createdAt", "date"] as const;
+
+export { OPEN_PLAY_CAPACITY };
+
+/** True when open-play uses shared seat capacity (not court exclusivity). */
+export function usesOpenPlayCapacity(plan: "open_play" | "court" | "clinic") {
+  return plan === "open_play";
+}
+
+/** Reject when booked seats already fill capacity (call inside a transaction). */
+export function assertOpenPlayHasSeat(booked: number, slotId: string) {
+  if (booked >= OPEN_PLAY_CAPACITY) {
+    throw new ConflictError(
+      `Open Play session ${slotId} is full (${OPEN_PLAY_CAPACITY}/${OPEN_PLAY_CAPACITY})`,
+    );
+  }
+}
+
+/** Aggregate pending/approved open-play rows into per-slot seat counts. */
+export function aggregateOpenPlayCounts(rows: Array<{ slotIds: string[] }>) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    for (const slotId of row.slotIds) {
+      counts.set(slotId, (counts.get(slotId) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slotId, bookedCount]) => ({
+      slotId,
+      bookedCount,
+      capacity: OPEN_PLAY_CAPACITY,
+    }));
+}
+
+async function countOpenPlaySeats(
+  tx: Prisma.TransactionClient,
+  date: string,
+  slotId: string,
+): Promise<number> {
+  return tx.booking.count({
+    where: {
+      plan: "open_play",
+      date,
+      status: { in: ["pending", "approved"] },
+      slotIds: { has: slotId },
+    },
+  });
+}
+
+export async function listOpenPlaySessions(query: OpenPlaySessionsQuery) {
+  const rows = await prisma.booking.findMany({
+    where: {
+      plan: "open_play",
+      date: query.date,
+      status: { in: ["pending", "approved"] },
+    },
+    select: { slotIds: true },
+  });
+
+  return aggregateOpenPlayCounts(rows);
+}
 
 export async function createPublicBooking(body: CreatePublicBookingBody, authUser?: AuthUser) {
   if (body.plan === "court" && isBeforeOpeningDate(body.date, OPENING_DATE)) {
@@ -231,19 +295,26 @@ async function createBookingRow(input: {
   status: "pending" | "approved";
 }) {
   return prisma.$transaction(async (tx) => {
-    const blockers = await tx.booking.findMany({
-      where: {
-        date: input.date,
-        courtId: input.courtId,
-        status: { in: ["pending", "approved"] },
-        slotIds: { hasSome: input.slotIds },
-      },
-      select: { id: true },
-      take: 1,
-    });
+    if (usesOpenPlayCapacity(input.plan)) {
+      for (const slotId of input.slotIds) {
+        const booked = await countOpenPlaySeats(tx, input.date, slotId);
+        assertOpenPlayHasSeat(booked, slotId);
+      }
+    } else {
+      const blockers = await tx.booking.findMany({
+        where: {
+          date: input.date,
+          courtId: input.courtId,
+          status: { in: ["pending", "approved"] },
+          slotIds: { hasSome: input.slotIds },
+        },
+        select: { id: true },
+        take: 1,
+      });
 
-    if (blockers.length > 0) {
-      throw new ConflictError("One or more slots are already booked for this court and date");
+      if (blockers.length > 0) {
+        throw new ConflictError("One or more slots are already booked for this court and date");
+      }
     }
 
     return tx.booking.create({

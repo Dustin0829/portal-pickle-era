@@ -1,5 +1,8 @@
-import { createPublicBooking } from "@/api/features/bookings/bookings.service";
-import { listOccupancy } from "@/api/features/bookings/bookings.service";
+import {
+  createPublicBooking,
+  listOccupancy,
+  listOpenPlaySessions,
+} from "@/api/features/bookings/bookings.service";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { useLenis } from "lenis/react";
 import {
@@ -19,6 +22,7 @@ import {
 } from "react";
 import {
   COURTS,
+  OPEN_PLAY_CAPACITY,
   PAYMENT,
   PLAN_META,
   SLOTS,
@@ -31,9 +35,9 @@ import {
   formatLongDate,
   isSlotPast,
   parseDateKey,
-  selectedSlotLabels,
   type BookingPlan,
 } from "@/lib/booking/booking";
+import { useOpenPlaySlots } from "@/lib/booking/openPlaySlots";
 import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
@@ -82,6 +86,13 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
     Map<string, "pending" | "approved">
   >(() => new Map());
   const [occupancyLoading, setOccupancyLoading] = useState(false);
+  const [bookedCountBySlotId, setBookedCountBySlotId] = useState<
+    Map<string, number>
+  >(() => new Map());
+  const [capacityLoading, setCapacityLoading] = useState(false);
+  const [capacityError, setCapacityError] = useState("");
+  const openPlaySlots = useOpenPlaySlots();
+  const isOpenPlay = plan === "open-play";
 
   useEffect(() => {
     if (!user) return;
@@ -90,7 +101,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }, [user]);
 
   useEffect(() => {
-    if (!open || !date) return;
+    if (!open || !date || isOpenPlay) return;
     const controller = new AbortController();
     setOccupancyLoading(true);
     void listOccupancy({ date }, controller.signal)
@@ -114,7 +125,32 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
         if (!controller.signal.aborted) setOccupancyLoading(false);
       });
     return () => controller.abort();
-  }, [open, date]);
+  }, [open, date, isOpenPlay]);
+
+  useEffect(() => {
+    if (!open || !date || !isOpenPlay) return;
+    const controller = new AbortController();
+    setCapacityLoading(true);
+    setCapacityError("");
+    void listOpenPlaySessions({ date }, controller.signal)
+      .then((items) => {
+        const next = new Map<string, number>();
+        for (const item of items) {
+          next.set(item.slotId, item.bookedCount);
+        }
+        setBookedCountBySlotId(next);
+      })
+      .catch(() => {
+        setBookedCountBySlotId(new Map());
+        setCapacityError(
+          "Couldn’t load session availability. Check your connection and try again.",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCapacityLoading(false);
+      });
+    return () => controller.abort();
+  }, [open, date, isOpenPlay]);
 
   function slotHold(
     court: string,
@@ -124,7 +160,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }
 
   function courtHasOpenHour(court: string) {
-    if (!plan) return false;
+    if (!plan || isOpenPlay) return false;
     return SLOTS[plan].some(
       (slot) =>
         !isSlotPast(date, slot.hour) && slotHold(court, slot.id) === null,
@@ -158,12 +194,15 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const earliestMonth = startOfMonth(parseDateKey(bookableFloor));
   const meta = plan ? PLAN_META[plan] : null;
   const unitPrice = usePlanUnitPrice(plan ?? "court");
-  const slots = plan ? SLOTS[plan] : [];
+  const slots = plan ? (isOpenPlay ? openPlaySlots : SLOTS[plan]) : [];
   const multiSlot = plan ? allowsMultiSlot(plan) : false;
   const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
-  const selectedLabels = plan ? selectedSlotLabels(plan, slotIds) : [];
+  const selectedLabels = slots
+    .filter((slot) => slotIds.includes(slot.id))
+    .map((slot) => slot.label);
   const indoor = COURTS.filter((court) => court.group === "Indoor");
   const outdoor = COURTS.filter((court) => court.group === "Outdoor");
+  const scheduleLoading = isOpenPlay ? capacityLoading : occupancyLoading;
 
   function selectDate(next: string) {
     setDate(next);
@@ -177,6 +216,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }
 
   function toggleSlot(id: string) {
+    if (isOpenPlay) setCourtId("in-1");
     setSlotIds((current) => {
       if (!multiSlot) return current[0] === id ? [] : [id];
       if (current.includes(id)) return current.filter((slot) => slot !== id);
@@ -201,15 +241,18 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }
 
   function onBook() {
-    if (!courtId || slotIds.length === 0) return;
+    const resolvedCourtId = isOpenPlay ? courtId || "in-1" : courtId;
+    if (isOpenPlay && !courtId) setCourtId("in-1");
+    if (!resolvedCourtId || slotIds.length === 0) return;
     setStep("pay");
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const resolvedCourtId = plan === "open-play" ? courtId || "in-1" : courtId;
     if (
       !plan ||
-      !courtId ||
+      !resolvedCourtId ||
       slotIds.length === 0 ||
       !name.trim() ||
       !email.trim() ||
@@ -227,7 +270,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       await createPublicBooking({
         plan,
         date,
-        courtId: courtId as
+        courtId: resolvedCourtId as
           | "in-1"
           | "in-2"
           | "in-3"
@@ -326,7 +369,10 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                   {meta.title}
                 </h2>
                 <p className="mt-1 text-sm text-white/60">
-                  ₱{unitPrice} {meta.unit}. Pick a day, court, and time.
+                  ₱{unitPrice} {meta.unit}.{" "}
+                  {isOpenPlay
+                    ? "Pick a day and session."
+                    : "Pick a day, court, and time."}
                 </p>
                 {dateKey(new Date()) < OPENING_DATE ? (
                   <p className="mt-2 text-xs leading-relaxed text-yellow/90">
@@ -408,23 +454,31 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                 </div>
 
                 <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
-                  Available courts · {formatLongDate(date)}
+                  {isOpenPlay
+                    ? `Sessions · ${formatLongDate(date)}`
+                    : `Available courts · ${formatLongDate(date)}`}
                 </p>
 
-                {occupancyLoading ? (
+                {scheduleLoading ? (
                   <div
                     className="mt-3 space-y-3"
                     aria-busy="true"
-                    aria-label="Loading courts and times"
+                    aria-label={
+                      isOpenPlay
+                        ? "Loading sessions"
+                        : "Loading courts and times"
+                    }
                   >
-                    <div className="grid grid-cols-3 gap-2">
-                      {Array.from({ length: 3 }, (_, index) => (
-                        <Skeleton
-                          key={`court-sk-${index}`}
-                          className="h-10 rounded-lg bg-white/10"
-                        />
-                      ))}
-                    </div>
+                    {!isOpenPlay ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 3 }, (_, index) => (
+                          <Skeleton
+                            key={`court-sk-${index}`}
+                            className="h-10 rounded-lg bg-white/10"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="grid grid-cols-2 gap-2">
                       {Array.from({ length: 4 }, (_, index) => (
                         <Skeleton
@@ -434,6 +488,57 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                       ))}
                     </div>
                   </div>
+                ) : isOpenPlay ? (
+                  <>
+                    {capacityError ? (
+                      <p className="mt-3 text-sm text-red-400" role="alert">
+                        {capacityError}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 min-h-5 text-sm text-white/45">
+                      {capacityError
+                        ? "Sessions unavailable until capacity loads."
+                        : "Pick an open session."}
+                    </p>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {slots.map((slot) => {
+                        const booked = bookedCountBySlotId.get(slot.id) ?? 0;
+                        const full = booked >= OPEN_PLAY_CAPACITY;
+                        const past = isSlotPast(date, slot.hour);
+                        const openSlot = !capacityError && !past && !full;
+                        const selected = slotIds.includes(slot.id);
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            disabled={!openSlot}
+                            onClick={() => toggleSlot(slot.id)}
+                            className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
+                              selected
+                                ? "bg-yellow text-black"
+                                : openSlot
+                                  ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
+                                  : "border border-white/10 text-white/25"
+                            }`}
+                          >
+                            <span>{slot.label}</span>
+                            <span
+                              className={`text-[9px] font-bold tracking-[0.16em] ${
+                                selected
+                                  ? "text-black/70"
+                                  : openSlot
+                                    ? "text-white/55"
+                                    : "text-white/30"
+                              }`}
+                            >
+                              {booked}/{OPEN_PLAY_CAPACITY}
+                              {full ? " · Full" : ""}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 ) : (
                   <>
                     <CourtGroup
@@ -512,7 +617,12 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
 
               <button
                 type="button"
-                disabled={occupancyLoading || !courtId || slotIds.length === 0}
+                disabled={
+                  scheduleLoading ||
+                  Boolean(isOpenPlay && capacityError) ||
+                  (!isOpenPlay && !courtId) ||
+                  slotIds.length === 0
+                }
                 onClick={onBook}
                 className="mt-4 h-12 w-full shrink-0 bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35"
               >

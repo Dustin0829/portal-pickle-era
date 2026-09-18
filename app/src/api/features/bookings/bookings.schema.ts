@@ -82,6 +82,18 @@ export const occupancyQuerySchema = z
   })
   .strict();
 
+export const openPlaySessionItemSchema = z.object({
+  slotId: z.string(),
+  bookedCount: z.number().int().nonnegative(),
+  capacity: z.number().int().positive(),
+});
+
+export const openPlaySessionsQuerySchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  })
+  .strict();
+
 export const patchBookingBodySchema = z
   .object({
     status: z.enum(["approved", "rejected"]),
@@ -103,5 +115,7 @@ export type CreateAdminBookingBody = z.infer<
 >;
 export type ListBookingsQuery = z.input<typeof listBookingsQuerySchema>;
 export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
+export type OpenPlaySessionItem = z.infer<typeof openPlaySessionItemSchema>;
+export type OpenPlaySessionsQuery = z.infer<typeof openPlaySessionsQuerySchema>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
 export type ListUsersQuery = z.input<typeof listUsersQuerySchema>;

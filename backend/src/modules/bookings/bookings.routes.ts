@@ -10,6 +10,7 @@ import {
   listAdminUsersController,
   myBookingsController,
   occupancyController,
+  openPlaySessionsController,
   patchBookingController,
 } from "./bookings.controller.js";
 import {
@@ -19,6 +20,7 @@ import {
   listBookingsQuerySchema,
   listUsersQuerySchema,
   occupancyQuerySchema,
+  openPlaySessionsQuerySchema,
   patchBookingBodySchema,
 } from "./bookings.schema.js";
 
@@ -39,6 +41,12 @@ bookingsPublicRouter.get(
   "/occupancy",
   validateQuery(occupancyQuerySchema),
   asyncHandler(occupancyController),
+);
+
+bookingsPublicRouter.get(
+  "/open-play-sessions",
+  validateQuery(openPlaySessionsQuerySchema),
+  asyncHandler(openPlaySessionsController),
 );
 
 bookingsMeRouter.use(loadSession, requireSession);

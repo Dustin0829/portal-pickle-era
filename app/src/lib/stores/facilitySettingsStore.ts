@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { PAYMENT, PLAN_META, type BookingPlan } from "@/lib/booking/booking";
+import {
+  PAYMENT,
+  PLAN_META,
+  SLOTS,
+  type BookingPlan,
+  type TimeSlot,
+} from "@/lib/booking/booking";
 
 export type PlanSettings = {
   title: string;
@@ -14,13 +20,17 @@ export type PaymentSettings = {
   number: string;
 };
 
+export type OpenPlaySlotSettings = TimeSlot;
+
 type FacilitySettingsState = {
   plans: Record<BookingPlan, PlanSettings>;
   payment: PaymentSettings;
+  openPlaySlots: OpenPlaySlotSettings[];
   /** Legacy toggle — Book CTAs open booking; kept for persisted settings. */
   preSignup: boolean;
   setPlanPrice: (plan: BookingPlan, price: number) => void;
   setPayment: (payment: PaymentSettings) => void;
+  setOpenPlaySlots: (slots: OpenPlaySlotSettings[]) => void;
   setPreSignup: (enabled: boolean) => void;
   resetDefaults: () => void;
 };
@@ -45,11 +55,16 @@ const defaultPlans: Record<BookingPlan, PlanSettings> = {
 
 const defaultPayment: PaymentSettings = { ...PAYMENT };
 
+const defaultOpenPlaySlots: OpenPlaySlotSettings[] = SLOTS["open-play"].map(
+  (slot) => ({ ...slot }),
+);
+
 export const useFacilitySettingsStore = create<FacilitySettingsState>()(
   persist(
     (set) => ({
       plans: defaultPlans,
       payment: defaultPayment,
+      openPlaySlots: defaultOpenPlaySlots,
       preSignup: false,
       setPlanPrice: (plan, price) =>
         set((state) => ({
@@ -59,11 +74,13 @@ export const useFacilitySettingsStore = create<FacilitySettingsState>()(
           },
         })),
       setPayment: (payment) => set({ payment }),
+      setOpenPlaySlots: (openPlaySlots) => set({ openPlaySlots }),
       setPreSignup: (preSignup) => set({ preSignup }),
       resetDefaults: () =>
         set({
           plans: defaultPlans,
           payment: defaultPayment,
+          openPlaySlots: defaultOpenPlaySlots.map((slot) => ({ ...slot })),
           preSignup: false,
         }),
     }),

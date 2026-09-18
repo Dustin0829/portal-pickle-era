@@ -2,10 +2,23 @@ import { z } from "zod";
 import { paginatedQuerySchema } from "../../lib/pagination.schema.js";
 
 export const OPENING_DATE = "2026-10-05";
+export const OPEN_PLAY_CAPACITY = 30;
 
 export const bookingPlanApiSchema = z.enum(["court", "open-play", "clinic"]);
 export const bookingStatusSchema = z.enum(["pending", "approved", "rejected"]);
 export const courtIdSchema = z.enum(["in-1", "in-2", "in-3", "out-1", "out-2", "out-3"]);
+
+export const openPlaySessionItemSchema = z.object({
+  slotId: z.string(),
+  bookedCount: z.number().int().nonnegative(),
+  capacity: z.number().int().positive(),
+});
+
+export const openPlaySessionsQuerySchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  })
+  .strict();
 
 export const bookingDtoSchema = z.object({
   id: z.string(),
@@ -116,10 +129,12 @@ export const listUsersQuerySchema = paginatedQuerySchema.extend({
 
 export type BookingDto = z.infer<typeof bookingDtoSchema>;
 export type BookingOccupancyItem = z.infer<typeof bookingOccupancyItemSchema>;
+export type OpenPlaySessionItem = z.infer<typeof openPlaySessionItemSchema>;
 export type CreatePublicBookingBody = z.infer<typeof createPublicBookingBodySchema>;
 export type CreateAdminBookingBody = z.infer<typeof createAdminBookingBodySchema>;
 export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
 export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
+export type OpenPlaySessionsQuery = z.infer<typeof openPlaySessionsQuerySchema>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
 export type BookingReceiptUrlResponse = z.infer<typeof bookingReceiptUrlResponseSchema>;
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;

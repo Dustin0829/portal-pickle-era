@@ -1,19 +1,23 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { createAdminBooking } from "@/api/features/bookings/bookings.service";
+import {
+  createAdminBooking,
+  listOpenPlaySessions,
+} from "@/api/features/bookings/bookings.service";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import {
   COURTS,
+  OPEN_PLAY_CAPACITY,
   PLAN_META,
   SLOTS,
   allowsMultiSlot,
   bookingTotal,
   dateKey,
-  selectedSlotLabels,
   type BookingPlan,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { useOpenPlaySlots } from "@/lib/booking/openPlaySlots";
 import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +41,8 @@ export function WalkInBookingModal({
   const [plan, setPlan] = useState<BookingPlan>(initial?.plan ?? "court");
   const [date, setDate] = useState(() => initial?.date ?? dateKey(new Date()));
   const [courtId, setCourtId] = useState(
-    initial?.courtId ?? COURTS[0]?.id ?? "",
+    initial?.courtId ??
+      (initial?.plan === "open-play" ? "in-1" : (COURTS[0]?.id ?? "")),
   );
   const [slotIds, setSlotIds] = useState<string[]>(
     () => initial?.slotIds ?? [],
@@ -47,15 +52,28 @@ export function WalkInBookingModal({
   const [referenceId, setReferenceId] = useState("WALK-IN");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [bookedCountBySlotId, setBookedCountBySlotId] = useState<
+    Map<string, number>
+  >(() => new Map());
+  const [capacityLoading, setCapacityLoading] = useState(false);
+  const [capacityError, setCapacityError] = useState("");
 
-  const slots = SLOTS[plan];
+  const isOpenPlay = plan === "open-play";
+  const openPlaySlots = useOpenPlaySlots();
+  const slots = isOpenPlay ? openPlaySlots : SLOTS[plan];
   const multiSlot = allowsMultiSlot(plan);
   const hours = Math.max(slotIds.length, 1);
   const unitPrice = usePlanUnitPrice(plan);
   const total = bookingTotal(plan, plan === "court" ? hours : 1, unitPrice);
   const canSubmit =
-    name.trim().length > 0 && courtId.length > 0 && slotIds.length > 0;
-  const timeSummary = selectedSlotLabels(plan, slotIds).join(", ");
+    name.trim().length > 0 &&
+    (isOpenPlay ? true : courtId.length > 0) &&
+    slotIds.length > 0 &&
+    !(isOpenPlay && (capacityLoading || Boolean(capacityError)));
+  const timeSummary = slots
+    .filter((slot) => slotIds.includes(slot.id))
+    .map((slot) => slot.label)
+    .join(", ");
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -68,9 +86,35 @@ export function WalkInBookingModal({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
+  useEffect(() => {
+    if (!isOpenPlay || !date) return;
+    const controller = new AbortController();
+    setCapacityLoading(true);
+    setCapacityError("");
+    void listOpenPlaySessions({ date }, controller.signal)
+      .then((items) => {
+        const next = new Map<string, number>();
+        for (const item of items) {
+          next.set(item.slotId, item.bookedCount);
+        }
+        setBookedCountBySlotId(next);
+      })
+      .catch(() => {
+        setBookedCountBySlotId(new Map());
+        setCapacityError(
+          "Couldn’t load session availability. Check your connection and try again.",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCapacityLoading(false);
+      });
+    return () => controller.abort();
+  }, [isOpenPlay, date]);
+
   function selectPlan(next: BookingPlan) {
     setPlan(next);
     if (!slotsLocked) setSlotIds([]);
+    if (next === "open-play") setCourtId("in-1");
   }
 
   function selectCourt(next: string) {
@@ -79,6 +123,7 @@ export function WalkInBookingModal({
   }
 
   function toggleSlot(id: string) {
+    if (isOpenPlay) setCourtId("in-1");
     setSlotIds((current) => {
       if (!multiSlot) return current[0] === id ? [] : [id];
       if (current.includes(id)) return current.filter((slot) => slot !== id);
@@ -89,7 +134,8 @@ export function WalkInBookingModal({
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (!canSubmit) {
+    const resolvedCourtId = isOpenPlay ? courtId || "in-1" : courtId;
+    if (!canSubmit || !resolvedCourtId) {
       setError("Name, court, and time are required.");
       return;
     }
@@ -99,7 +145,7 @@ export function WalkInBookingModal({
       const dto = await createAdminBooking({
         plan,
         date,
-        courtId: courtId as
+        courtId: resolvedCourtId as
           | "in-1"
           | "in-2"
           | "in-3"
@@ -183,49 +229,77 @@ export function WalkInBookingModal({
             <input
               type="date"
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={(event) => {
+                setDate(event.target.value);
+                if (!slotsLocked) setSlotIds([]);
+              }}
               className="mt-1.5 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
             />
           </label>
 
-          <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
-              Court
-            </span>
-            <select
-              value={courtId}
-              onChange={(event) => selectCourt(event.target.value)}
-              className="mt-1.5 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-            >
-              {COURTS.map((court) => (
-                <option key={court.id} value={court.id}>
-                  {court.group} · {court.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!isOpenPlay ? (
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                Court
+              </span>
+              <select
+                value={courtId}
+                onChange={(event) => selectCourt(event.target.value)}
+                className="mt-1.5 h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+              >
+                {COURTS.map((court) => (
+                  <option key={court.id} value={court.id}>
+                    {court.group} · {court.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
               Time
             </p>
+            {isOpenPlay && capacityError ? (
+              <p className="mt-1.5 text-sm text-red-600" role="alert">
+                {capacityError}
+              </p>
+            ) : null}
             <div className="mt-1.5 flex flex-wrap gap-2">
               {slots.map((slot) => {
                 const selected = slotIds.includes(slot.id);
+                const booked = bookedCountBySlotId.get(slot.id) ?? 0;
+                const full = isOpenPlay && booked >= OPEN_PLAY_CAPACITY;
+                const disabled =
+                  (slotsLocked && !selected) ||
+                  (isOpenPlay &&
+                    (capacityLoading || Boolean(capacityError) || full));
                 return (
                   <button
                     key={slot.id}
                     type="button"
-                    disabled={slotsLocked && !selected}
+                    disabled={disabled}
                     onClick={() => toggleSlot(slot.id)}
                     className={cn(
-                      "h-9 rounded-lg px-3 text-[10px] font-bold uppercase tracking-[0.08em] transition",
+                      "flex h-auto min-h-9 flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] transition",
                       selected
                         ? "bg-yellow text-black"
                         : "border border-zinc-200 text-zinc-600 hover:border-yellow hover:text-yellow disabled:opacity-40",
                     )}
                   >
-                    {slot.label}
+                    <span>{slot.label}</span>
+                    {isOpenPlay ? (
+                      <span
+                        className={cn(
+                          "text-[9px] tracking-[0.12em]",
+                          selected ? "text-black/70" : "text-zinc-400",
+                        )}
+                      >
+                        {capacityLoading
+                          ? "…"
+                          : `${booked}/${OPEN_PLAY_CAPACITY}${full ? " · Full" : ""}`}
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
@@ -233,7 +307,9 @@ export function WalkInBookingModal({
             {timeSummary ? (
               <p className="mt-2 text-xs text-zinc-500">{timeSummary}</p>
             ) : (
-              <p className="mt-2 text-xs text-zinc-400">Select hours.</p>
+              <p className="mt-2 text-xs text-zinc-400">
+                {isOpenPlay ? "Select a session." : "Select hours."}
+              </p>
             )}
           </div>
 

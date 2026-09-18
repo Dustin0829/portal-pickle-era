@@ -5,6 +5,7 @@ import type {
   CreatePublicBookingBody,
   ListBookingsQuery,
   ListUsersQuery,
+  OpenPlaySessionsQuery,
   PatchBookingBody,
 } from "./bookings.schema.js";
 import {
@@ -15,6 +16,7 @@ import {
   listAdminUsers,
   listMyBookings,
   listOccupancy,
+  listOpenPlaySessions,
   patchBookingStatus,
 } from "./bookings.service.js";
 
@@ -25,6 +27,11 @@ export async function createPublicBookingController(req: Request, res: Response)
 
 export async function occupancyController(req: Request, res: Response) {
   const items = await listOccupancy(req.query);
+  return sendSuccess(res, { items }, "ok", 200);
+}
+
+export async function openPlaySessionsController(req: Request, res: Response) {
+  const items = await listOpenPlaySessions(req.query as unknown as OpenPlaySessionsQuery);
   return sendSuccess(res, { items }, "ok", 200);
 }
 
