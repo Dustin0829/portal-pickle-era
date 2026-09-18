@@ -56,7 +56,7 @@ export const PLAN_META: Record<
   "open-play": {
     title: "Open Play",
     eyebrow: "Join open play",
-    price: 150,
+    price: 250,
     unit: "/ session",
   },
   clinic: {
@@ -73,6 +73,9 @@ export const PAYMENT = {
   number: "0917 850 0107",
 };
 
+/** Max players per Open Play date + session. */
+export const OPEN_PLAY_CAPACITY = 30;
+
 /** First public court date (YYYY-MM-DD). Advance booking cannot select earlier days. */
 export const OPENING_DATE = "2026-10-05";
 
@@ -82,7 +85,6 @@ export const SLOTS: Record<BookingPlan, TimeSlot[]> = {
   court: hoursToSlots(6, 21),
   "open-play": [
     { id: "07:00", label: "7:00–9:00 AM", hour: 7 },
-    { id: "09:00", label: "9:00–11:00 AM", hour: 9 },
     { id: "16:00", label: "4:00–6:00 PM", hour: 16 },
     { id: "18:00", label: "6:00–8:00 PM", hour: 18 },
   ],

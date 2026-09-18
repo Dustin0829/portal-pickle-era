@@ -16,6 +16,8 @@ import {
   listBookingsQuerySchema,
   listUsersQuerySchema,
   occupancyQuerySchema,
+  openPlaySessionItemSchema,
+  openPlaySessionsQuerySchema,
   patchBookingBodySchema,
 } from "./bookings.schema.js";
 import { z } from "zod";
@@ -23,6 +25,7 @@ import { z } from "zod";
 export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
   registry.register("Booking", bookingDtoSchema);
   registry.register("BookingOccupancyItem", bookingOccupancyItemSchema);
+  registry.register("OpenPlaySessionItem", openPlaySessionItemSchema);
   registry.register("BookingReceiptUrl", bookingReceiptUrlResponseSchema);
 
   registry.registerPath({
@@ -56,6 +59,25 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
         content: {
           "application/json": {
             schema: successResponseSchema(z.object({ items: z.array(bookingOccupancyItemSchema) })),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/bookings/open-play-sessions",
+    operationId: "getOpenPlaySessions",
+    tags: ["Bookings"],
+    request: { query: openPlaySessionsQuerySchema },
+    responses: {
+      200: {
+        description: "Open Play session seat counts for a date",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(z.object({ items: z.array(openPlaySessionItemSchema) })),
           },
         },
       },

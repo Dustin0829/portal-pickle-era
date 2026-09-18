@@ -9,14 +9,22 @@ import {
   slotsOverlap,
   toBookingDto,
 } from "./bookings.mapper.js";
+import { ConflictError } from "../../lib/errors.js";
 import {
   OPENING_DATE,
+  OPEN_PLAY_CAPACITY,
   bookingReceiptUrlResponseSchema,
   createPublicBookingBodySchema,
   occupancyQuerySchema,
+  openPlaySessionsQuerySchema,
   patchBookingBodySchema,
 } from "./bookings.schema.js";
-import { listMyBookings } from "./bookings.service.js";
+import {
+  aggregateOpenPlayCounts,
+  assertOpenPlayHasSeat,
+  listMyBookings,
+  usesOpenPlayCapacity,
+} from "./bookings.service.js";
 
 test("opening date floor helper", () => {
   assert.equal(isBeforeOpeningDate("2026-10-04", OPENING_DATE), true);
@@ -113,6 +121,61 @@ test("booking mapper serializes", () => {
   });
   assert.equal(dto.plan, "open-play");
   assert.equal(dto.status, "pending");
+});
+
+test("open-play sessions query requires date", () => {
+  assert.equal(openPlaySessionsQuerySchema.safeParse({}).success, false);
+  assert.equal(openPlaySessionsQuerySchema.safeParse({ date: "2026-10-05" }).success, true);
+});
+
+test("OPEN_PLAY_CAPACITY is 30", () => {
+  assert.equal(OPEN_PLAY_CAPACITY, 30);
+});
+
+test("open-play uses shared capacity; court/clinic stay exclusive", () => {
+  assert.equal(usesOpenPlayCapacity("open_play"), true);
+  assert.equal(usesOpenPlayCapacity("court"), false);
+  assert.equal(usesOpenPlayCapacity("clinic"), false);
+});
+
+test("under capacity allows a seat", () => {
+  assert.doesNotThrow(() => assertOpenPlayHasSeat(0, "07:00"));
+  assert.doesNotThrow(() => assertOpenPlayHasSeat(29, "07:00"));
+});
+
+test("full session rejects at capacity", () => {
+  assert.throws(
+    () => assertOpenPlayHasSeat(OPEN_PLAY_CAPACITY, "07:00"),
+    (error: unknown) => error instanceof ConflictError && /full \(30\/30\)/.test(error.message),
+  );
+});
+
+test("concurrent last-seat: only one succeeds when racing from 29", () => {
+  let booked = 29;
+  assert.doesNotThrow(() => {
+    assertOpenPlayHasSeat(booked, "16:00");
+    booked += 1;
+  });
+  assert.throws(
+    () => assertOpenPlayHasSeat(booked, "16:00"),
+    (error: unknown) => error instanceof ConflictError,
+  );
+  assert.equal(booked, OPEN_PLAY_CAPACITY);
+});
+
+test("aggregateOpenPlayCounts sums pending/approved seats per slot", () => {
+  assert.deepEqual(
+    aggregateOpenPlayCounts([
+      { slotIds: ["07:00"] },
+      { slotIds: ["07:00"] },
+      { slotIds: ["16:00"] },
+    ]),
+    [
+      { slotId: "07:00", bookedCount: 2, capacity: 30 },
+      { slotId: "16:00", bookedCount: 1, capacity: 30 },
+    ],
+  );
+  assert.deepEqual(aggregateOpenPlayCounts([]), []);
 });
 
 test("listMyBookings requires session", async () => {

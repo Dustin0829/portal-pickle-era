@@ -7,12 +7,15 @@ import {
   listBookingsQuerySchema,
   listUsersQuerySchema,
   occupancyQuerySchema,
+  openPlaySessionItemSchema,
+  openPlaySessionsQuerySchema,
   patchBookingBodySchema,
   type CreateAdminBookingBody,
   type CreatePublicBookingBody,
   type ListBookingsQuery,
   type ListUsersQuery,
   type OccupancyQuery,
+  type OpenPlaySessionsQuery,
   type PatchBookingBody,
 } from "@/api/features/bookings/bookings.schema";
 import { authUserSchema } from "@/api/features/auth/auth.schema";
@@ -33,6 +36,19 @@ export async function listOccupancy(
   const { data } = await api.get("/bookings/occupancy", { params, signal });
   const payload = data as { items: unknown };
   return z.array(bookingOccupancyItemSchema).parse(payload.items);
+}
+
+export async function listOpenPlaySessions(
+  query: OpenPlaySessionsQuery,
+  signal?: AbortSignal,
+) {
+  const params = openPlaySessionsQuerySchema.parse(query);
+  const { data } = await api.get("/bookings/open-play-sessions", {
+    params,
+    signal,
+  });
+  const payload = data as { items: unknown };
+  return z.array(openPlaySessionItemSchema).parse(payload.items);
 }
 
 export async function listMyBookings(signal?: AbortSignal) {

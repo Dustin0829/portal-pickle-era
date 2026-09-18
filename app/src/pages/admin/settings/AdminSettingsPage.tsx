@@ -1,9 +1,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { BookingPlan } from "@/lib/booking/booking";
+import type { BookingPlan, TimeSlot } from "@/lib/booking/booking";
+import { slotFromOpenPlayHour } from "@/lib/booking/openPlaySlots";
 import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 
 const PLAN_ORDER: BookingPlan[] = ["court", "open-play", "clinic"];
+const START_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 
 type PriceDraft = Record<BookingPlan, number>;
 
@@ -21,9 +23,11 @@ export function AdminSettingsPage() {
   const {
     plans,
     payment,
+    openPlaySlots,
     preSignup,
     setPlanPrice,
     setPayment,
+    setOpenPlaySlots,
     setPreSignup,
     resetDefaults,
   } = useFacilitySettingsStore();
@@ -31,13 +35,22 @@ export function AdminSettingsPage() {
   const [priceDraft, setPriceDraft] = useState<PriceDraft>(() =>
     pricesFromPlans(plans),
   );
+  const [slotsDraft, setSlotsDraft] = useState<TimeSlot[]>(() =>
+    openPlaySlots.map((slot) => ({ ...slot })),
+  );
   const [saved, setSaved] = useState(false);
   const [pricesSaved, setPricesSaved] = useState(false);
+  const [slotsSaved, setSlotsSaved] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
+  const [savingSlots, setSavingSlots] = useState(false);
 
   useEffect(() => {
     setPriceDraft(pricesFromPlans(plans));
   }, [plans]);
+
+  useEffect(() => {
+    setSlotsDraft(openPlaySlots.map((slot) => ({ ...slot })));
+  }, [openPlaySlots]);
 
   function onSavePayment(event: FormEvent) {
     event.preventDefault();
@@ -58,12 +71,38 @@ export function AdminSettingsPage() {
     }, 200);
   }
 
+  function onSaveSlots(event: FormEvent) {
+    event.preventDefault();
+    setSavingSlots(true);
+    setSlotsSaved(false);
+    const next = [...slotsDraft]
+      .map((slot) => slotFromOpenPlayHour(slot.hour))
+      .sort((a, b) => a.hour - b.hour);
+    setOpenPlaySlots(next);
+    window.setTimeout(() => {
+      setSavingSlots(false);
+      setSlotsSaved(true);
+    }, 200);
+  }
+
   function onResetDefaults() {
     resetDefaults();
-    setPaymentDraft(useFacilitySettingsStore.getState().payment);
-    setPriceDraft(pricesFromPlans(useFacilitySettingsStore.getState().plans));
+    const state = useFacilitySettingsStore.getState();
+    setPaymentDraft(state.payment);
+    setPriceDraft(pricesFromPlans(state.plans));
+    setSlotsDraft(state.openPlaySlots.map((slot) => ({ ...slot })));
     setSaved(false);
     setPricesSaved(false);
+    setSlotsSaved(false);
+  }
+
+  function addSlot() {
+    setSlotsSaved(false);
+    const used = new Set(slotsDraft.map((slot) => slot.hour));
+    const hour = START_HOURS.find((value) => !used.has(value)) ?? 7;
+    setSlotsDraft((prev) =>
+      [...prev, slotFromOpenPlayHour(hour)].sort((a, b) => a.hour - b.hour),
+    );
   }
 
   return (
@@ -74,8 +113,8 @@ export function AdminSettingsPage() {
             Settings
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Save plan prices and GCash display for marketing Pricing and booking
-            amounts in this browser.
+            Save plan prices, Open Play sessions, and GCash display for
+            marketing and booking in this browser.
           </p>
         </div>
         <Button
@@ -182,9 +221,94 @@ export function AdminSettingsPage() {
 
         <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
+            Open Play sessions
+          </h2>
+          <p className="mt-1.5 text-sm text-zinc-500">
+            Each session is 2 hours. Saved sessions appear on marketing Open
+            Play booking (this browser).
+          </p>
+          <form className="mt-3 flex flex-col gap-2.5" onSubmit={onSaveSlots}>
+            <ul className="flex flex-col gap-2">
+              {slotsDraft.map((slot, index) => (
+                <li
+                  key={`${slot.id}-${index}`}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <label className="min-w-0 text-sm text-zinc-600">
+                    Session {index + 1}
+                    <span className="mt-0.5 block text-[11px] text-zinc-400">
+                      {slot.label}
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label={`Start hour for session ${index + 1}`}
+                      value={slot.hour}
+                      onChange={(event) => {
+                        setSlotsSaved(false);
+                        const hour = Number(event.target.value);
+                        setSlotsDraft((prev) =>
+                          prev.map((item, i) =>
+                            i === index ? slotFromOpenPlayHour(hour) : item,
+                          ),
+                        );
+                      }}
+                      className="h-9 rounded-xl border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-yellow"
+                    >
+                      {START_HOURS.map((hour) => (
+                        <option key={hour} value={hour}>
+                          {slotFromOpenPlayHour(hour).label}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={slotsDraft.length <= 1}
+                      onClick={() => {
+                        setSlotsSaved(false);
+                        setSlotsDraft((prev) =>
+                          prev.filter((_, i) => i !== index),
+                        );
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addSlot}
+                disabled={slotsDraft.length >= START_HOURS.length}
+              >
+                Add session
+              </Button>
+              <Button type="submit" className="w-fit" disabled={savingSlots}>
+                {savingSlots ? "Saving…" : "Save"}
+              </Button>
+              {slotsSaved ? (
+                <p className="text-xs text-zinc-500" role="status">
+                  Saved locally.
+                </p>
+              ) : null}
+            </div>
+          </form>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
             GCash display
           </h2>
-          <form className="mt-3 flex flex-col gap-2.5" onSubmit={onSavePayment}>
+          <form
+            className="mt-3 flex max-w-md flex-col gap-2.5"
+            onSubmit={onSavePayment}
+          >
             <label className="flex flex-col gap-1 text-xs text-zinc-500">
               Method
               <input
