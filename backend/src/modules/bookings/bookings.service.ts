@@ -1,4 +1,9 @@
 import { prisma } from "../../app/prisma.js";
+import { logger } from "../../app/logger.js";
+import {
+  ensureStudentCredentialUser,
+  planInviteCredentialsEmail,
+} from "../../lib/auth/create-student-user.js";
 import {
   ConflictError,
   NotFoundError,
@@ -6,6 +11,7 @@ import {
   ValidationError,
 } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
+import { isResendConfigured, sendPlayerInviteEmail } from "../../lib/resend/client.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { upsertWaitlistEntry } from "../waitlist/waitlist.service.js";
@@ -232,18 +238,80 @@ export async function listAdminBookings(query: ListBookingsQuery) {
 export async function patchBookingStatus(id: string, body: PatchBookingBody) {
   const existing = await prisma.booking.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, email: true, name: true, userId: true },
   });
   if (!existing) {
     throw new NotFoundError("Booking not found");
   }
 
-  const row = await prisma.booking.update({
-    where: { id },
-    data: { status: body.status },
-    select: bookingPublicSelect,
+  if (body.status === "rejected") {
+    const row = await prisma.booking.update({
+      where: { id },
+      data: { status: "rejected" },
+      select: bookingPublicSelect,
+    });
+    return toBookingDto(row);
+  }
+
+  let createdNewUser = false;
+  let tempPassword: string | null = null;
+
+  const row = await prisma.$transaction(async (tx) => {
+    const ensured = await ensureStudentCredentialUser(
+      { name: existing.name, email: existing.email },
+      tx,
+    );
+    createdNewUser = ensured.createdNewUser;
+    tempPassword = ensured.tempPassword;
+
+    return tx.booking.update({
+      where: { id },
+      data: {
+        status: "approved",
+        userId: ensured.user.id,
+      },
+      select: bookingPublicSelect,
+    });
   });
-  return toBookingDto(row);
+
+  const dto = toBookingDto(row);
+  const plan = planInviteCredentialsEmail({
+    createdNewUser,
+    resendConfigured: isResendConfigured(),
+  });
+
+  if (plan === "skip_existing_user" || !tempPassword) {
+    return dto;
+  }
+
+  if (plan === "skip_not_configured") {
+    logger.info("invite_email_skipped", {
+      bookingId: id,
+      reason: "not_configured",
+    });
+    return {
+      ...dto,
+      inviteEmailWarning: "Invite email skipped: RESEND_API_KEY or EMAIL_FROM is not configured",
+    };
+  }
+
+  const emailResult = await sendPlayerInviteEmail({
+    to: normalizeBookingEmail(existing.email),
+    tempPassword,
+  });
+
+  if (!emailResult.sent) {
+    logger.warn("invite_email_failed_after_approve", {
+      bookingId: id,
+      reason: emailResult.reason,
+    });
+    return {
+      ...dto,
+      inviteEmailWarning: emailResult.message,
+    };
+  }
+
+  return dto;
 }
 
 export async function getBookingReceiptUrl(id: string) {

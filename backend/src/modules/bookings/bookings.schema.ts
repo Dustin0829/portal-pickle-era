@@ -118,6 +118,11 @@ export const patchBookingBodySchema = z
   })
   .strict();
 
+/** PATCH /admin/bookings/:id — booking DTO plus optional non-fatal invite warning. */
+export const patchBookingResponseSchema = bookingDtoSchema.extend({
+  inviteEmailWarning: z.string().optional(),
+});
+
 export const bookingReceiptUrlResponseSchema = z.object({
   url: z.string().url(),
   expiresAt: z.string().datetime(),
@@ -136,5 +141,6 @@ export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
 export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
 export type OpenPlaySessionsQuery = z.infer<typeof openPlaySessionsQuerySchema>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
+export type PatchBookingResponse = z.infer<typeof patchBookingResponseSchema>;
 export type BookingReceiptUrlResponse = z.infer<typeof bookingReceiptUrlResponseSchema>;
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;

@@ -1,6 +1,12 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
-import { CalendarDays, CalendarRange, Home, UserRound } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarRange,
+  Home,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import { ProtectedRoute } from "@/components/guards/ProtectedRoute";
 import { PortalChrome } from "@/components/portal/PortalChrome";
 import { PortalRouteFallback } from "@/components/portal/PortalRouteFallback";
@@ -9,6 +15,7 @@ const items = [
   { to: "/app", label: "Overview", end: true, icon: Home },
   { to: "/app/bookings", label: "My bookings", icon: CalendarDays },
   { to: "/app/calendar", label: "Court calendar", icon: CalendarRange },
+  { to: "/app/wallet", label: "Wallet", icon: Wallet },
   { to: "/app/profile", label: "Profile", icon: UserRound },
 ];
 

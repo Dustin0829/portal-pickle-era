@@ -1,0 +1,132 @@
+import { Resend } from "resend";
+import { env, parseCorsOrigins } from "../../app/env.js";
+import { logger } from "../../app/logger.js";
+
+export type SendEmailResult =
+  | { sent: true; id: string | null }
+  | { sent: false; reason: "not_configured" | "provider_error" | "error"; message: string };
+
+export function isResendConfigured(): boolean {
+  return Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);
+}
+
+/** SPA origin for invite login links. */
+export function resolvePublicAppUrl(): string {
+  if (env.PUBLIC_APP_URL) {
+    return env.PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+  const firstCors = parseCorsOrigins(env.API_CORS_ORIGIN)[0];
+  if (firstCors) {
+    return firstCors.replace(/\/$/, "");
+  }
+  return "http://localhost:5173";
+}
+
+/**
+ * Send a transactional email via Resend.
+ * Never throws for API/provider errors — callers check `{ sent }`.
+ */
+export async function sendEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+}): Promise<SendEmailResult> {
+  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
+    logger.info("resend_skipped", {
+      provider: "resend",
+      operation: "send",
+      reason: "not_configured",
+    });
+    return {
+      sent: false,
+      reason: "not_configured",
+      message: "Invite email skipped: RESEND_API_KEY or EMAIL_FROM is not configured",
+    };
+  }
+
+  const started = Date.now();
+  try {
+    const resend = new Resend(env.RESEND_API_KEY);
+    const { data, error } = await resend.emails.send({
+      from: env.EMAIL_FROM,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      ...(input.text ? { text: input.text } : {}),
+    });
+
+    if (error) {
+      logger.warn("resend_send_failed", {
+        provider: "resend",
+        operation: "send",
+        durationMs: Date.now() - started,
+        message: error.message,
+      });
+      return {
+        sent: false,
+        reason: "provider_error",
+        message: `Invite email failed: ${error.message}`,
+      };
+    }
+
+    logger.info("resend_send_ok", {
+      provider: "resend",
+      operation: "send",
+      durationMs: Date.now() - started,
+      id: data?.id ?? null,
+    });
+    return { sent: true, id: data?.id ?? null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown";
+    logger.warn("resend_send_error", {
+      provider: "resend",
+      operation: "send",
+      durationMs: Date.now() - started,
+      error: message,
+    });
+    return {
+      sent: false,
+      reason: "error",
+      message: `Invite email failed: ${message}`,
+    };
+  }
+}
+
+export async function sendPlayerInviteEmail(input: {
+  to: string;
+  tempPassword: string;
+}): Promise<SendEmailResult> {
+  const portalUrl = resolvePublicAppUrl();
+  const loginUrl = `${portalUrl}/login`;
+  const subject = "Your Pickle Era portal login";
+  const text = [
+    "Your booking was approved. You can sign in to the player portal with these credentials:",
+    "",
+    `Portal: ${loginUrl}`,
+    `Email: ${input.to}`,
+    `Temporary password: ${input.tempPassword}`,
+    "",
+    "Please change your password after you log in (Profile or forgot-password).",
+  ].join("\n");
+
+  const html = `
+    <p>Your booking was approved. You can sign in to the player portal with these credentials:</p>
+    <ul>
+      <li><strong>Portal:</strong> <a href="${loginUrl}">${loginUrl}</a></li>
+      <li><strong>Email:</strong> ${escapeHtml(input.to)}</li>
+      <li><strong>Temporary password:</strong> ${escapeHtml(input.tempPassword)}</li>
+    </ul>
+    <p>Please change your password after you log in (Profile or forgot-password).</p>
+  `.trim();
+
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}

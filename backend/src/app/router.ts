@@ -13,6 +13,7 @@ import { examplesRouter } from "../modules/examples/examples.routes.js";
 import { healthRouter } from "../modules/health/health.routes.js";
 import { uploadsRouter } from "../modules/uploads/uploads.routes.js";
 import { waitlistAdminRouter, waitlistPublicRouter } from "../modules/waitlist/waitlist.routes.js";
+import { walletAdminRouter, walletMeRouter } from "../modules/wallet/wallet.routes.js";
 
 export function createApiRouter() {
   const apiRouter = Router();
@@ -24,12 +25,14 @@ export function createApiRouter() {
   apiRouter.use("/auth", authRouter);
   apiRouter.use("/bookings", bookingsPublicRouter);
   apiRouter.use("/me/bookings", bookingsMeRouter);
+  apiRouter.use("/me/wallet", walletMeRouter);
 
   if (shouldMountAdminTools()) {
     apiRouter.use("/admin/activity-logs", protectAdminTools, activityLogsRouter);
     apiRouter.use("/admin/waitlist", protectProductAdmin, waitlistAdminRouter);
     apiRouter.use("/admin/bookings", protectProductAdmin, bookingsAdminRouter);
     apiRouter.use("/admin/users", protectProductAdmin, usersAdminRouter);
+    apiRouter.use("/admin/wallet", protectProductAdmin, walletAdminRouter);
   }
 
   return apiRouter;

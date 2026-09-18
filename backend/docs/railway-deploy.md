@@ -22,17 +22,20 @@ Typical Nixpacks / custom:
 
 ## Env (API)
 
-| Variable                                                                                | Notes                                                                                                                 |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                                          | Railway Postgres connection string                                                                                    |
-| `NODE_ENV`                                                                              | `production`                                                                                                          |
-| `PORT`                                                                                  | Railway injects; ensure app listens on it                                                                             |
-| `API_CORS_ORIGIN`                                                                       | Public **web** service origin(s), comma-separated                                                                     |
-| `BETTER_AUTH_SECRET`                                                                    | Required in production (session signing)                                                                              |
-| `BETTER_AUTH_URL`                                                                       | Public API origin, e.g. `https://api.pickleera.co`                                                                    |
-| `AUTH_COOKIE_DOMAIN`                                                                    | Shared cookie domain, e.g. `.pickleera.co`                                                                            |
-| `ADMIN_BASIC_AUTH_USER` / `ADMIN_BASIC_AUTH_PASSWORD`                                   | Required in production to mount `/docs`, `/admin/waitlist`, `/admin/bookings`, `/admin/users`, `/admin/activity-logs` |
-| `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_BUCKET` / `S3_REGION` | Railway Bucket Credentials mapped into the API service (optional; uploads soft-fail when unset)                       |
+| Variable                                                                                | Notes                                                                                                                                  |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                          | Railway Postgres connection string                                                                                                     |
+| `NODE_ENV`                                                                              | `production`                                                                                                                           |
+| `PORT`                                                                                  | Railway injects; ensure app listens on it                                                                                              |
+| `API_CORS_ORIGIN`                                                                       | Public **web** service origin(s), comma-separated                                                                                      |
+| `BETTER_AUTH_SECRET`                                                                    | Required in production (session signing)                                                                                               |
+| `BETTER_AUTH_URL`                                                                       | Public API origin, e.g. `https://api.pickleera.co`                                                                                     |
+| `AUTH_COOKIE_DOMAIN`                                                                    | Shared cookie domain, e.g. `.pickleera.co`                                                                                             |
+| `ADMIN_BASIC_AUTH_USER` / `ADMIN_BASIC_AUTH_PASSWORD`                                   | Required in production to mount `/docs`, `/admin/waitlist`, `/admin/bookings`, `/admin/wallet`, `/admin/users`, `/admin/activity-logs` |
+| `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_BUCKET` / `S3_REGION` | Railway Bucket Credentials mapped into the API service (optional; uploads soft-fail when unset)                                        |
+| `RESEND_API_KEY`                                                                        | Optional; player invite email on booking approve is skipped when unset                                                                 |
+| `EMAIL_FROM`                                                                            | From address for Resend (e.g. `Pickle Era <noreply@pickleera.co>`); required with `RESEND_API_KEY` to send invites                     |
+| `PUBLIC_APP_URL`                                                                        | SPA origin for invite login links (e.g. `https://pickleera.co`); falls back to first `API_CORS_ORIGIN` when unset                      |
 
 Leave Basic Auth unset only for local/dev. In production without both vars, admin tools (including `GET /admin/waitlist` and `/admin/bookings`) are **not mounted**.
 
@@ -66,5 +69,6 @@ railway run --service pickle-era-backend --environment production -- pnpm db:see
 
 - Public capture: `POST /waitlist`, `POST /bookings`, `POST /auth/signup|login`
 - Better Auth session cookie for `/auth/me` and `/me/bookings` (SPA needs `credentials: "include"`; set `AUTH_COOKIE_DOMAIN=.pickleera.co` in prod)
-- Admin list (ops): `GET /admin/waitlist`, `GET /admin/bookings` — Swagger `/docs` or curl with Basic Auth when configured
-- Receipt upload: `POST /uploads/presign` then PUT to the bucket; store object `key` as `receiptKey`
+- Admin list (ops): `GET /admin/waitlist`, `GET /admin/bookings`, `GET /admin/wallet/top-ups` — Swagger `/docs` or curl with Basic Auth when configured
+- Receipt upload: `POST /uploads/presign` then PUT to the bucket; store object `key` as `receiptKey` (bookings + wallet top-ups)
+- Player wallet: `GET /me/wallet`, `POST /me/wallet/top-ups` (session cookie); admin approve/reject credits balance once

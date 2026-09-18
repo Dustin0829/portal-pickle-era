@@ -19,6 +19,7 @@ import {
   openPlaySessionItemSchema,
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
+  patchBookingResponseSchema,
 } from "./bookings.schema.js";
 import { z } from "zod";
 
@@ -27,6 +28,7 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
   registry.register("BookingOccupancyItem", bookingOccupancyItemSchema);
   registry.register("OpenPlaySessionItem", openPlaySessionItemSchema);
   registry.register("BookingReceiptUrl", bookingReceiptUrlResponseSchema);
+  registry.register("PatchBookingResponse", patchBookingResponseSchema);
 
   registry.registerPath({
     method: "post",
@@ -154,8 +156,11 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
     },
     responses: {
       200: {
-        description: "Updated booking status",
-        content: { "application/json": { schema: successResponseSchema(bookingDtoSchema) } },
+        description:
+          "Updated booking status (optional inviteEmailWarning when email skipped/failed)",
+        content: {
+          "application/json": { schema: successResponseSchema(patchBookingResponseSchema) },
+        },
       },
       ...standardErrorResponses,
     },

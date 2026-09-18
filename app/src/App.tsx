@@ -9,11 +9,13 @@ import { OverviewPage } from "@/pages/app/overview/OverviewPage";
 import { BookingsPage } from "@/pages/app/bookings/BookingsPage";
 import { CalendarPage } from "@/pages/app/calendar/CalendarPage";
 import { ProfilePage } from "@/pages/app/profile/ProfilePage";
+import { WalletPage } from "@/pages/app/wallet/WalletPage";
 import { AdminDashboardPage } from "@/pages/admin/dashboard/AdminDashboardPage";
 import { AdminBookingsPage } from "@/pages/admin/bookings/AdminBookingsPage";
 import { AdminCalendarPage } from "@/pages/admin/calendar/AdminCalendarPage";
 import { AdminPlayersPage } from "@/pages/admin/waitlist/AdminWaitlistPage";
 import { AdminSettingsPage } from "@/pages/admin/settings/AdminSettingsPage";
+import { AdminWalletTopUpsPage } from "@/pages/admin/wallet/AdminWalletTopUpsPage";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const LoginPage = lazy(() =>
@@ -104,12 +106,14 @@ export default function App() {
             <Route index element={<OverviewPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="wallet" element={<WalletPage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
 
           <Route path="admin" element={<AdminPortalLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="bookings" element={<AdminBookingsPage />} />
+            <Route path="top-ups" element={<AdminWalletTopUpsPage />} />
             <Route path="calendar" element={<AdminCalendarPage />} />
             <Route path="players" element={<AdminPlayersPage />} />
             <Route

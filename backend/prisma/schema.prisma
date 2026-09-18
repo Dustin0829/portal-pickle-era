@@ -53,17 +53,19 @@ enum UserRole {
 
 /// Better Auth user (+ product role). Table kept as `users` for booking FKs.
 model User {
-  id            String    @id
+  id            String        @id
   name          String
   email         String
-  emailVerified Boolean   @default(false) @map("email_verified")
+  emailVerified Boolean       @default(false) @map("email_verified")
   image         String?
-  role          UserRole  @default(student)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  role          UserRole      @default(student)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
   sessions      Session[]
   accounts      Account[]
   bookings      Booking[]
+  wallet        Wallet?
+  walletTopUps  WalletTopUp[]
 
   @@unique([email])
   @@index([role])
@@ -153,4 +155,39 @@ model Booking {
   @@index([userId])
   @@index([createdAt])
   @@map("bookings")
+}
+
+model Wallet {
+  id           String   @id @default(cuid())
+  userId       String   @unique @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceCents Int      @default(0) @map("balance_cents")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("wallets")
+}
+
+enum WalletTopUpStatus {
+  pending
+  approved
+  rejected
+}
+
+model WalletTopUp {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id")
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCents     Int               @map("amount_cents")
+  receiptName     String?           @map("receipt_name")
+  receiptKey      String?           @map("receipt_key")
+  receiptMimeType String?           @map("receipt_mime_type")
+  status          WalletTopUpStatus @default(pending)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("wallet_top_ups")
 }

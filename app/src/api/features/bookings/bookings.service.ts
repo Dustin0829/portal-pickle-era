@@ -10,6 +10,7 @@ import {
   openPlaySessionItemSchema,
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
+  patchBookingResponseSchema,
   type CreateAdminBookingBody,
   type CreatePublicBookingBody,
   type ListBookingsQuery,
@@ -79,7 +80,7 @@ export async function createAdminBooking(input: CreateAdminBookingBody) {
 export async function patchAdminBooking(id: string, input: PatchBookingBody) {
   const body = patchBookingBodySchema.parse(input);
   const { data } = await api.patch(`/admin/bookings/${id}`, body);
-  return bookingDtoSchema.parse(data);
+  return patchBookingResponseSchema.parse(data);
 }
 
 export async function listAdminUsers(

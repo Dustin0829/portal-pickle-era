@@ -39,6 +39,9 @@ const envSchema = z
     BETTER_AUTH_SECRET: z.string().min(16).optional(),
     BETTER_AUTH_URL: z.string().url().optional(),
     AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().min(1).optional(),
+    PUBLIC_APP_URL: z.string().url().optional(),
   })
   .superRefine((data, ctx) => {
     const hasUser = Boolean(data.ADMIN_BASIC_AUTH_USER);
