@@ -7,6 +7,7 @@ import {
 } from "@/lib/booking/openPlaySlots";
 import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { FoodMenuSettingsSection } from "@/pages/admin/settings/FoodMenuSettingsSection";
+import { PaymentMethodsSettingsSection } from "@/pages/admin/settings/PaymentMethodsSettingsSection";
 import { cn } from "@/lib/utils";
 
 const PLAN_ORDER: BookablePlan[] = ["court", "open-play"];
@@ -26,31 +27,27 @@ function pricesFromPlans(plans: Record<string, { price: number }>): PriceDraft {
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "prices", label: "Prices" },
   { id: "open-play", label: "Open play sessions" },
-  { id: "payment", label: "Payment Method" },
+  { id: "payment", label: "Payment methods" },
   { id: "food", label: "Food menu" },
 ];
 
 export function AdminSettingsPage() {
   const {
     plans,
-    payment,
     openPlaySlots,
     preSignup,
     setPlanPrice,
-    setPayment,
     setOpenPlaySlots,
     setPreSignup,
     resetDefaults,
   } = useFacilitySettingsStore();
   const [tab, setTab] = useState<SettingsTab>("prices");
-  const [paymentDraft, setPaymentDraft] = useState(payment);
   const [priceDraft, setPriceDraft] = useState<PriceDraft>(() =>
     pricesFromPlans(plans),
   );
   const [slotsDraft, setSlotsDraft] = useState<TimeSlot[]>(() =>
     openPlaySlots.map((slot) => ({ ...slot })),
   );
-  const [saved, setSaved] = useState(false);
   const [pricesSaved, setPricesSaved] = useState(false);
   const [slotsSaved, setSlotsSaved] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
@@ -63,12 +60,6 @@ export function AdminSettingsPage() {
   useEffect(() => {
     setSlotsDraft(openPlaySlots.map((slot) => ({ ...slot })));
   }, [openPlaySlots]);
-
-  function onSavePayment(event: FormEvent) {
-    event.preventDefault();
-    setPayment(paymentDraft);
-    setSaved(true);
-  }
 
   function onSavePrices(event: FormEvent) {
     event.preventDefault();
@@ -100,10 +91,8 @@ export function AdminSettingsPage() {
   function onResetDefaults() {
     resetDefaults();
     const state = useFacilitySettingsStore.getState();
-    setPaymentDraft(state.payment);
     setPriceDraft(pricesFromPlans(state.plans));
     setSlotsDraft(state.openPlaySlots.map((slot) => ({ ...slot })));
-    setSaved(false);
     setPricesSaved(false);
     setSlotsSaved(false);
   }
@@ -390,71 +379,7 @@ export function AdminSettingsPage() {
         </section>
       ) : null}
 
-      {tab === "payment" ? (
-        <section
-          role="tabpanel"
-          aria-labelledby="settings-tab-payment"
-          className="border border-zinc-200 bg-white p-4"
-        >
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
-            Payment Method
-          </h2>
-          <form
-            className="mt-3 flex max-w-md flex-col gap-2.5"
-            onSubmit={onSavePayment}
-          >
-            <label className="flex flex-col gap-1 text-xs text-zinc-500">
-              Method
-              <input
-                value={paymentDraft.method}
-                onChange={(event) =>
-                  setPaymentDraft((prev) => ({
-                    ...prev,
-                    method: event.target.value,
-                  }))
-                }
-                className="h-9 border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-zinc-500">
-              Account name
-              <input
-                value={paymentDraft.name}
-                onChange={(event) =>
-                  setPaymentDraft((prev) => ({
-                    ...prev,
-                    name: event.target.value,
-                  }))
-                }
-                className="h-9 border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-zinc-500">
-              Number
-              <input
-                value={paymentDraft.number}
-                onChange={(event) =>
-                  setPaymentDraft((prev) => ({
-                    ...prev,
-                    number: event.target.value,
-                  }))
-                }
-                className="h-9 border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-              />
-            </label>
-            <div className="mt-1 flex flex-wrap items-center gap-3">
-              <Button type="submit" className="w-fit">
-                Save payment display
-              </Button>
-              {saved ? (
-                <p className="text-xs text-zinc-500" role="status">
-                  Saved locally.
-                </p>
-              ) : null}
-            </div>
-          </form>
-        </section>
-      ) : null}
+      {tab === "payment" ? <PaymentMethodsSettingsSection /> : null}
 
       {tab === "food" ? (
         <div role="tabpanel" aria-labelledby="settings-tab-food">

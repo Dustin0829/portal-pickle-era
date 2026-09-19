@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Check, Copy, Upload, Wallet } from "lucide-react";
+import { Upload, Wallet } from "lucide-react";
 import {
   createWalletTopUpFormSchema,
   type CreateWalletTopUpFormValues,
@@ -9,6 +9,7 @@ import {
   useMeWallet,
 } from "@/api/features/wallet/use-wallet";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
+import { PaymentMethodCarousel } from "@/components/booking/PaymentMethodCarousel";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { useZodForm } from "@/lib/forms/useZodForm";
@@ -17,7 +18,7 @@ import {
   formatCentsAsPesos,
   pesosToCents,
 } from "@/lib/wallet/formatWalletMoney";
-import { usePaymentSettings } from "@/lib/wallet/paymentSettings";
+import { usePaymentMethods } from "@/lib/wallet/paymentSettings";
 import { getWalletPageStatus } from "@/lib/wallet/walletListStatus";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,8 @@ export function WalletPage() {
             Wallet
           </h1>
           <p className="text-sm text-zinc-500">
-            Check your balance and top up via GCash for future spend.
+            Check your balance and top up via facility payment methods for
+            future spend.
           </p>
         </header>
 
@@ -84,7 +86,8 @@ export function WalletPage() {
               </h2>
               {(data?.topUps.length ?? 0) === 0 ? (
                 <p className="mt-3 text-sm text-zinc-500">
-                  No top-ups yet. Submit one above after paying via GCash.
+                  No top-ups yet. Submit one above after paying via a listed
+                  method.
                 </p>
               ) : (
                 <ul className="mt-4 flex flex-col gap-2">
@@ -123,8 +126,7 @@ export function WalletPage() {
 }
 
 function WalletTopUpForm() {
-  const payment = usePaymentSettings();
-  const [copied, setCopied] = useState(false);
+  const paymentMethods = usePaymentMethods();
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptError, setReceiptError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -138,21 +140,15 @@ function WalletTopUpForm() {
 
   const busy = uploading || isCreating;
   const amountPesos = form.watch("amountPesos");
-
-  async function copyNumber() {
-    try {
-      await navigator.clipboard.writeText(payment.number.replaceAll(" ", ""));
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
+  const amountHint =
+    Number.isFinite(amountPesos) && amountPesos >= 1
+      ? `Send ₱${Number(amountPesos).toLocaleString("en-PH")}, then upload your receipt.`
+      : "Enter an amount, send payment, then upload your receipt.";
 
   async function onSubmit(values: CreateWalletTopUpFormValues) {
     setReceiptError("");
     if (!receiptFile) {
-      setReceiptError("Upload your GCash receipt.");
+      setReceiptError("Upload your payment receipt.");
       return;
     }
 
@@ -183,37 +179,16 @@ function WalletTopUpForm() {
     <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
       <h2 className="text-sm font-semibold text-zinc-900">Top up</h2>
       <p className="mt-1 text-sm text-zinc-500">
-        Pay any amount via GCash, then upload your receipt for admin review.
+        Pay any amount via a listed method, then upload your receipt for admin
+        review.
       </p>
 
       <div className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-          {payment.method}
-        </p>
-        <p className="mt-1 text-sm font-medium text-zinc-900">{payment.name}</p>
-        <div className="mt-2 flex items-center gap-2">
-          <p className="font-mono text-lg font-bold tracking-wide text-zinc-900">
-            {payment.number}
-          </p>
-          <button
-            type="button"
-            onClick={() => void copyNumber()}
-            className="grid size-9 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-600 transition hover:border-amber-400 hover:text-zinc-900"
-            aria-label="Copy GCash number"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-          </button>
-        </div>
-        {Number.isFinite(amountPesos) && amountPesos >= 1 ? (
-          <p className="mt-2 text-sm text-amber-800">
-            Send ₱{Number(amountPesos).toLocaleString("en-PH")}, then upload
-            your receipt.
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-zinc-500">
-            Enter an amount, send via GCash, then upload your receipt.
-          </p>
-        )}
+        <PaymentMethodCarousel
+          methods={paymentMethods}
+          amountHint={amountHint}
+          variant="light"
+        />
       </div>
 
       <form

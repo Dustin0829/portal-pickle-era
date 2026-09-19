@@ -222,7 +222,9 @@ export function BookingsPage() {
             />
             <button
               type="button"
-              onClick={() => openBookingModal("court")}
+              onClick={() =>
+                openBookingModal("court", undefined, { allowCreditsPay: true })
+              }
               className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-yellow/90"
             >
               <CalendarDays size={16} aria-hidden />
@@ -252,7 +254,11 @@ export function BookingsPage() {
               {bookings.length === 0 ? (
                 <button
                   type="button"
-                  onClick={() => openBookingModal("court")}
+                  onClick={() =>
+                    openBookingModal("court", undefined, {
+                      allowCreditsPay: true,
+                    })
+                  }
                   className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-yellow/90"
                 >
                   Book a court

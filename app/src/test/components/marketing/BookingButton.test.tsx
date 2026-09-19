@@ -13,7 +13,8 @@ describe("BookingButton", () => {
     await user.click(button);
 
     expect(screen.getByText(/select date & time/i)).toBeInTheDocument();
-    expect(screen.getByText(/private court/i)).toBeInTheDocument();
+    expect(screen.queryByText(/private court/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
   });
 
   it("renders children label when provided", () => {

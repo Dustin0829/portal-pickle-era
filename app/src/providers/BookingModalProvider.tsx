@@ -16,15 +16,22 @@ export type BookingModalPreset = {
   step?: "schedule" | "pay";
 };
 
+/** Portal bookings may offer Pay with credits; marketing stays GCash-only. */
+export type BookingModalOptions = {
+  allowCreditsPay?: boolean;
+};
+
 type BookingModalSession = {
   prefer?: BookablePlan;
   preset?: BookingModalPreset;
+  allowCreditsPay?: boolean;
 };
 
 type BookingModalContextValue = {
   openBookingModal: (
     plan?: BookablePlan | BookingPlan,
     preset?: BookingModalPreset,
+    options?: BookingModalOptions,
   ) => void;
 };
 
@@ -36,8 +43,16 @@ export function BookingModalProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<BookingModalSession | null>(null);
 
   const openBookingModal = useCallback(
-    (plan?: BookablePlan | BookingPlan, preset?: BookingModalPreset) => {
-      setSession({ prefer: preferFromOpenArg(plan), preset });
+    (
+      plan?: BookablePlan | BookingPlan,
+      preset?: BookingModalPreset,
+      options?: BookingModalOptions,
+    ) => {
+      setSession({
+        prefer: preferFromOpenArg(plan),
+        preset,
+        allowCreditsPay: options?.allowCreditsPay === true,
+      });
     },
     [],
   );
@@ -48,9 +63,10 @@ export function BookingModalProvider({ children }: { children: ReactNode }) {
       {children}
       {session !== null ? (
         <BookingModal
-          key={`${session.prefer ?? "any"}-${session.preset?.date ?? ""}-${session.preset?.courtId ?? ""}-${session.preset?.slotIds?.join(",") ?? ""}`}
+          key={`${session.prefer ?? "any"}-${session.preset?.date ?? ""}-${session.preset?.courtId ?? ""}-${session.preset?.slotIds?.join(",") ?? ""}-${session.allowCreditsPay ? "credits" : "gcash"}`}
           prefer={session.prefer}
           preset={session.preset}
+          allowCreditsPay={session.allowCreditsPay}
           onClose={closeBookingModal}
         />
       ) : null}

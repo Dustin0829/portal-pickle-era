@@ -60,12 +60,16 @@ export function CalendarPage() {
             bookings={bookings}
             readOnly={false}
             onBookSlot={({ date: slotDate, courtId, slotIds }) => {
-              openBookingModal("court", {
-                date: slotDate,
-                courtId,
-                slotIds,
-                step: "pay",
-              });
+              openBookingModal(
+                "court",
+                {
+                  date: slotDate,
+                  courtId,
+                  slotIds,
+                  step: "pay",
+                },
+                { allowCreditsPay: true },
+              );
             }}
           />
         )}
