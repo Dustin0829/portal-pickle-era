@@ -66,6 +66,7 @@ model User {
   bookings      Booking[]
   wallet        Wallet?
   walletTopUps  WalletTopUp[]
+  foodOrders    FoodOrder[]
 
   @@unique([email])
   @@index([role])
@@ -132,22 +133,23 @@ enum BookingStatus {
 }
 
 model Booking {
-  id              String        @id @default(cuid())
-  plan            BookingPlan
-  date            String
-  courtId         String        @map("court_id")
-  slotIds         String[]      @map("slot_ids")
-  name            String
-  email           String
-  userId          String?       @map("user_id")
-  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  referenceId     String        @default("") @map("reference_id")
-  receiptName     String?       @map("receipt_name")
-  receiptKey      String?       @map("receipt_key")
-  receiptMimeType String?       @map("receipt_mime_type")
-  status          BookingStatus @default(pending)
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id                 String        @id @default(cuid())
+  plan               BookingPlan
+  date               String
+  courtId            String        @map("court_id")
+  slotIds            String[]      @map("slot_ids")
+  name               String
+  email              String
+  userId             String?       @map("user_id")
+  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  referenceId        String        @default("") @map("reference_id")
+  receiptName        String?       @map("receipt_name")
+  receiptKey         String?       @map("receipt_key")
+  receiptMimeType    String?       @map("receipt_mime_type")
+  walletAppliedCents Int           @default(0) @map("wallet_applied_cents")
+  status             BookingStatus @default(pending)
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
 
   @@index([date, courtId])
   @@index([status])
@@ -190,4 +192,61 @@ model WalletTopUp {
   @@index([userId])
   @@index([createdAt])
   @@map("wallet_top_ups")
+}
+
+enum FoodOrderStatus {
+  pending
+  preparing
+  ready
+}
+
+enum FoodPayMode {
+  wallet
+  counter
+}
+
+model FoodMenuItem {
+  id             String   @id @default(cuid())
+  name           String
+  priceCents     Int      @map("price_cents")
+  category       String?
+  available      Boolean  @default(true)
+  imageKey       String?  @map("image_key")
+  imageMimeType  String?  @map("image_mime_type")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([available])
+  @@map("food_menu_items")
+}
+
+model FoodOrder {
+  id         String          @id @default(cuid())
+  userId     String          @map("user_id")
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     FoodOrderStatus @default(pending)
+  payMode    FoodPayMode     @map("pay_mode")
+  totalCents Int             @map("total_cents")
+  notes      String?
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  lines      FoodOrderLine[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("food_orders")
+}
+
+model FoodOrderLine {
+  id             String    @id @default(cuid())
+  orderId        String    @map("order_id")
+  order          FoodOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId     String?   @map("menu_item_id")
+  name           String
+  unitPriceCents Int       @map("unit_price_cents")
+  quantity       Int
+
+  @@index([orderId])
+  @@map("food_order_lines")
 }

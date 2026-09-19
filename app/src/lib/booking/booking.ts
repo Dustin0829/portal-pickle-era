@@ -10,6 +10,8 @@ export type TimeSlot = {
   id: string;
   label: string;
   hour: number;
+  /** Open Play only — covered court hours from start (default 2). */
+  durationHours?: number;
 };
 
 export type BookingStatus = "pending" | "approved" | "rejected";
@@ -84,9 +86,9 @@ const STORAGE_KEY = "pickle-era-bookings";
 export const SLOTS: Record<BookingPlan, TimeSlot[]> = {
   court: hoursToSlots(6, 21),
   "open-play": [
-    { id: "07:00", label: "7:00–9:00 AM", hour: 7 },
-    { id: "16:00", label: "4:00–6:00 PM", hour: 16 },
-    { id: "18:00", label: "6:00–8:00 PM", hour: 18 },
+    { id: "07:00", label: "7:00–9:00 AM", hour: 7, durationHours: 2 },
+    { id: "16:00", label: "4:00–6:00 PM", hour: 16, durationHours: 2 },
+    { id: "18:00", label: "6:00–8:00 PM", hour: 18, durationHours: 2 },
   ],
   clinic: [
     { id: "10:00", label: "10:00 AM · Beginner", hour: 10 },

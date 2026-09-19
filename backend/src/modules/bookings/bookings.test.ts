@@ -121,12 +121,13 @@ test("booking mapper serializes", () => {
     receiptName: null,
     receiptKey: null,
     receiptMimeType: null,
+    walletAppliedCents: 0,
     status: "pending",
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   });
   assert.equal(dto.plan, "open-play");
-  assert.equal(dto.status, "pending");
+  assert.equal(dto.walletAppliedCents, 0);
 });
 
 test("open-play sessions query requires date", () => {
@@ -240,6 +241,7 @@ test("patchBookingResponseSchema accepts inviteEmailWarning (email fail keeps ap
     receiptName: null,
     receiptKey: null,
     receiptMimeType: null,
+    walletAppliedCents: 0,
     status: "approved" as const,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",

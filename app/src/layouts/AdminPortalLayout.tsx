@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Settings,
   Users,
+  UtensilsCrossed,
   Wallet,
 } from "lucide-react";
 import { Suspense } from "react";
@@ -16,6 +17,7 @@ const items = [
   { to: "/admin", label: "Dashboard", end: true, icon: LayoutDashboard },
   { to: "/admin/bookings", label: "Bookings", icon: ClipboardList },
   { to: "/admin/top-ups", label: "Top-ups", icon: Wallet },
+  { to: "/admin/food", label: "Food", icon: UtensilsCrossed },
   { to: "/admin/calendar", label: "Calendar", icon: CalendarRange },
   { to: "/admin/players", label: "Players", icon: Users },
   { to: "/admin/settings", label: "Settings", icon: Settings },

@@ -33,6 +33,7 @@ export const bookingDtoSchema = z.object({
   receiptName: z.string().nullable(),
   receiptKey: z.string().nullable(),
   receiptMimeType: z.string().nullable(),
+  walletAppliedCents: z.number().int().nonnegative(),
   status: bookingStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -59,6 +60,9 @@ const bookingBodyBase = z
     receiptName: z.string().trim().max(180).optional(),
     receiptKey: z.string().trim().max(512).optional(),
     receiptMimeType: z.string().trim().max(120).optional(),
+    /** Pesos unit price from facility settings; server converts to cents for totals. */
+    unitPricePesos: z.number().positive().max(100_000).optional(),
+    walletAppliedCents: z.number().int().nonnegative().max(5_000_000).optional(),
   })
   .strict();
 

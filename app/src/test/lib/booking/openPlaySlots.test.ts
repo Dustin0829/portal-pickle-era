@@ -15,9 +15,9 @@ describe("openPlaySlots", () => {
   it("defaults to three 2-hour sessions", () => {
     expect(getOpenPlaySlots()).toEqual(SLOTS["open-play"]);
     expect(SLOTS["open-play"]).toEqual([
-      { id: "07:00", label: "7:00–9:00 AM", hour: 7 },
-      { id: "16:00", label: "4:00–6:00 PM", hour: 16 },
-      { id: "18:00", label: "6:00–8:00 PM", hour: 18 },
+      { id: "07:00", label: "7:00–9:00 AM", hour: 7, durationHours: 2 },
+      { id: "16:00", label: "4:00–6:00 PM", hour: 16, durationHours: 2 },
+      { id: "18:00", label: "6:00–8:00 PM", hour: 18, durationHours: 2 },
     ]);
     expect(OPEN_PLAY_CAPACITY).toBe(30);
   });
@@ -26,8 +26,18 @@ describe("openPlaySlots", () => {
     const next = [slotFromOpenPlayHour(9), slotFromOpenPlayHour(15)];
     useFacilitySettingsStore.getState().setOpenPlaySlots(next);
     expect(getOpenPlaySlots()).toEqual([
-      { id: "09:00", label: "9:00 AM – 11:00 AM", hour: 9 },
-      { id: "15:00", label: "3:00 PM – 5:00 PM", hour: 15 },
+      {
+        id: "09:00",
+        label: "9:00 AM – 11:00 AM",
+        hour: 9,
+        durationHours: 2,
+      },
+      {
+        id: "15:00",
+        label: "3:00 PM – 5:00 PM",
+        hour: 15,
+        durationHours: 2,
+      },
     ]);
   });
 

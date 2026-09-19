@@ -13,6 +13,7 @@ import { examplesRouter } from "../modules/examples/examples.routes.js";
 import { healthRouter } from "../modules/health/health.routes.js";
 import { uploadsRouter } from "../modules/uploads/uploads.routes.js";
 import { waitlistAdminRouter, waitlistPublicRouter } from "../modules/waitlist/waitlist.routes.js";
+import { foodAdminRouter, foodMeRouter } from "../modules/food/food.routes.js";
 import { walletAdminRouter, walletMeRouter } from "../modules/wallet/wallet.routes.js";
 
 export function createApiRouter() {
@@ -26,6 +27,7 @@ export function createApiRouter() {
   apiRouter.use("/bookings", bookingsPublicRouter);
   apiRouter.use("/me/bookings", bookingsMeRouter);
   apiRouter.use("/me/wallet", walletMeRouter);
+  apiRouter.use("/me/food", foodMeRouter);
 
   if (shouldMountAdminTools()) {
     apiRouter.use("/admin/activity-logs", protectAdminTools, activityLogsRouter);
@@ -33,6 +35,7 @@ export function createApiRouter() {
     apiRouter.use("/admin/bookings", protectProductAdmin, bookingsAdminRouter);
     apiRouter.use("/admin/users", protectProductAdmin, usersAdminRouter);
     apiRouter.use("/admin/wallet", protectProductAdmin, walletAdminRouter);
+    apiRouter.use("/admin/food", protectProductAdmin, foodAdminRouter);
   }
 
   return apiRouter;
