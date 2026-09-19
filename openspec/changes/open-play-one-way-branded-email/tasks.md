@@ -27,4 +27,4 @@
 ## 4. Ship
 
 - [x] 4.1 `/opsx-verify` (api + web)
-- [ ] 4.2 `/opsx-pr` (branch `feat/open-play-one-way-branded-email`)
+- [x] 4.2 `/opsx-pr` (branch `feat/open-play-one-way-branded-email`)
