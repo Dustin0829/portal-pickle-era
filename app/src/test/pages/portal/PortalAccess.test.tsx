@@ -25,6 +25,7 @@ vi.mock("@/api/features/auth/auth.service", () => ({
   login: vi.fn(),
   signup: vi.fn(),
   logout: vi.fn(),
+  refreshUser: vi.fn(),
   patchMe: vi.fn(),
 }));
 
@@ -75,6 +76,7 @@ describe("portal access gates", () => {
       login: vi.fn(),
       signup: vi.fn(),
       logout: vi.fn(),
+      refreshUser: vi.fn(),
       resetPassword: vi.fn(),
     });
 
@@ -160,6 +162,7 @@ describe("portal smoke", () => {
       login: vi.fn(),
       signup: vi.fn(),
       logout: vi.fn(),
+      refreshUser: vi.fn(),
       resetPassword: vi.fn(),
     });
     renderWithProviders(<OverviewPage />);

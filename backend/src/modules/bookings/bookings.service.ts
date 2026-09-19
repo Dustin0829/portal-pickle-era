@@ -431,7 +431,7 @@ export async function listAdminUsers(query: ListUsersQuery) {
   ]);
 
   return {
-    items: rows.map(toUserDto),
+    items: await Promise.all(rows.map(async (row) => toUserDto(row, null))),
     meta: buildPaginationMeta(query.page, query.limit, total),
   };
 }

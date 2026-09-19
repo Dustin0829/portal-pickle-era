@@ -1,11 +1,13 @@
 import api from "@/api/client";
 import {
   authUserSchema,
+  changePasswordBodySchema,
   forgotPasswordBodySchema,
   loginBodySchema,
   patchMeBodySchema,
   resetPasswordBodySchema,
   signupBodySchema,
+  type ChangePasswordBody,
   type ForgotPasswordBody,
   type LoginBody,
   type PatchMeBody,
@@ -21,6 +23,7 @@ function toAuthUser(data: unknown): AuthUser {
     name: parsed.name,
     email: parsed.email,
     role: parsed.role,
+    imageUrl: parsed.imageUrl ?? null,
   };
 }
 
@@ -49,6 +52,11 @@ export async function patchMe(input: PatchMeBody) {
   const body = patchMeBodySchema.parse(input);
   const { data } = await api.patch("/auth/me", body);
   return toAuthUser(data);
+}
+
+export async function changePassword(input: ChangePasswordBody) {
+  const body = changePasswordBodySchema.parse(input);
+  await api.post("/auth/change-password", body);
 }
 
 export async function forgotPassword(input: ForgotPasswordBody) {

@@ -6,7 +6,7 @@ export type SendEmailResult =
   | { sent: true; id: string | null }
   | { sent: false; reason: "not_configured" | "provider_error" | "error"; message: string };
 
-const BRAND_YELLOW = "#f5ed5a";
+const BRAND_YELLOW = "#F5C518";
 
 export function isResendConfigured(): boolean {
   return Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);

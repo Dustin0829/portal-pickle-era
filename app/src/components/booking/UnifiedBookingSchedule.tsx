@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   COURTS,
   OPEN_PLAY_CAPACITY,
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const DAY_HOURS = SLOTS.court;
+type CourtGroup = "Indoor" | "Outdoor";
 
 export type UnifiedBookingScheduleProps = {
   date: string;
@@ -65,6 +66,11 @@ export function UnifiedBookingSchedule({
   capacityError,
   compact = false,
 }: UnifiedBookingScheduleProps) {
+  const [courtGroup, setCourtGroup] = useState<CourtGroup>("Indoor");
+  const visibleCourts = useMemo(
+    () => COURTS.filter((court) => court.group === courtGroup),
+    [courtGroup],
+  );
   const days = useMemo(() => monthCells(month), [month]);
   const earliestMonth = startOfMonth(parseDateKey(bookableFloor));
   const scheduleLoading = occupancyLoading || capacityLoading;
@@ -283,39 +289,62 @@ export function UnifiedBookingSchedule({
                 })}
               </div>
 
-              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
-                Courts · times
-              </p>
-              <p className="mt-1 min-h-5 text-sm text-white/45">
-                {loadError
-                  ? "Times unavailable until the schedule loads."
-                  : selection.plan === "open-play"
-                    ? "Open Play selected — picking a court hour switches to private rental."
-                    : "Tap hours on one court. Multi-hour OK."}
-              </p>
+              <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white">
+                    Courts · times
+                  </p>
+                  <p className="mt-1 min-h-5 text-sm text-white/45">
+                    {loadError
+                      ? "Times unavailable until the schedule loads."
+                      : selection.plan === "open-play"
+                        ? "Open Play selected — picking a court hour switches to private rental."
+                        : "Tap hours on one court. Multi-hour OK."}
+                  </p>
+                </div>
+                <div
+                  role="group"
+                  aria-label="Court group"
+                  className="flex border border-white/15"
+                >
+                  {(["Indoor", "Outdoor"] as const).map((group) => (
+                    <button
+                      key={group}
+                      type="button"
+                      aria-pressed={courtGroup === group}
+                      onClick={() => setCourtGroup(group)}
+                      className={cn(
+                        "px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                        courtGroup === group
+                          ? "bg-yellow text-black"
+                          : "text-white/55 hover:text-yellow",
+                      )}
+                    >
+                      {group}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="mt-3 -mx-1 overflow-x-auto pb-1">
                 <div
-                  className="min-w-[520px]"
+                  className="min-w-[320px]"
                   role="grid"
-                  aria-label="Court day grid"
+                  aria-label={`${courtGroup} court day grid`}
                 >
                   <div
-                    className="grid gap-1"
+                    className="grid gap-px"
                     style={{
-                      gridTemplateColumns: `4.5rem repeat(${COURTS.length}, minmax(4.5rem, 1fr))`,
+                      gridTemplateColumns: `3.75rem repeat(${visibleCourts.length}, minmax(4.75rem, 1fr))`,
                     }}
                   >
                     <div className="sticky left-0 z-[1] bg-black" />
-                    {COURTS.map((court) => (
+                    {visibleCourts.map((court) => (
                       <div
                         key={court.id}
-                        className="px-1 pb-1 text-center text-[9px] font-bold uppercase tracking-[0.1em] text-white/50"
+                        className="px-1 pb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.08em] text-white/70"
                       >
-                        {court.name.replace("Court ", "C")}
-                        <span className="mt-0.5 block text-[8px] font-semibold normal-case tracking-normal text-white/30">
-                          {court.group === "Indoor" ? "In" : "Out"}
-                        </span>
+                        {court.name}
                       </div>
                     ))}
 
@@ -323,6 +352,7 @@ export function UnifiedBookingSchedule({
                       <HourRow
                         key={hour.id}
                         hour={hour}
+                        courts={visibleCourts}
                         date={date}
                         selection={selection}
                         gridBlocked={gridBlocked}
@@ -348,6 +378,7 @@ export function UnifiedBookingSchedule({
 
 function HourRow({
   hour,
+  courts,
   date,
   selection,
   gridBlocked,
@@ -356,6 +387,7 @@ function HourRow({
   onToggle,
 }: {
   hour: TimeSlot;
+  courts: typeof COURTS;
   date: string;
   selection: UnifiedBookingSelection;
   gridBlocked: boolean;
@@ -365,10 +397,10 @@ function HourRow({
 }) {
   return (
     <>
-      <div className="sticky left-0 z-[1] flex items-center bg-black pr-1 text-[10px] font-semibold tabular-nums text-white/45">
+      <div className="sticky left-0 z-[1] flex items-center bg-black pr-1 text-[11px] font-semibold tabular-nums text-white/55">
         {formatHour(hour.hour).replace(":00 ", "")}
       </div>
-      {COURTS.map((court) => {
+      {courts.map((court) => {
         const hold = slotHold(court.id, hour.id);
         const past = isSlotPast(date, hour.hour);
         const openPlayHold = hoursBlockedByOpenPlay.has(hour.id);
@@ -383,6 +415,13 @@ function HourRow({
           selection.plan === "court" &&
           selection.courtId === court.id &&
           selection.slotIds.includes(hour.id);
+        const label =
+          presentation.label ??
+          (presentation.pending
+            ? "Pending"
+            : presentation.approved
+              ? "Taken"
+              : "Available");
         return (
           <button
             key={`${court.id}-${hour.id}`}
@@ -390,10 +429,12 @@ function HourRow({
             disabled={!selectable}
             aria-label={`${court.name} ${hour.label}`}
             onClick={() => onToggle(court.id, hour.id)}
-            title={presentation.label ?? undefined}
+            title={label}
             className={cn(
-              "flex min-h-11 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[8px] font-bold uppercase leading-tight tracking-[0.04em] transition",
-              selected ? "bg-yellow text-black" : presentation.className,
+              "flex min-h-10 items-center justify-center border border-white/10 px-1 py-1 text-[9px] font-semibold uppercase tracking-[0.04em] transition",
+              selected
+                ? "border-yellow bg-yellow text-black"
+                : presentation.className,
             )}
           >
             <span
@@ -403,12 +444,7 @@ function HourRow({
                   : undefined
               }
             >
-              {presentation.label ??
-                (presentation.pending
-                  ? "Pending"
-                  : presentation.approved
-                    ? "Taken"
-                    : "Open")}
+              {label}
             </span>
           </button>
         );

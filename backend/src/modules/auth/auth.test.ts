@@ -3,8 +3,10 @@ import test from "node:test";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { isUserRole } from "./auth.constants.js";
 import {
+  changePasswordBodySchema,
   forgotPasswordBodySchema,
   loginBodySchema,
+  patchMeBodySchema,
   resetPasswordBodySchema,
   signupBodySchema,
 } from "./auth.schema.js";
@@ -48,17 +50,23 @@ test("better-auth password hash verifies", async () => {
   assert.equal(await verifyPassword({ hash, password: "wrong" }), false);
 });
 
-test("user mapper omits secrets", () => {
-  const dto = toUserDto({
-    id: "u1",
-    name: "Ada",
-    email: "ada@example.com",
-    role: "student",
-    createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    updatedAt: new Date("2026-01-02T00:00:00.000Z"),
-  });
+test("user mapper omits secrets and includes imageUrl", () => {
+  const dto = toUserDto(
+    {
+      id: "u1",
+      name: "Ada",
+      email: "ada@example.com",
+      image: "uploads/avatar.png",
+      role: "student",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+    },
+    "https://cdn.example.com/avatar.png",
+  );
   assert.equal(dto.email, "ada@example.com");
+  assert.equal(dto.imageUrl, "https://cdn.example.com/avatar.png");
   assert.equal("passwordHash" in dto, false);
+  assert.equal("image" in dto, false);
 });
 
 test("toAuthUser defaults unknown role to student", () => {
@@ -68,10 +76,31 @@ test("toAuthUser defaults unknown role to student", () => {
   assert.equal(isUserRole("nope"), false);
 });
 
-test("patch me schema is name-only strict", async () => {
-  const { patchMeBodySchema } = await import("./auth.schema.js");
+test("patch me schema allows name and/or image key", () => {
   assert.equal(patchMeBodySchema.safeParse({ name: "New" }).success, true);
+  assert.equal(patchMeBodySchema.safeParse({ image: "uploads/abc.webp" }).success, true);
+  assert.equal(patchMeBodySchema.safeParse({ image: null }).success, true);
+  assert.equal(patchMeBodySchema.safeParse({}).success, false);
   assert.equal(patchMeBodySchema.safeParse({ name: "New", role: "admin" }).success, false);
+  assert.equal(patchMeBodySchema.safeParse({ image: "uploads/x.pdf" }).success, false);
+  assert.equal(patchMeBodySchema.safeParse({ image: "other/x.png" }).success, false);
+});
+
+test("change password schema requires current and new password length 8+", () => {
+  assert.equal(
+    changePasswordBodySchema.safeParse({
+      currentPassword: "old",
+      newPassword: "short",
+    }).success,
+    false,
+  );
+  assert.equal(
+    changePasswordBodySchema.safeParse({
+      currentPassword: "oldpass1",
+      newPassword: "password1",
+    }).success,
+    true,
+  );
 });
 
 test("forgot password schema requires email", () => {

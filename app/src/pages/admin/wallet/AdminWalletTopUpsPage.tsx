@@ -17,7 +17,6 @@ import {
 import { getAdminWalletTopUpReceiptUrl } from "@/api/features/wallet/wallet.service";
 import type { AdminWalletTopUpDto } from "@/api/features/wallet/wallet.schema";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
@@ -86,8 +85,6 @@ export function AdminWalletTopUpsPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop variant="top" />
-
       <AppPageShell width="full" className="relative z-10 max-w-6xl">
         <header className="mb-6 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">

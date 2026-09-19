@@ -19,7 +19,6 @@ import {
 } from "@/api/features/bookings/use-bookings";
 import { getAdminBookingReceiptUrl } from "@/api/features/bookings/bookings.service";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
@@ -139,8 +138,6 @@ export function AdminBookingsPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop variant="top" />
-
       <AppPageShell width="full" className="relative z-10 max-w-6xl">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">

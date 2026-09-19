@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalCalendarSkeleton } from "@/components/portal/portal-skeletons";
 import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
 import { useAdminBookings } from "@/api/features/bookings/use-bookings";
@@ -35,8 +34,6 @@ export function AdminCalendarPage() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      <PortalBackdrop variant="top" />
-
       <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-4 py-4 sm:px-6 sm:py-5">
         <header className="mb-3 flex max-w-xl shrink-0 flex-col gap-1">
           <h1 className="display text-[32px] text-zinc-900 sm:text-[40px]">

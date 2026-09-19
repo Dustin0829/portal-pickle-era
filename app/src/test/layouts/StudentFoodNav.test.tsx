@@ -15,6 +15,7 @@ vi.mock("@/api/features/auth/auth.service", () => ({
   login: vi.fn(),
   signup: vi.fn(),
   logout: vi.fn(),
+  refreshUser: vi.fn(),
   patchMe: vi.fn(),
 }));
 
@@ -36,6 +37,7 @@ describe("Student Food nav", () => {
       login: vi.fn(),
       signup: vi.fn(),
       logout: vi.fn(),
+      refreshUser: vi.fn(),
       resetPassword: vi.fn(),
     });
 

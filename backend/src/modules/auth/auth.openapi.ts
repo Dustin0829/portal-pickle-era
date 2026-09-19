@@ -2,6 +2,7 @@ import type { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { standardErrorResponses, successResponseSchema } from "../../lib/openapi-helpers.js";
 import {
+  changePasswordBodySchema,
   forgotPasswordBodySchema,
   loginBodySchema,
   patchMeBodySchema,
@@ -148,6 +149,29 @@ export function registerAuthOpenApi(registry: OpenAPIRegistry) {
       200: {
         description: "Updated profile",
         content: { "application/json": { schema: successResponseSchema(userDtoSchema) } },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/auth/change-password",
+    operationId: "postAuthChangePassword",
+    tags: ["Auth"],
+    request: {
+      body: {
+        content: { "application/json": { schema: changePasswordBodySchema } },
+      },
+    },
+    responses: {
+      200: {
+        description: "Password changed; session remains active",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(z.object({ ok: z.literal(true) })),
+          },
+        },
       },
       ...standardErrorResponses,
     },
