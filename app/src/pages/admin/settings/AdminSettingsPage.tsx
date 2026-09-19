@@ -7,9 +7,12 @@ import {
 } from "@/lib/booking/openPlaySlots";
 import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { FoodMenuSettingsSection } from "@/pages/admin/settings/FoodMenuSettingsSection";
+import { cn } from "@/lib/utils";
 
 const PLAN_ORDER: BookablePlan[] = ["court", "open-play"];
 const START_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+type SettingsTab = "prices" | "open-play" | "payment" | "food";
 
 type PriceDraft = Record<BookablePlan, number>;
 
@@ -19,6 +22,13 @@ function pricesFromPlans(plans: Record<string, { price: number }>): PriceDraft {
     "open-play": plans["open-play"].price,
   };
 }
+
+const TABS: { id: SettingsTab; label: string }[] = [
+  { id: "prices", label: "Prices" },
+  { id: "open-play", label: "Open play sessions" },
+  { id: "payment", label: "Payment Method" },
+  { id: "food", label: "Food menu" },
+];
 
 export function AdminSettingsPage() {
   const {
@@ -32,6 +42,7 @@ export function AdminSettingsPage() {
     setPreSignup,
     resetDefaults,
   } = useFacilitySettingsStore();
+  const [tab, setTab] = useState<SettingsTab>("prices");
   const [paymentDraft, setPaymentDraft] = useState(payment);
   const [priceDraft, setPriceDraft] = useState<PriceDraft>(() =>
     pricesFromPlans(plans),
@@ -107,15 +118,14 @@ export function AdminSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-5 sm:px-6 sm:py-6">
-      <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-5">
+      <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="display text-[36px] text-zinc-900 sm:text-[44px]">
             Settings
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Save plan prices, Open Play sessions, and GCash display for
-            marketing and booking in this browser.
+            Plan prices, Open Play sessions, payment display, and food menu.
           </p>
         </div>
         <Button
@@ -129,98 +139,139 @@ export function AdminSettingsPage() {
         </Button>
       </header>
 
-      <section className="mb-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
-              Pre-signup (legacy)
-            </h2>
-            <p className="mt-1.5 text-sm text-zinc-500">
-              Marketing Book CTAs open the booking modal. This toggle is unused
-              for CTAs and kept only for local settings compatibility.
-            </p>
-          </div>
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        className="mb-4 flex flex-wrap gap-1 border-b border-zinc-200"
+      >
+        {TABS.map((item) => (
           <button
+            key={item.id}
             type="button"
-            role="switch"
-            aria-checked={preSignup}
-            aria-label="Pre-signup mode"
-            onClick={() => setPreSignup(!preSignup)}
-            className={
-              preSignup
-                ? "relative h-8 w-14 shrink-0 rounded-full bg-yellow transition"
-                : "relative h-8 w-14 shrink-0 rounded-full bg-zinc-200 transition"
-            }
+            role="tab"
+            aria-selected={tab === item.id}
+            id={`settings-tab-${item.id}`}
+            onClick={() => setTab(item.id)}
+            className={cn(
+              "px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] transition",
+              tab === item.id
+                ? "border-b-2 border-yellow text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-800",
+            )}
           >
-            <span
-              className={
-                preSignup
-                  ? "absolute top-1 left-7 size-6 rounded-full bg-black transition"
-                  : "absolute top-1 left-1 size-6 rounded-full bg-white transition"
-              }
-            />
+            {item.label}
           </button>
-        </div>
-      </section>
+        ))}
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-        <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
-            Plan prices
-          </h2>
-          <form className="mt-3 flex flex-col gap-2.5" onSubmit={onSavePrices}>
-            <ul className="flex flex-col gap-2.5">
-              {PLAN_ORDER.map((plan) => (
-                <li
-                  key={plan}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <label
-                    className="min-w-0 text-sm text-zinc-600"
-                    htmlFor={`price-${plan}`}
-                  >
-                    {plans[plan].title}
-                    <span className="mt-0.5 block text-[11px] text-zinc-400">
-                      {plans[plan].unit}
-                    </span>
-                  </label>
-                  <div className="relative shrink-0">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
-                      ₱
-                    </span>
-                    <input
-                      id={`price-${plan}`}
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={priceDraft[plan]}
-                      onChange={(event) => {
-                        setPricesSaved(false);
-                        setPriceDraft((prev) => ({
-                          ...prev,
-                          [plan]: Number(event.target.value) || 0,
-                        }));
-                      }}
-                      className="h-9 w-28 rounded-xl border border-zinc-200 bg-white pl-7 pr-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-1 flex flex-wrap items-center gap-3">
-              <Button type="submit" className="w-fit" disabled={savingPrices}>
-                {savingPrices ? "Saving…" : "Save"}
-              </Button>
-              {pricesSaved ? (
-                <p className="text-xs text-zinc-500" role="status">
-                  Saved locally.
+      {tab === "prices" ? (
+        <div
+          role="tabpanel"
+          aria-labelledby="settings-tab-prices"
+          className="space-y-4"
+        >
+          <section className="border border-zinc-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
+                  Pre-signup (legacy)
+                </h2>
+                <p className="mt-1.5 text-sm text-zinc-500">
+                  Marketing Book CTAs open the booking modal. This toggle is
+                  unused for CTAs and kept only for local settings
+                  compatibility.
                 </p>
-              ) : null}
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={preSignup}
+                aria-label="Pre-signup mode"
+                onClick={() => setPreSignup(!preSignup)}
+                className={
+                  preSignup
+                    ? "relative h-8 w-14 shrink-0 rounded-full bg-yellow transition"
+                    : "relative h-8 w-14 shrink-0 rounded-full bg-zinc-200 transition"
+                }
+              >
+                <span
+                  className={
+                    preSignup
+                      ? "absolute top-1 left-7 size-6 rounded-full bg-black transition"
+                      : "absolute top-1 left-1 size-6 rounded-full bg-white transition"
+                  }
+                />
+              </button>
             </div>
-          </form>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5">
+          <section className="border border-zinc-200 bg-white p-4">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
+              Plan prices
+            </h2>
+            <form
+              className="mt-3 flex flex-col gap-2.5"
+              onSubmit={onSavePrices}
+            >
+              <ul className="flex flex-col gap-2.5">
+                {PLAN_ORDER.map((plan) => (
+                  <li
+                    key={plan}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <label
+                      className="min-w-0 text-sm text-zinc-600"
+                      htmlFor={`price-${plan}`}
+                    >
+                      {plans[plan].title}
+                      <span className="mt-0.5 block text-[11px] text-zinc-400">
+                        {plans[plan].unit}
+                      </span>
+                    </label>
+                    <div className="relative shrink-0">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
+                        ₱
+                      </span>
+                      <input
+                        id={`price-${plan}`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={priceDraft[plan]}
+                        onChange={(event) => {
+                          setPricesSaved(false);
+                          setPriceDraft((prev) => ({
+                            ...prev,
+                            [plan]: Number(event.target.value) || 0,
+                          }));
+                        }}
+                        className="h-9 w-28 border border-zinc-200 bg-white pl-7 pr-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <Button type="submit" className="w-fit" disabled={savingPrices}>
+                  {savingPrices ? "Saving…" : "Save"}
+                </Button>
+                {pricesSaved ? (
+                  <p className="text-xs text-zinc-500" role="status">
+                    Saved locally.
+                  </p>
+                ) : null}
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {tab === "open-play" ? (
+        <section
+          role="tabpanel"
+          aria-labelledby="settings-tab-open-play"
+          className="border border-zinc-200 bg-white p-4"
+        >
           <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
             Open Play sessions
           </h2>
@@ -234,7 +285,7 @@ export function AdminSettingsPage() {
               {slotsDraft.map((slot, index) => (
                 <li
                   key={`${slot.id}-${index}`}
-                  className="flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <label className="text-sm text-zinc-600">
@@ -265,7 +316,7 @@ export function AdminSettingsPage() {
                           ),
                         );
                       }}
-                      className="h-9 rounded-xl border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-yellow"
+                      className="h-9 border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-yellow"
                     >
                       {START_HOURS.map((hour) => (
                         <option key={hour} value={hour}>
@@ -290,7 +341,7 @@ export function AdminSettingsPage() {
                           ),
                         );
                       }}
-                      className="h-9 rounded-xl border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-yellow"
+                      className="h-9 border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-yellow"
                     >
                       {[1, 2, 3, 4].map((hours) => (
                         <option key={hours} value={hours}>
@@ -337,10 +388,16 @@ export function AdminSettingsPage() {
             </div>
           </form>
         </section>
+      ) : null}
 
-        <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
+      {tab === "payment" ? (
+        <section
+          role="tabpanel"
+          aria-labelledby="settings-tab-payment"
+          className="border border-zinc-200 bg-white p-4"
+        >
           <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
-            GCash display
+            Payment Method
           </h2>
           <form
             className="mt-3 flex max-w-md flex-col gap-2.5"
@@ -356,7 +413,7 @@ export function AdminSettingsPage() {
                     method: event.target.value,
                   }))
                 }
-                className="h-9 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                className="h-9 border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-zinc-500">
@@ -369,7 +426,7 @@ export function AdminSettingsPage() {
                     name: event.target.value,
                   }))
                 }
-                className="h-9 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                className="h-9 border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs text-zinc-500">
@@ -382,7 +439,7 @@ export function AdminSettingsPage() {
                     number: event.target.value,
                   }))
                 }
-                className="h-9 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                className="h-9 border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
               />
             </label>
             <div className="mt-1 flex flex-wrap items-center gap-3">
@@ -397,9 +454,13 @@ export function AdminSettingsPage() {
             </div>
           </form>
         </section>
+      ) : null}
 
-        <FoodMenuSettingsSection />
-      </div>
+      {tab === "food" ? (
+        <div role="tabpanel" aria-labelledby="settings-tab-food">
+          <FoodMenuSettingsSection />
+        </div>
+      ) : null}
     </div>
   );
 }

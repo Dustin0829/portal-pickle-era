@@ -3,6 +3,7 @@ import { sendSuccess } from "../../lib/api-response.js";
 import { UnauthorizedError } from "../../lib/errors.js";
 import { appendSetCookieHeaders, clearLegacySessionCookie } from "./auth.cookies.js";
 import type {
+  ChangePasswordBody,
   ForgotPasswordBody,
   LoginBody,
   PatchMeBody,
@@ -10,6 +11,7 @@ import type {
   SignupBody,
 } from "./auth.schema.js";
 import {
+  changePasswordWithBetterAuth,
   getUserDtoById,
   loginWithBetterAuth,
   logoutWithBetterAuth,
@@ -56,6 +58,14 @@ export async function patchMeController(req: Request, res: Response) {
   }
   const user = await updateMe(req.authUser.id, req.body as PatchMeBody);
   return sendSuccess(res, user, "ok", 200);
+}
+
+export async function changePasswordController(req: Request, res: Response) {
+  if (!req.authUser) {
+    throw new UnauthorizedError();
+  }
+  const result = await changePasswordWithBetterAuth(req.body as ChangePasswordBody, req);
+  return sendSuccess(res, result, "ok", 200);
 }
 
 export async function forgotPasswordController(req: Request, res: Response) {

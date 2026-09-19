@@ -5,7 +5,6 @@ import type { WaitlistEntry } from "@/api/features/waitlist/waitlist.schema";
 import { ApiRequestError } from "@/api/client";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalTableSkeleton } from "@/components/portal/portal-skeletons";
 import { cn } from "@/lib/utils";
 
@@ -128,8 +127,6 @@ export function AdminPlayersPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop variant="top" />
-
       <AppPageShell width="full" className="relative z-10 max-w-5xl">
         <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-2">

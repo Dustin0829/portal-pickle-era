@@ -9,7 +9,6 @@ import {
 import { Link } from "react-router-dom";
 import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import {
   PortalListSkeleton,
   PortalStatSkeleton,
@@ -34,8 +33,6 @@ export function OverviewPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop />
-
       <AppPageShell width="full" className="relative z-10 max-w-5xl">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-col gap-2">

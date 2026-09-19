@@ -35,7 +35,7 @@ test("renderBrandedEmail includes logo and yellow CTA", () => {
     cta: { href: "https://example.com/login", label: "Log in" },
   });
   assert.match(html, /\/logo\.png/);
-  assert.match(html, /#f5ed5a/);
+  assert.match(html, /#F5C518/);
   assert.match(html, /Log in/);
   assert.match(html, /https:\/\/example\.com\/login/);
 });
@@ -47,7 +47,7 @@ test("payment-received / invite / reset HTML are branded", () => {
     referenceId: "GCASH-1",
   });
   assert.match(payment.html, /\/logo\.png/);
-  assert.match(payment.html, /#f5ed5a/);
+  assert.match(payment.html, /#F5C518/);
   assert.match(payment.html, /View site/);
   assert.match(payment.html, /2026-10-05/);
 
@@ -56,14 +56,14 @@ test("payment-received / invite / reset HTML are branded", () => {
     tempPassword: "temp-pass-1",
   });
   assert.match(invite.html, /\/logo\.png/);
-  assert.match(invite.html, /#f5ed5a/);
+  assert.match(invite.html, /#F5C518/);
   assert.match(invite.html, /Log in/);
   assert.match(invite.html, /\/login/);
   assert.match(invite.html, /temp-pass-1/);
 
   const reset = buildPasswordResetEmail({ token: "tok+/=xyz" });
   assert.match(reset.html, /\/logo\.png/);
-  assert.match(reset.html, /#f5ed5a/);
+  assert.match(reset.html, /#F5C518/);
   assert.match(reset.html, /Reset password/);
   assert.match(reset.html, /reset-password\?token=/);
   assert.ok(reset.html.includes(encodeURIComponent("tok+/=xyz")));

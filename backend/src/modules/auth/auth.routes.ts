@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../lib/api-response.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
+  changePasswordController,
   forgotPasswordController,
   loginController,
   logoutController,
@@ -12,6 +13,7 @@ import {
 } from "./auth.controller.js";
 import { loadSession, requireSession } from "./auth.middleware.js";
 import {
+  changePasswordBodySchema,
   forgotPasswordBodySchema,
   loginBodySchema,
   patchMeBodySchema,
@@ -42,4 +44,10 @@ authRouter.patch(
   requireSession,
   validateBody(patchMeBodySchema),
   asyncHandler(patchMeController),
+);
+authRouter.post(
+  "/change-password",
+  requireSession,
+  validateBody(changePasswordBodySchema),
+  asyncHandler(changePasswordController),
 );

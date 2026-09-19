@@ -2,12 +2,19 @@ import type { Request } from "express";
 import { APIError } from "better-auth";
 import { fromNodeHeaders } from "better-auth/node";
 import { prisma } from "../../app/prisma.js";
-import { ConflictError, UnauthorizedError } from "../../lib/errors.js";
+import { ConflictError, UnauthorizedError, ValidationError } from "../../lib/errors.js";
 import { resolvePublicAppUrl } from "../../lib/resend/client.js";
+import { createPresignedDownload } from "../../lib/storage/s3.js";
 import { auth } from "./auth.js";
 import { isUserRole, type AuthUser } from "./auth.constants.js";
 import { normalizeEmail, toUserDto, userPublicSelect } from "./auth.mapper.js";
-import type { LoginBody, PatchMeBody, SignupBody, UserDto } from "./auth.schema.js";
+import type {
+  ChangePasswordBody,
+  LoginBody,
+  PatchMeBody,
+  SignupBody,
+  UserDto,
+} from "./auth.schema.js";
 
 type AuthHeaderResult<T> = {
   headers: Headers;
@@ -45,6 +52,28 @@ async function callWithHeaders<T>(
   } catch (error) {
     mapAuthError(error);
   }
+}
+
+async function resolveImageUrl(imageKey: string | null): Promise<string | null> {
+  if (!imageKey) return null;
+  try {
+    const result = await createPresignedDownload({ key: imageKey });
+    return result.url;
+  } catch {
+    return null;
+  }
+}
+
+async function toUserDtoWithImage(row: {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+  role: "student" | "admin";
+  createdAt: Date;
+  updatedAt: Date;
+}): Promise<UserDto> {
+  return toUserDto(row, await resolveImageUrl(row.image));
 }
 
 function roleFromUser(user: { role?: unknown }): AuthUser["role"] {
@@ -87,7 +116,7 @@ export async function signupWithBetterAuth(
     select: userPublicSelect,
   });
 
-  return { user: toUserDto(userRow), headers };
+  return { user: await toUserDtoWithImage(userRow), headers };
 }
 
 export async function loginWithBetterAuth(
@@ -111,7 +140,7 @@ export async function loginWithBetterAuth(
     select: userPublicSelect,
   });
 
-  return { user: toUserDto(userRow), headers };
+  return { user: await toUserDtoWithImage(userRow), headers };
 }
 
 export async function logoutWithBetterAuth(req: Request): Promise<Headers> {
@@ -138,12 +167,18 @@ export async function getSessionUser(req: Request): Promise<AuthUser | null> {
 }
 
 export async function updateMe(userId: string, body: PatchMeBody): Promise<UserDto> {
+  if (body.name === undefined && body.image === undefined) {
+    throw new ValidationError("Provide name and/or image");
+  }
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { name: body.name.trim() },
+    data: {
+      ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+      ...(body.image !== undefined ? { image: body.image } : {}),
+    },
     select: userPublicSelect,
   });
-  return toUserDto(user);
+  return toUserDtoWithImage(user);
 }
 
 export async function getUserDtoById(userId: string): Promise<UserDto> {
@@ -151,7 +186,24 @@ export async function getUserDtoById(userId: string): Promise<UserDto> {
     where: { id: userId },
     select: userPublicSelect,
   });
-  return toUserDto(user);
+  return toUserDtoWithImage(user);
+}
+
+export async function changePasswordWithBetterAuth(
+  body: ChangePasswordBody,
+  req: Request,
+): Promise<{ ok: true }> {
+  await callWithHeaders(() =>
+    auth.api.changePassword({
+      body: {
+        currentPassword: body.currentPassword,
+        newPassword: body.newPassword,
+      },
+      headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
+    }),
+  );
+  return { ok: true };
 }
 
 export async function requestPasswordResetWithBetterAuth(

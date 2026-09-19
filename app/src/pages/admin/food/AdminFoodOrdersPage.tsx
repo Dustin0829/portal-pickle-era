@@ -9,7 +9,6 @@ import type {
   FoodOrderStatus,
 } from "@/api/features/food/food.schema";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { cn } from "@/lib/utils";
@@ -56,8 +55,6 @@ export function AdminFoodOrdersPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop variant="top" />
-
       <AppPageShell width="full" className="relative z-10 max-w-6xl">
         <header className="mb-6 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">

@@ -146,7 +146,7 @@ body {
   --color-black: #181818;
   --color-blue: #193e6a;
   --color-green: #1c7839;
-  --color-yellow: #f5ed5a;
+  --color-yellow: #f5c518;
   --color-maroon: #8d0c1f;
 }
 
@@ -239,7 +239,7 @@ footer[id] {
   --card-foreground: #181818;
   --popover: #ffffff;
   --popover-foreground: #181818;
-  --primary: #f5ed5a;
+  --primary: #f5c518;
   --primary-foreground: #181818;
   --secondary: #eef0f2;
   --secondary-foreground: #181818;
@@ -250,7 +250,7 @@ footer[id] {
   --destructive: #8d0c1f;
   --border: rgb(24 24 24 / 10%);
   --input: rgb(24 24 24 / 12%);
-  --ring: #f5ed5a;
+  --ring: #f5c518;
   font-family: var(--font-marketing);
 }
 

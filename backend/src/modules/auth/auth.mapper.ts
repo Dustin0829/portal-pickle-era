@@ -5,6 +5,7 @@ export const userPublicSelect = {
   id: true,
   name: true,
   email: true,
+  image: true,
   role: true,
   createdAt: true,
   updatedAt: true,
@@ -14,12 +15,13 @@ export type UserPublicRow = Prisma.UserGetPayload<{
   select: typeof userPublicSelect;
 }>;
 
-export function toUserDto(row: UserPublicRow): UserDto {
+export function toUserDto(row: UserPublicRow, imageUrl: string | null = null): UserDto {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     role: row.role,
+    imageUrl,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

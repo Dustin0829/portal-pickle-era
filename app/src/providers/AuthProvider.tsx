@@ -28,6 +28,7 @@ type AuthContextValue = {
     password: string;
   }) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
   resetPassword: (input: {
     token: string;
     newPassword: string;
@@ -93,6 +94,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const session = await getMe();
+      setUser(session);
+      setStatus("authenticated");
+      return session;
+    } catch {
+      setUser(null);
+      setStatus("unauthenticated");
+      return null;
+    }
+  }, []);
+
   const resetPassword = useCallback(
     async (input: { token: string; newPassword: string }) => {
       await resetPasswordRequest(input);
@@ -101,8 +115,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, status, login, signup, logout, resetPassword }),
-    [user, status, login, signup, logout, resetPassword],
+    () => ({
+      user,
+      status,
+      login,
+      signup,
+      logout,
+      refreshUser,
+      resetPassword,
+    }),
+    [user, status, login, signup, logout, refreshUser, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

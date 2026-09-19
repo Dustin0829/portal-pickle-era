@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { useAdminBookings } from "@/api/features/bookings/use-bookings";
 import { useAdminWaitlistList } from "@/api/features/waitlist/use-waitlist";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
 import {
   PortalListSkeleton,
@@ -180,8 +179,6 @@ export function AdminDashboardPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop variant="top" />
-
       <AppPageShell width="full" className="relative z-10 max-w-5xl">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-2">

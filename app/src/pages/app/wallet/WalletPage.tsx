@@ -10,7 +10,6 @@ import {
 } from "@/api/features/wallet/use-wallet";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PortalBackdrop } from "@/components/portal/PortalBackdrop";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { useZodForm } from "@/lib/forms/useZodForm";
 import { mapMutationErrorToForm } from "@/lib/forms/mapMutationErrorToForm";
@@ -28,8 +27,6 @@ export function WalletPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <PortalBackdrop />
-
       <AppPageShell width="full" className="relative z-10 max-w-3xl">
         <header className="mb-8 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
