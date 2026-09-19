@@ -5,6 +5,7 @@ import {
   applyOpenPlaySelect,
   preferFromOpenArg,
   toConfirmSelection,
+  totalSelectedCourtHours,
 } from "@/lib/booking/unifiedBookingSelection";
 
 describe("unifiedBookingSelection", () => {
@@ -21,6 +22,7 @@ describe("unifiedBookingSelection", () => {
       plan: "open-play",
       courtId: "in-1",
       slotIds: ["07:00"],
+      courtSlots: [],
     });
     expect(toConfirmSelection("2026-10-05", selected)).toEqual({
       plan: "open-play",
@@ -40,23 +42,54 @@ describe("unifiedBookingSelection", () => {
       plan: "court",
       courtId: "in-2",
       slotIds: ["10:00"],
+      courtSlots: [{ courtId: "in-2", slotIds: ["10:00"] }],
     });
   });
 
-  it("allows multi-hour on the same court and resets on court change", () => {
+  it("accumulates multi-hour on the same court and across courts", () => {
     let selection = applyCourtHourToggle(
       EMPTY_UNIFIED_SELECTION,
       "out-1",
       "09:00",
     );
     selection = applyCourtHourToggle(selection, "out-1", "10:00");
-    expect(selection.slotIds).toEqual(["09:00", "10:00"]);
+    expect(selection.courtSlots).toEqual([
+      { courtId: "out-1", slotIds: ["09:00", "10:00"] },
+    ]);
     selection = applyCourtHourToggle(selection, "in-1", "11:00");
     expect(selection).toEqual({
       plan: "court",
       courtId: "in-1",
-      slotIds: ["11:00"],
+      slotIds: ["09:00", "10:00", "11:00"],
+      courtSlots: [
+        { courtId: "in-1", slotIds: ["11:00"] },
+        { courtId: "out-1", slotIds: ["09:00", "10:00"] },
+      ],
     });
+    expect(totalSelectedCourtHours(selection)).toBe(3);
+    expect(toConfirmSelection("2026-10-05", selection)).toEqual({
+      plan: "court",
+      date: "2026-10-05",
+      courtId: "in-1",
+      slotIds: ["09:00", "10:00", "11:00"],
+      courtSlots: [
+        { courtId: "in-1", slotIds: ["11:00"] },
+        { courtId: "out-1", slotIds: ["09:00", "10:00"] },
+      ],
+    });
+  });
+
+  it("toggles off one court-hour without clearing other courts", () => {
+    let selection = applyCourtHourToggle(
+      EMPTY_UNIFIED_SELECTION,
+      "in-1",
+      "10:00",
+    );
+    selection = applyCourtHourToggle(selection, "in-2", "10:00");
+    selection = applyCourtHourToggle(selection, "in-1", "10:00");
+    expect(selection.courtSlots).toEqual([
+      { courtId: "in-2", slotIds: ["10:00"] },
+    ]);
   });
 
   it("returns null confirm when incomplete", () => {

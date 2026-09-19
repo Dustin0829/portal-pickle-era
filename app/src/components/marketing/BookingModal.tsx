@@ -11,7 +11,7 @@ import {
   PLAN_META,
   allowsMultiSlot,
   bookingTotal,
-  courtLabel,
+  courtsFullLabel,
   earliestBookableDateKey,
   formatLongDate,
   parseDateKey,
@@ -23,6 +23,7 @@ import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import {
   EMPTY_UNIFIED_SELECTION,
   toConfirmSelection,
+  totalSelectedCourtHours,
   type UnifiedBookingSelection,
 } from "@/lib/booking/unifiedBookingSelection";
 import { walletAppliedAndRemaining } from "@/lib/booking/walletBookingPay";
@@ -78,6 +79,18 @@ export function BookingModal({
           plan: "court",
           courtId: preset.courtId,
           slotIds: preset.slotIds,
+          courtSlots: [
+            {
+              courtId: preset.courtId as
+                | "in-1"
+                | "in-2"
+                | "in-3"
+                | "out-1"
+                | "out-2"
+                | "out-3",
+              slotIds: preset.slotIds,
+            },
+          ],
         }
       : EMPTY_UNIFIED_SELECTION,
   );
@@ -108,11 +121,13 @@ export function BookingModal({
   const plan = selection.plan;
   const courtId = selection.courtId;
   const slotIds = selection.slotIds;
+  const courtSlots = selection.courtSlots;
   const isOpenPlay = plan === "open-play";
   const meta = plan ? PLAN_META[plan] : null;
   const unitPrice = usePlanUnitPrice(plan ?? prefer ?? "court");
   const multiSlot = plan ? allowsMultiSlot(plan) : false;
-  const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
+  const billedUnits = plan ? totalSelectedCourtHours(selection) : 0;
+  const total = plan ? bookingTotal(plan, billedUnits, unitPrice) : 0;
   const balanceCents = wallet?.balanceCents ?? 0;
   const useCredits = creditsPayAvailable && payMethod === "credits";
   const walletPay = useCredits
@@ -260,14 +275,18 @@ export function BookingModal({
       await createPublicBooking({
         plan: confirmed.plan,
         date: confirmed.date,
-        courtId: confirmed.courtId as
-          | "in-1"
-          | "in-2"
-          | "in-3"
-          | "out-1"
-          | "out-2"
-          | "out-3",
-        slotIds: confirmed.slotIds,
+        ...(confirmed.courtSlots?.length
+          ? { courtSlots: confirmed.courtSlots }
+          : {
+              courtId: confirmed.courtId as
+                | "in-1"
+                | "in-2"
+                | "in-3"
+                | "out-1"
+                | "out-2"
+                | "out-3",
+              slotIds: confirmed.slotIds,
+            }),
         name: name.trim(),
         email: email.trim().toLowerCase(),
         ...(needsReceipt
@@ -391,8 +410,8 @@ export function BookingModal({
                 onClick={onBook}
                 className="h-12 w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
               >
-                {plan === "court" && slotIds.length > 1
-                  ? `Continue · ${slotIds.length} hrs · ₱${total}`
+                {plan === "court" && billedUnits > 1
+                  ? `Continue · ${billedUnits} hrs · ₱${total}`
                   : plan
                     ? `Continue · ₱${total || unitPrice}`
                     : `Continue · ₱${unitPrice}`}
@@ -418,7 +437,8 @@ export function BookingModal({
                   Pay to book.
                 </h2>
                 <p className="mt-1 text-sm text-white/60">
-                  {meta.title} · {courtLabel(courtId)} · {formatLongDate(date)}
+                  {meta.title} · {courtsFullLabel(courtId, courtSlots)} ·{" "}
+                  {formatLongDate(date)}
                 </p>
 
                 <div className="mt-4 sm:mt-5">
@@ -429,12 +449,12 @@ export function BookingModal({
                     ₱{needsReceipt ? remainingCashPesos : 0}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-white">
-                    {slotIds.length}{" "}
+                    {billedUnits}{" "}
                     {multiSlot
-                      ? slotIds.length === 1
+                      ? billedUnits === 1
                         ? "hour"
                         : "hours"
-                      : slotIds.length === 1
+                      : billedUnits === 1
                         ? "session"
                         : "sessions"}{" "}
                     × ₱{unitPrice}

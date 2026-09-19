@@ -15,6 +15,7 @@ import {
 } from "@/components/portal/portalRange";
 import {
   PLAN_META,
+  bookingCourtHours,
   bookingTotal,
   dateKey,
   type BookingRequest,
@@ -35,8 +36,7 @@ type ActivityItem = {
 };
 
 function bookingHours(booking: BookingRequest) {
-  if (booking.plan === "court") return Math.max(booking.slotIds.length, 1);
-  return 1;
+  return bookingCourtHours(booking);
 }
 
 function bookingAmount(booking: BookingRequest) {

@@ -17,6 +17,7 @@ import {
   isSlotPast,
   type BookingRequest,
   type BookingStatus,
+  type CourtId,
 } from "@/lib/booking/booking";
 import { cn } from "@/lib/utils";
 
@@ -386,7 +387,7 @@ function DayScheduleModal({
   }, [activeCourt, selectedSlotIds]);
   const payTotal = bookingTotal("court", selectedSorted.length);
 
-  function selectCourt(courtId: string) {
+  function selectCourt(courtId: CourtId) {
     setActiveCourtId(courtId);
     setSelectedSlotIds([]);
   }

@@ -27,9 +27,10 @@ import {
   type PortalRangeValue,
 } from "@/components/portal/portalRange";
 import {
-  COURTS,
   PLAN_META,
+  bookingCourtHours,
   bookingTotal,
+  courtsShortLabel,
   dateKey,
   formatHour,
   formatLongDate,
@@ -299,8 +300,7 @@ export function AdminBookingsPage() {
 }
 
 function bookingHours(booking: BookingRequest) {
-  if (booking.plan === "court") return Math.max(booking.slotIds.length, 1);
-  return 1;
+  return bookingCourtHours(booking);
 }
 
 function AdminBookingRow({
@@ -310,7 +310,7 @@ function AdminBookingRow({
   booking: BookingRequest;
   onOpenDetail: () => void;
 }) {
-  const court = COURTS.find((item) => item.id === booking.courtId);
+  const courtLabel = courtsShortLabel(booking.courtId, booking.courtSlots);
   const scheduleDate = formatLongDate(booking.date);
   const timeRange =
     booking.slotIds.length === 0
@@ -318,7 +318,6 @@ function AdminBookingRow({
       : booking.slotIds.length === 1
         ? formatSlotTime(booking.slotIds[0]!)
         : `${formatSlotTime(booking.slotIds[0]!)} – ${formatSlotTime(booking.slotIds[booking.slotIds.length - 1]!)}`;
-  const courtLabel = court?.name ?? booking.courtId;
 
   return (
     <li className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
@@ -407,7 +406,7 @@ function AdminBookingDetailSheet({
   onApprove: () => void;
   onReject: () => void;
 }) {
-  const court = COURTS.find((item) => item.id === booking.courtId);
+  const courtLabel = courtsShortLabel(booking.courtId, booking.courtSlots);
   const meta = PLAN_META[booking.plan];
   const hours = bookingHours(booking);
   const total = bookingTotal(
@@ -554,12 +553,7 @@ function AdminBookingDetailSheet({
                 icon={<CalendarDays size={16} aria-hidden />}
               >
                 <InfoRow label="Type" value={meta.title} />
-                <InfoRow
-                  label="Court"
-                  value={
-                    court ? `${court.name} · ${court.group}` : "Not specified"
-                  }
-                />
+                <InfoRow label="Court" value={courtLabel || "Not specified"} />
                 <InfoRow label="Date" value={formatLongDate(booking.date)} />
                 <InfoRow
                   label="Schedule"

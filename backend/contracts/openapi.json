@@ -361,6 +361,41 @@
             },
             "minItems": 1
           },
+          "courtSlots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courtId": {
+                  "type": "string",
+                  "enum": [
+                    "in-1",
+                    "in-2",
+                    "in-3",
+                    "out-1",
+                    "out-2",
+                    "out-3"
+                  ]
+                },
+                "slotIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "minItems": 1,
+                  "maxItems": 24
+                }
+              },
+              "required": [
+                "courtId",
+                "slotIds"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
           "name": {
             "type": "string"
           },
@@ -414,6 +449,7 @@
           "date",
           "courtId",
           "slotIds",
+          "courtSlots",
           "name",
           "email",
           "userId",
@@ -537,6 +573,41 @@
             },
             "minItems": 1
           },
+          "courtSlots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courtId": {
+                  "type": "string",
+                  "enum": [
+                    "in-1",
+                    "in-2",
+                    "in-3",
+                    "out-1",
+                    "out-2",
+                    "out-3"
+                  ]
+                },
+                "slotIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "minItems": 1,
+                  "maxItems": 24
+                }
+              },
+              "required": [
+                "courtId",
+                "slotIds"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
           "name": {
             "type": "string"
           },
@@ -593,6 +664,7 @@
           "date",
           "courtId",
           "slotIds",
+          "courtSlots",
           "name",
           "email",
           "userId",
@@ -5226,6 +5298,42 @@
                     "minItems": 1,
                     "maxItems": 24
                   },
+                  "courtSlots": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "courtId": {
+                          "type": "string",
+                          "enum": [
+                            "in-1",
+                            "in-2",
+                            "in-3",
+                            "out-1",
+                            "out-2",
+                            "out-3"
+                          ]
+                        },
+                        "slotIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16
+                          },
+                          "minItems": 1,
+                          "maxItems": 24
+                        }
+                      },
+                      "required": [
+                        "courtId",
+                        "slotIds"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 6
+                  },
                   "name": {
                     "type": "string",
                     "minLength": 1,
@@ -5267,8 +5375,6 @@
                 },
                 "required": [
                   "date",
-                  "courtId",
-                  "slotIds",
                   "name",
                   "email"
                 ],
@@ -5318,6 +5424,41 @@
                           "type": "array",
                           "items": {
                             "type": "string"
+                          },
+                          "minItems": 1
+                        },
+                        "courtSlots": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string",
+                                "enum": [
+                                  "in-1",
+                                  "in-2",
+                                  "in-3",
+                                  "out-1",
+                                  "out-2",
+                                  "out-3"
+                                ]
+                              },
+                              "slotIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 16
+                                },
+                                "minItems": 1,
+                                "maxItems": 24
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "slotIds"
+                            ],
+                            "additionalProperties": false
                           },
                           "minItems": 1
                         },
@@ -5374,6 +5515,7 @@
                         "date",
                         "courtId",
                         "slotIds",
+                        "courtSlots",
                         "name",
                         "email",
                         "userId",
@@ -6024,6 +6166,41 @@
                                 },
                                 "minItems": 1
                               },
+                              "courtSlots": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "courtId": {
+                                      "type": "string",
+                                      "enum": [
+                                        "in-1",
+                                        "in-2",
+                                        "in-3",
+                                        "out-1",
+                                        "out-2",
+                                        "out-3"
+                                      ]
+                                    },
+                                    "slotIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 16
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 24
+                                    }
+                                  },
+                                  "required": [
+                                    "courtId",
+                                    "slotIds"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "minItems": 1
+                              },
                               "name": {
                                 "type": "string"
                               },
@@ -6077,6 +6254,7 @@
                               "date",
                               "courtId",
                               "slotIds",
+                              "courtSlots",
                               "name",
                               "email",
                               "userId",
@@ -6360,6 +6538,41 @@
                                 },
                                 "minItems": 1
                               },
+                              "courtSlots": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "courtId": {
+                                      "type": "string",
+                                      "enum": [
+                                        "in-1",
+                                        "in-2",
+                                        "in-3",
+                                        "out-1",
+                                        "out-2",
+                                        "out-3"
+                                      ]
+                                    },
+                                    "slotIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 16
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 24
+                                    }
+                                  },
+                                  "required": [
+                                    "courtId",
+                                    "slotIds"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "minItems": 1
+                              },
                               "name": {
                                 "type": "string"
                               },
@@ -6413,6 +6626,7 @@
                               "date",
                               "courtId",
                               "slotIds",
+                              "courtSlots",
                               "name",
                               "email",
                               "userId",
@@ -6659,6 +6873,42 @@
                     "minItems": 1,
                     "maxItems": 24
                   },
+                  "courtSlots": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "courtId": {
+                          "type": "string",
+                          "enum": [
+                            "in-1",
+                            "in-2",
+                            "in-3",
+                            "out-1",
+                            "out-2",
+                            "out-3"
+                          ]
+                        },
+                        "slotIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16
+                          },
+                          "minItems": 1,
+                          "maxItems": 24
+                        }
+                      },
+                      "required": [
+                        "courtId",
+                        "slotIds"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 6
+                  },
                   "name": {
                     "type": "string",
                     "minLength": 1,
@@ -6700,8 +6950,6 @@
                 },
                 "required": [
                   "date",
-                  "courtId",
-                  "slotIds",
                   "name",
                   "email"
                 ],
@@ -6751,6 +6999,41 @@
                           "type": "array",
                           "items": {
                             "type": "string"
+                          },
+                          "minItems": 1
+                        },
+                        "courtSlots": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string",
+                                "enum": [
+                                  "in-1",
+                                  "in-2",
+                                  "in-3",
+                                  "out-1",
+                                  "out-2",
+                                  "out-3"
+                                ]
+                              },
+                              "slotIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 16
+                                },
+                                "minItems": 1,
+                                "maxItems": 24
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "slotIds"
+                            ],
+                            "additionalProperties": false
                           },
                           "minItems": 1
                         },
@@ -6807,6 +7090,7 @@
                         "date",
                         "courtId",
                         "slotIds",
+                        "courtSlots",
                         "name",
                         "email",
                         "userId",
@@ -7039,6 +7323,41 @@
                           },
                           "minItems": 1
                         },
+                        "courtSlots": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string",
+                                "enum": [
+                                  "in-1",
+                                  "in-2",
+                                  "in-3",
+                                  "out-1",
+                                  "out-2",
+                                  "out-3"
+                                ]
+                              },
+                              "slotIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 16
+                                },
+                                "minItems": 1,
+                                "maxItems": 24
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "slotIds"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1
+                        },
                         "name": {
                           "type": "string"
                         },
@@ -7095,6 +7414,7 @@
                         "date",
                         "courtId",
                         "slotIds",
+                        "courtSlots",
                         "name",
                         "email",
                         "userId",

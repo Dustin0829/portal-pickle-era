@@ -4,8 +4,10 @@ export type BookablePlan = "court" | "open-play";
 /** Full plan union including historical `clinic` rows. */
 export type BookingPlan = BookablePlan | "clinic";
 
+export type CourtId = "in-1" | "in-2" | "in-3" | "out-1" | "out-2" | "out-3";
+
 export type Court = {
-  id: string;
+  id: CourtId;
   name: string;
   group: "Indoor" | "Outdoor";
 };
@@ -20,6 +22,11 @@ export type TimeSlot = {
 
 export type BookingStatus = "pending" | "approved" | "rejected";
 
+export type CourtSlotSegment = {
+  courtId: CourtId;
+  slotIds: string[];
+};
+
 export type BookingRequest = {
   id: string;
   plan: BookingPlan;
@@ -27,6 +34,8 @@ export type BookingRequest = {
   courtId: string;
   slotId?: string;
   slotIds: string[];
+  /** Per-court segments when the booking spans multiple courts. */
+  courtSlots?: CourtSlotSegment[];
   name: string;
   email: string;
   referenceId: string;
@@ -149,6 +158,49 @@ export function formatLongDate(key: string) {
 export function courtLabel(courtId: string) {
   const court = COURTS.find((item) => item.id === courtId);
   return court ? `${court.group} ${court.name}` : courtId;
+}
+
+/** Short court names for list/detail (multi-court aware). */
+export function courtsShortLabel(
+  courtId: string,
+  courtSlots?: CourtSlotSegment[],
+): string {
+  if (courtSlots && courtSlots.length > 0) {
+    return courtSlots
+      .map((segment) => {
+        const court = COURTS.find((item) => item.id === segment.courtId);
+        return court?.name ?? segment.courtId;
+      })
+      .join(", ");
+  }
+  return COURTS.find((item) => item.id === courtId)?.name ?? courtId;
+}
+
+/** Full court labels for pay summary (multi-court aware). */
+export function courtsFullLabel(
+  courtId: string,
+  courtSlots?: CourtSlotSegment[],
+): string {
+  if (courtSlots && courtSlots.length > 0) {
+    return courtSlots.map((segment) => courtLabel(segment.courtId)).join(" · ");
+  }
+  return courtLabel(courtId);
+}
+
+/** Billed court-hour count for private bookings. */
+export function bookingCourtHours(booking: {
+  plan: BookingPlan;
+  slotIds: string[];
+  courtSlots?: CourtSlotSegment[];
+}): number {
+  if (booking.plan === "court" && booking.courtSlots?.length) {
+    return booking.courtSlots.reduce(
+      (sum, segment) => sum + segment.slotIds.length,
+      0,
+    );
+  }
+  if (booking.plan === "court") return Math.max(booking.slotIds.length, 1);
+  return 1;
 }
 
 export function allowsMultiSlot(plan: BookingPlan) {
