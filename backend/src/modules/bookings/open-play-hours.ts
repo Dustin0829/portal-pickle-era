@@ -55,14 +55,6 @@ export function coveredHoursForOpenPlaySlotIds(slotIds: string[]): string[] {
   return [...set].sort();
 }
 
-/** Open Play session slot ids blocked by occupied court hour ids. */
-export function sessionsBlockedByCourtHours(hourIds: string[]): string[] {
-  const occupied = new Set(hourIds);
-  return DEFAULT_OPEN_PLAY_SESSIONS.filter((session) =>
-    expandOpenPlaySessionToHourIds(session).some((h) => occupied.has(h)),
-  ).map((s) => s.slotId);
-}
-
 export function hourSetsOverlap(a: string[], b: string[]): boolean {
   const set = new Set(a);
   return b.some((id) => set.has(id));

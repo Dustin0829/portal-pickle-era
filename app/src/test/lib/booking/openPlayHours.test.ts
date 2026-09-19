@@ -4,7 +4,6 @@ import {
   DEFAULT_OPEN_PLAY_SESSIONS,
   expandOpenPlaySessionToHourIds,
   hourSetsOverlap,
-  sessionsBlockedByCourtHours,
 } from "@/lib/booking/openPlayHours";
 
 describe("openPlayHours", () => {
@@ -25,15 +24,6 @@ describe("openPlayHours", () => {
       "16:00",
       "17:00",
     ]);
-  });
-
-  it("blocks sessions that overlap court hours", () => {
-    expect(sessionsBlockedByCourtHours(["08:00"])).toEqual(["07:00"]);
-    expect(sessionsBlockedByCourtHours(["17:00", "19:00"])).toEqual([
-      "16:00",
-      "18:00",
-    ]);
-    expect(sessionsBlockedByCourtHours(["10:00"])).toEqual([]);
   });
 
   it("detects hour set overlap", () => {

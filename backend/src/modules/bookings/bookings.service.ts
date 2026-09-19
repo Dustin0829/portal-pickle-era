@@ -436,6 +436,7 @@ export async function listAdminUsers(query: ListUsersQuery) {
   };
 }
 
+/** Open Play → court/clinic only (one-way). Court occupancy never blocks Open Play. */
 async function assertNoCrossPlanConflict(
   tx: Prisma.TransactionClient,
   input: {
@@ -444,26 +445,7 @@ async function assertNoCrossPlanConflict(
     slotIds: string[];
   },
 ) {
-  if (input.plan === "open_play") {
-    const covered = coveredHoursForOpenPlaySlotIds(input.slotIds);
-    if (covered.length === 0) return;
-    const blockers = await tx.booking.findMany({
-      where: {
-        date: input.date,
-        plan: { in: ["court", "clinic"] },
-        status: { in: ["pending", "approved"] },
-        slotIds: { hasSome: covered },
-      },
-      select: { id: true },
-      take: 1,
-    });
-    if (blockers.length > 0) {
-      throw new ConflictError(
-        "This Open Play session overlaps court hours already booked for that date",
-      );
-    }
-    return;
-  }
+  if (input.plan === "open_play") return;
 
   const openPlayRows = await tx.booking.findMany({
     where: {
