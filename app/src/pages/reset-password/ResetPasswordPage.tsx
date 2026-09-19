@@ -1,10 +1,9 @@
-import { ArrowRight, Lock, Mail } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   AuthDivider,
   AuthError,
-  AuthField,
   AuthLayout,
   AuthPasswordField,
   AuthSubmit,
@@ -15,15 +14,22 @@ export function ResetPasswordPage() {
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [email, setEmail] = useState(params.get("email") ?? "");
+  const token = (params.get("token") ?? "").trim();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    token ? "" : "This reset link is missing a token. Request a new one.",
+  );
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    if (!token) {
+      setError("This reset link is missing a token. Request a new one.");
+      return;
+    }
 
     if (password !== confirm) {
       setError("Passwords do not match.");
@@ -32,7 +38,7 @@ export function ResetPasswordPage() {
 
     setPending(true);
     try {
-      await resetPassword({ email, password });
+      await resetPassword({ token, newPassword: password });
       navigate("/login", { replace: true });
     } catch (caught) {
       setError(
@@ -58,17 +64,6 @@ export function ResetPasswordPage() {
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
-        <AuthField
-          label="Email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@email.com"
-          icon={<Mail size={16} />}
-        />
         <AuthPasswordField
           label="New password"
           name="password"
@@ -79,6 +74,7 @@ export function ResetPasswordPage() {
           onChange={(event) => setPassword(event.target.value)}
           placeholder="At least 8 characters"
           icon={<Lock size={16} />}
+          disabled={!token}
         />
         <AuthPasswordField
           label="Confirm password"
@@ -90,16 +86,24 @@ export function ResetPasswordPage() {
           onChange={(event) => setConfirm(event.target.value)}
           placeholder="Repeat password"
           icon={<Lock size={16} />}
+          disabled={!token}
         />
         <AuthError message={error} />
-        <AuthSubmit pending={pending}>
+        <AuthSubmit pending={pending || !token}>
           Save password
           <ArrowRight size={16} />
         </AuthSubmit>
       </form>
 
       <div className="mt-8 space-y-4">
-        <AuthDivider label="Ready to play?" />
+        <AuthDivider label="Need a new link?" />
+        <Link
+          to="/forgot-password"
+          className="inline-flex items-center gap-2 text-[13px] font-semibold text-yellow transition hover:text-white"
+        >
+          Request reset email
+          <ArrowRight size={14} />
+        </Link>
         <Link
           to="/login"
           className="inline-flex items-center gap-2 text-[13px] font-semibold text-yellow transition hover:text-white"

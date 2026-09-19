@@ -1,6 +1,7 @@
 import { ArrowRight, Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { forgotPassword } from "@/api/features/auth/auth.service";
 import {
   AuthDivider,
   AuthError,
@@ -10,12 +11,12 @@ import {
 } from "@/components/marketing/AuthLayout";
 
 export function ForgotPasswordPage() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     const next = email.trim().toLowerCase();
@@ -23,7 +24,20 @@ export function ForgotPasswordPage() {
       setError("Enter the email on your account.");
       return;
     }
-    setSent(true);
+
+    setPending(true);
+    try {
+      await forgotPassword({ email: next });
+      setSent(true);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not send a reset email. Try again.",
+      );
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -35,7 +49,7 @@ export function ForgotPasswordPage() {
         Forgot password.
       </h1>
       <p className="mt-3 text-sm text-white/60">
-        Enter your email and we&apos;ll help you set a new password.
+        Enter your email and we&apos;ll send a reset link if an account exists.
       </p>
 
       {sent ? (
@@ -43,20 +57,8 @@ export function ForgotPasswordPage() {
           <p className="text-sm leading-relaxed text-white/70">
             If an account exists for{" "}
             <span className="text-white">{email.trim().toLowerCase()}</span>,
-            you can reset the password now.
+            check your inbox for a reset link.
           </p>
-          <button
-            type="button"
-            onClick={() =>
-              navigate(
-                `/reset-password?email=${encodeURIComponent(email.trim().toLowerCase())}`,
-              )
-            }
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white"
-          >
-            Reset password
-            <ArrowRight size={16} />
-          </button>
           <AuthDivider label="Remembered it?" />
           <Link
             to="/login"
@@ -80,8 +82,8 @@ export function ForgotPasswordPage() {
             icon={<Mail size={16} />}
           />
           <AuthError message={error} />
-          <AuthSubmit>
-            Continue
+          <AuthSubmit pending={pending}>
+            Send reset link
             <ArrowRight size={16} />
           </AuthSubmit>
           <AuthDivider label="Remembered it?" />

@@ -32,7 +32,22 @@ export const patchMeBodySchema = z
   })
   .strict();
 
+export const forgotPasswordBodySchema = z
+  .object({
+    email: z.string().trim().email().max(254),
+  })
+  .strict();
+
+export const resetPasswordBodySchema = z
+  .object({
+    token: z.string().trim().min(1).max(200),
+    newPassword: z.string().min(8).max(128),
+  })
+  .strict();
+
 export type UserDto = z.infer<typeof userDtoSchema>;
 export type SignupBody = z.infer<typeof signupBodySchema>;
 export type LoginBody = z.infer<typeof loginBodySchema>;
 export type PatchMeBody = z.infer<typeof patchMeBodySchema>;
+export type ForgotPasswordBody = z.infer<typeof forgotPasswordBodySchema>;
+export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;

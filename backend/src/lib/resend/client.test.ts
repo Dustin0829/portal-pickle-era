@@ -5,6 +5,8 @@ import {
   resolvePublicAppUrl,
   sendBookingPaymentReceivedEmail,
   sendEmail,
+  sendPasswordResetEmail,
+  sendPlayerInviteEmail,
 } from "./client.js";
 
 test("isResendConfigured is false when env unset (local default)", () => {
@@ -36,6 +38,37 @@ test("sendBookingPaymentReceivedEmail skips without throwing when Resend env uns
     name: "Ada",
     date: "2026-10-05",
     referenceId: "GCASH-1",
+  });
+  assert.equal(result.sent, false);
+  if (!result.sent) {
+    assert.equal(result.reason, "not_configured");
+  }
+});
+
+test("sendPasswordResetEmail skips without throwing when Resend env unset", async () => {
+  const result = await sendPasswordResetEmail({
+    to: "player@example.com",
+    token: "reset-token-abc",
+  });
+  assert.equal(result.sent, false);
+  if (!result.sent) {
+    assert.equal(result.reason, "not_configured");
+  }
+});
+
+test("password reset SPA link shape uses PUBLIC_APP_URL fallback + encoded token", () => {
+  const portal = resolvePublicAppUrl();
+  const token = "tok+/=xyz";
+  const resetUrl = `${portal}/reset-password?token=${encodeURIComponent(token)}`;
+  assert.equal(resetUrl.includes("/reset-password?token="), true);
+  assert.equal(resetUrl.includes(encodeURIComponent(token)), true);
+  assert.equal(resetUrl.endsWith("/"), false);
+});
+
+test("sendPlayerInviteEmail skips without throwing when Resend env unset", async () => {
+  const result = await sendPlayerInviteEmail({
+    to: "player@example.com",
+    tempPassword: "temp-pass-1",
   });
   assert.equal(result.sent, false);
   if (!result.sent) {
