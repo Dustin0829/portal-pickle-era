@@ -322,7 +322,9 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
         className={
           step === "pay"
             ? "relative max-h-[min(92svh,840px)] w-full max-w-6xl overflow-y-auto border border-yellow/20 bg-black"
-            : "relative flex h-[min(92svh,840px)] w-full max-w-6xl flex-col overflow-hidden border border-yellow/20 bg-black"
+            : step === "schedule"
+              ? "relative flex h-[min(92svh,840px)] w-full max-w-6xl flex-col overflow-hidden border border-zinc-300 bg-[#f5f0e8]"
+              : "relative flex h-[min(92svh,840px)] w-full max-w-6xl flex-col overflow-hidden border border-yellow/20 bg-black"
         }
       >
         <div className="pointer-events-none sticky top-0 z-20 flex justify-end">
@@ -380,13 +382,14 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
               capacityLoading={capacityLoading}
               occupancyError={occupancyError}
               capacityError={capacityError}
+              onBack={onClose}
             />
-            <div className="shrink-0 border-t border-white/10 px-5 py-4 sm:px-7">
+            <div className="shrink-0 border-t border-zinc-200 bg-[#f5f0e8] px-5 py-4 sm:px-7">
               <button
                 type="button"
                 disabled={!canContinue}
                 onClick={onBook}
-                className="h-12 w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35"
+                className="h-12 w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
               >
                 {plan === "court" && slotIds.length > 1
                   ? `Continue · ${slotIds.length} hrs · ₱${total}`

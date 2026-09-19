@@ -4,18 +4,18 @@ import { UnifiedBookingSchedule } from "@/components/booking/UnifiedBookingSched
 import { OPEN_PLAY_RESERVED_LABEL } from "@/lib/booking/courtSlotPresentation";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
 
-describe("UnifiedBookingSchedule Indoor/Outdoor", () => {
+describe("UnifiedBookingSchedule reference layout", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("defaults to Indoor courts and retains selection when toggling", () => {
+  it("shows date strip, plan chooser, Indoor courts, and Open Play wide cell", () => {
     const onSelectionChange = vi.fn();
+    const onBack = vi.fn();
     const selection = {
       plan: "court" as const,
       courtId: "out-1",
-      slotIds: ["10"],
-      openPlaySlotId: null,
+      slotIds: ["10:00"],
     };
 
     renderWithProviders(
@@ -27,8 +27,9 @@ describe("UnifiedBookingSchedule Indoor/Outdoor", () => {
         bookableFloor="2026-10-01"
         selection={selection}
         onSelectionChange={onSelectionChange}
+        onBack={onBack}
         openPlaySlots={[
-          { id: "op-7", hour: 7, label: "7–9 AM", durationHours: 2 },
+          { id: "07:00", hour: 7, label: "7:00–9:00 AM", durationHours: 2 },
         ]}
         slotStatusByKey={new Map()}
         hoursBlockedByOpenPlay={new Set(["11:00"])}
@@ -40,15 +41,21 @@ describe("UnifiedBookingSchedule Indoor/Outdoor", () => {
       />,
     );
 
-    expect(screen.getByText("Court 1")).toBeInTheDocument();
-    expect(screen.queryByText("Court 4")).not.toBeInTheDocument();
+    expect(screen.getByText(/select date & time/i)).toBeInTheDocument();
+    expect(screen.getByText(/private court/i)).toBeInTheDocument();
+    expect(screen.getByText(/crt 1/i)).toBeInTheDocument();
+    expect(screen.queryByText(/crt 4/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/open play/i).length).toBeGreaterThan(0);
     expect(
       screen.getAllByText(OPEN_PLAY_RESERVED_LABEL).length,
     ).toBeGreaterThan(0);
 
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+    expect(onBack).toHaveBeenCalled();
+
     fireEvent.click(screen.getByRole("button", { name: /^outdoor$/i }));
-    expect(screen.getByText("Court 4")).toBeInTheDocument();
-    expect(screen.queryByText("Court 1")).not.toBeInTheDocument();
+    expect(screen.getByText(/crt 4/i)).toBeInTheDocument();
+    expect(screen.queryByText(/crt 1/i)).not.toBeInTheDocument();
     expect(onSelectionChange).not.toHaveBeenCalled();
   });
 });

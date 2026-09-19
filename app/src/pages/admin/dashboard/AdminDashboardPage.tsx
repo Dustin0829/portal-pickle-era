@@ -245,13 +245,13 @@ export function AdminDashboardPage() {
             <PortalListSkeleton rows={5} />
           ) : bookingsError ? (
             <div
-              className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+              className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500"
               role="alert"
             >
               {bookingsError}
             </div>
           ) : activities.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm">
+            <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500">
               No activity in this range yet.
             </div>
           ) : (
@@ -262,7 +262,7 @@ export function AdminDashboardPage() {
                     <Link
                       to={item.href}
                       className={cn(
-                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 shadow-sm transition hover:border-yellow/50",
+                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 transition hover:border-yellow/50",
                         item.tone === "yellow" &&
                           "border-l-[3px] border-l-yellow",
                         item.tone === "green" &&
@@ -274,7 +274,7 @@ export function AdminDashboardPage() {
                   ) : (
                     <div
                       className={cn(
-                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 shadow-sm",
+                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5",
                         item.tone === "yellow" &&
                           "border-l-[3px] border-l-yellow",
                         item.tone === "green" &&
@@ -345,7 +345,7 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm transition hover:border-yellow/40 sm:p-5"
+      className="rounded-2xl border border-zinc-200/80 bg-white p-4 transition hover:border-yellow/40 sm:p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">

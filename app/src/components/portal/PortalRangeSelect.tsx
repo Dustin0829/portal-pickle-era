@@ -56,7 +56,7 @@ export function PortalRangeSelect({
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-11 min-w-[9.5rem] items-center justify-between gap-3 rounded-full border border-zinc-200/80 bg-white px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 shadow-sm transition hover:border-zinc-300"
+        className="inline-flex h-11 min-w-[9.5rem] items-center justify-between gap-3 rounded-full border border-zinc-200/80 bg-white px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 transition hover:border-zinc-300"
       >
         <span>{selected.label}</span>
         <ChevronDown

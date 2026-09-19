@@ -41,7 +41,7 @@ export function WalletPage() {
           <PortalListSkeleton rows={3} />
         ) : status === "error" ? (
           <div
-            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
             role="alert"
           >
             <p>Could not load your wallet.</p>
@@ -60,7 +60,7 @@ export function WalletPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-6">
-            <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm sm:p-6">
+            <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
               <div className="flex items-center gap-3">
                 <span className="grid size-11 place-items-center rounded-full bg-amber-100 text-amber-800">
                   <Wallet size={22} aria-hidden />
@@ -78,7 +78,7 @@ export function WalletPage() {
 
             <WalletTopUpForm />
 
-            <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm sm:p-6">
+            <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
               <h2 className="text-sm font-semibold text-zinc-900">
                 Recent top-ups
               </h2>
@@ -180,7 +180,7 @@ function WalletTopUpForm() {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm sm:p-6">
+    <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
       <h2 className="text-sm font-semibold text-zinc-900">Top up</h2>
       <p className="mt-1 text-sm text-zinc-500">
         Pay any amount via GCash, then upload your receipt for admin review.

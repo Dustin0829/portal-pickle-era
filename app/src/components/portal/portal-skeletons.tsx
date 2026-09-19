@@ -23,7 +23,7 @@ export function PortalStatSkeleton({
       {Array.from({ length: count }, (_, index) => (
         <div
           key={index}
-          className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5"
+          className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-5"
         >
           <Skeleton className="h-3 w-20" />
           <Skeleton className="mt-4 h-8 w-24" />
@@ -50,7 +50,7 @@ export function PortalListSkeleton({
       {Array.from({ length: rows }, (_, index) => (
         <li
           key={index}
-          className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm"
+          className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-4"
         >
           <div className="flex items-center gap-3">
             <Skeleton className="size-11 shrink-0 rounded-full" />
@@ -71,7 +71,7 @@ export function PortalCalendarSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm",
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white",
         className,
       )}
       aria-busy="true"

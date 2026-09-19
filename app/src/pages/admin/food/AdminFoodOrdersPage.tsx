@@ -107,7 +107,7 @@ export function AdminFoodOrdersPage() {
           <PortalListSkeleton rows={5} />
         ) : isError && !data ? (
           <div
-            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
             role="alert"
           >
             <p>Could not load food orders.</p>
@@ -130,7 +130,7 @@ export function AdminFoodOrdersPage() {
               return (
                 <li
                   key={order.id}
-                  className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5"
+                  className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-5"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
