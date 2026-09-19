@@ -1,13 +1,13 @@
 import { type ButtonHTMLAttributes, type ReactNode } from "react";
-import type { BookingPlan } from "@/lib/booking/booking";
+import type { BookablePlan } from "@/lib/booking/booking";
 import { useBookingModal } from "@/providers/BookingModalProvider";
 
 type BookingButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  plan?: BookingPlan;
+  plan?: BookablePlan;
   children?: ReactNode;
 };
 
-/** Marketing CTAs — opens the court booking modal (advance booking). */
+/** Marketing CTAs — opens the unified booking schedule (optional prefer). */
 export function BookingButton({
   plan = "court",
   children,

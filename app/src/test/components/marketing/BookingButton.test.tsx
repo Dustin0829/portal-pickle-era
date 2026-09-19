@@ -13,7 +13,7 @@ describe("BookingButton", () => {
     await user.click(button);
 
     expect(
-      screen.getByRole("heading", { name: /court rental/i }),
+      screen.getByRole("heading", { name: /schedule/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/october 2026/i)).toBeInTheDocument();
   });

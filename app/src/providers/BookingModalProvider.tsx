@@ -6,7 +6,8 @@ import {
   type ReactNode,
 } from "react";
 import { BookingModal } from "@/components/marketing/BookingModal";
-import type { BookingPlan } from "@/lib/booking/booking";
+import type { BookablePlan, BookingPlan } from "@/lib/booking/booking";
+import { preferFromOpenArg } from "@/lib/booking/unifiedBookingSelection";
 
 export type BookingModalPreset = {
   date: string;
@@ -16,12 +17,15 @@ export type BookingModalPreset = {
 };
 
 type BookingModalSession = {
-  plan: BookingPlan;
+  prefer?: BookablePlan;
   preset?: BookingModalPreset;
 };
 
 type BookingModalContextValue = {
-  openBookingModal: (plan: BookingPlan, preset?: BookingModalPreset) => void;
+  openBookingModal: (
+    plan?: BookablePlan | BookingPlan,
+    preset?: BookingModalPreset,
+  ) => void;
 };
 
 const BookingModalContext = createContext<BookingModalContextValue | null>(
@@ -32,8 +36,8 @@ export function BookingModalProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<BookingModalSession | null>(null);
 
   const openBookingModal = useCallback(
-    (plan: BookingPlan, preset?: BookingModalPreset) => {
-      setSession({ plan, preset });
+    (plan?: BookablePlan | BookingPlan, preset?: BookingModalPreset) => {
+      setSession({ prefer: preferFromOpenArg(plan), preset });
     },
     [],
   );
@@ -44,8 +48,8 @@ export function BookingModalProvider({ children }: { children: ReactNode }) {
       {children}
       {session !== null ? (
         <BookingModal
-          key={`${session.plan}-${session.preset?.date ?? ""}-${session.preset?.courtId ?? ""}-${session.preset?.slotIds?.join(",") ?? ""}`}
-          plan={session.plan}
+          key={`${session.prefer ?? "any"}-${session.preset?.date ?? ""}-${session.preset?.courtId ?? ""}-${session.preset?.slotIds?.join(",") ?? ""}`}
+          prefer={session.prefer}
           preset={session.preset}
           onClose={closeBookingModal}
         />

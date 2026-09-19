@@ -4970,8 +4970,7 @@
                     "type": "string",
                     "enum": [
                       "court",
-                      "open-play",
-                      "clinic"
+                      "open-play"
                     ],
                     "default": "court"
                   },
@@ -6404,8 +6403,7 @@
                     "type": "string",
                     "enum": [
                       "court",
-                      "open-play",
-                      "clinic"
+                      "open-play"
                     ],
                     "default": "court"
                   },
