@@ -9,6 +9,7 @@ export const waitlistEntrySchema = z.object({
   email: z.string().email(),
   phone: z.string().nullable(),
   source: waitlistSourceSchema,
+  imageUrl: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

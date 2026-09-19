@@ -242,7 +242,7 @@ export function AdminBookingsPage() {
                 : "No booking requests yet."}
             </div>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
               {visible.map((item) => (
                 <AdminBookingRow
                   key={item.id}
@@ -320,7 +320,7 @@ function AdminBookingRow({
         : `${formatSlotTime(booking.slotIds[0]!)} – ${formatSlotTime(booking.slotIds[booking.slotIds.length - 1]!)}`;
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
+    <li className="border-b border-zinc-100 last:border-b-0">
       <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:gap-0 lg:p-0">
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:px-4 lg:py-4">
           <div className="grid size-11 shrink-0 place-items-center rounded-full bg-green/15 text-zinc-600">

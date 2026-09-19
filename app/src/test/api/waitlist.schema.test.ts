@@ -45,9 +45,25 @@ describe("waitlist API schemas", () => {
       email: "ada@example.com",
       phone: null,
       source: "newsletter",
+      imageUrl: null,
       createdAt: "2026-01-15T12:00:00.000Z",
       updatedAt: "2026-01-15T12:00:00.000Z",
     });
     expect(entry.source).toBe("newsletter");
+    expect(entry.imageUrl).toBeNull();
+  });
+
+  it("parses waitlist entry with imageUrl", () => {
+    const entry = waitlistEntrySchema.parse({
+      id: "wl_2",
+      name: "Ben",
+      email: "ben@example.com",
+      phone: null,
+      source: "booking",
+      imageUrl: "https://cdn.example.com/ben.png",
+      createdAt: "2026-01-15T12:00:00.000Z",
+      updatedAt: "2026-01-15T12:00:00.000Z",
+    });
+    expect(entry.imageUrl).toBe("https://cdn.example.com/ben.png");
   });
 });

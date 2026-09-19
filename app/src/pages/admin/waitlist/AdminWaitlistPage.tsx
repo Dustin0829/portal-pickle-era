@@ -19,6 +19,35 @@ function initialsFromName(name: string, email: string) {
   return email.slice(0, 2).toUpperCase() || "?";
 }
 
+function PlayerAvatar({ entry }: { entry: WaitlistEntry }) {
+  const [failed, setFailed] = useState(false);
+  const showImage = Boolean(entry.imageUrl) && !failed;
+  const initials = initialsFromName(entry.name, entry.email);
+
+  if (showImage && entry.imageUrl) {
+    return (
+      <img
+        src={entry.imageUrl}
+        alt=""
+        className="size-9 shrink-0 rounded-full object-cover"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "grid size-9 shrink-0 place-items-center rounded-full",
+        "bg-yellow text-[11px] font-bold tracking-wide text-black",
+      )}
+      aria-hidden
+    >
+      {initials}
+    </span>
+  );
+}
+
 function formatJoinedAt(value: string) {
   if (!value) return "—";
   const date = new Date(value);
@@ -210,15 +239,7 @@ export function AdminPlayersPage() {
                       >
                         <td className="px-4 py-3.5 sm:px-5">
                           <div className="flex items-center gap-3">
-                            <span
-                              className={cn(
-                                "grid size-9 shrink-0 place-items-center rounded-full",
-                                "bg-yellow text-[11px] font-bold tracking-wide text-black",
-                              )}
-                              aria-hidden
-                            >
-                              {initialsFromName(entry.name, entry.email)}
-                            </span>
+                            <PlayerAvatar entry={entry} />
                             <span className="text-sm font-medium text-zinc-900">
                               {entry.name || "No name"}
                             </span>
