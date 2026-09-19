@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AppPageShell } from "@/components/layout/AppPageShell";
 import type { BookablePlan, TimeSlot } from "@/lib/booking/booking";
 import {
   previewCoveredHours,
@@ -107,7 +108,7 @@ export function AdminSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-5">
+    <AppPageShell width="full" className="max-w-4xl">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="display text-[36px] text-zinc-900 sm:text-[44px]">
@@ -386,6 +387,6 @@ export function AdminSettingsPage() {
           <FoodMenuSettingsSection />
         </div>
       ) : null}
-    </div>
+    </AppPageShell>
   );
 }

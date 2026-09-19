@@ -11,6 +11,13 @@ export const bookingPlanApiSchema = z.enum(["court", "open-play", "clinic"]);
 export const bookingStatusSchema = z.enum(["pending", "approved", "rejected"]);
 export const courtIdSchema = z.enum(["in-1", "in-2", "in-3", "out-1", "out-2", "out-3"]);
 
+export const courtSlotSchema = z
+  .object({
+    courtId: courtIdSchema,
+    slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),
+  })
+  .strict();
+
 export const openPlaySessionItemSchema = z.object({
   slotId: z.string(),
   bookedCount: z.number().int().nonnegative(),
@@ -27,8 +34,12 @@ export const bookingDtoSchema = z.object({
   id: z.string(),
   plan: bookingPlanApiSchema,
   date: z.string(),
+  /** First court (compat / Open Play placeholder). */
   courtId: z.string(),
+  /** Union of hours across segments (or Open Play session ids). */
   slotIds: z.array(z.string()).min(1),
+  /** Per-court hour segments for private court bookings. */
+  courtSlots: z.array(courtSlotSchema).min(1),
   name: z.string(),
   email: z.string().email(),
   userId: z.string().nullable(),
@@ -55,8 +66,10 @@ const bookingBodyBase = z
   .object({
     plan: bookingPlanCreateSchema.default("court"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    courtId: courtIdSchema,
-    slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),
+    /** Legacy single-court create — normalized to courtSlots when courtSlots omitted. */
+    courtId: courtIdSchema.optional(),
+    slotIds: z.array(z.string().min(1).max(16)).min(1).max(24).optional(),
+    courtSlots: z.array(courtSlotSchema).min(1).max(6).optional(),
     name: z.string().trim().min(1).max(120),
     email: z.string().trim().email().max(254),
     referenceId: z.string().trim().max(120).optional().default(""),
@@ -67,7 +80,15 @@ const bookingBodyBase = z
     unitPricePesos: z.number().positive().max(100_000).optional(),
     walletAppliedCents: z.number().int().nonnegative().max(5_000_000).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.courtSlots && value.courtSlots.length > 0) return;
+    if (value.courtId && value.slotIds && value.slotIds.length > 0) return;
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide courtSlots or courtId with slotIds",
+    });
+  });
 
 export const createPublicBookingBodySchema = bookingBodyBase;
 
@@ -139,6 +160,7 @@ export const listUsersQuerySchema = paginatedQuerySchema.extend({
   role: z.enum(["student", "admin"]).optional().default("student"),
 });
 
+export type CourtSlot = z.infer<typeof courtSlotSchema>;
 export type BookingDto = z.infer<typeof bookingDtoSchema>;
 export type BookingOccupancyItem = z.infer<typeof bookingOccupancyItemSchema>;
 export type OpenPlaySessionItem = z.infer<typeof openPlaySessionItemSchema>;

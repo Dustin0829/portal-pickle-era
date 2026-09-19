@@ -153,6 +153,7 @@ test("booking mapper serializes", () => {
     date: "2026-10-05",
     courtId: "in-1",
     slotIds: ["08:00"],
+    courtSlots: null,
     name: "Ada",
     email: "ada@example.com",
     userId: null,
@@ -167,6 +168,23 @@ test("booking mapper serializes", () => {
   });
   assert.equal(dto.plan, "open-play");
   assert.equal(dto.walletAppliedCents, 0);
+  assert.deepEqual(dto.courtSlots, [{ courtId: "in-1", slotIds: ["08:00"] }]);
+});
+
+test("public booking schema accepts courtSlots multi-court", () => {
+  assert.equal(
+    createPublicBookingBodySchema.safeParse({
+      plan: "court",
+      date: "2026-10-05",
+      courtSlots: [
+        { courtId: "in-1", slotIds: ["10:00"] },
+        { courtId: "in-2", slotIds: ["10:00", "11:00"] },
+      ],
+      name: "Ada",
+      email: "ada@example.com",
+    }).success,
+    true,
+  );
 });
 
 test("open-play sessions query requires date", () => {
@@ -273,6 +291,7 @@ test("patchBookingResponseSchema accepts inviteEmailWarning (email fail keeps ap
     date: "2026-10-05",
     courtId: "in-1",
     slotIds: ["08:00"],
+    courtSlots: [{ courtId: "in-1" as const, slotIds: ["08:00"] }],
     name: "Ada",
     email: "ada@example.com",
     userId: "user_1",

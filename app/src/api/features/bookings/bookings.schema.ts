@@ -16,12 +16,20 @@ export const courtIdSchema = z.enum([
   "out-3",
 ]);
 
+export const courtSlotSchema = z
+  .object({
+    courtId: courtIdSchema,
+    slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),
+  })
+  .strict();
+
 export const bookingDtoSchema = z.object({
   id: z.string(),
   plan: bookingPlanSchema,
   date: z.string(),
   courtId: z.string(),
   slotIds: z.array(z.string()).min(1),
+  courtSlots: z.array(courtSlotSchema).min(1),
   name: z.string(),
   email: z.string().email(),
   userId: z.string().nullable(),
@@ -48,8 +56,9 @@ const bookingBodyBase = z
   .object({
     plan: bookablePlanSchema.default("court"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    courtId: courtIdSchema,
-    slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),
+    courtId: courtIdSchema.optional(),
+    slotIds: z.array(z.string().min(1).max(16)).min(1).max(24).optional(),
+    courtSlots: z.array(courtSlotSchema).min(1).max(6).optional(),
     name: nonEmptyString.max(120),
     email: nonEmptyString.email("Enter a valid email address").max(254),
     referenceId: z.string().trim().max(120).optional(),
@@ -64,7 +73,15 @@ const bookingBodyBase = z
       .max(5_000_000)
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.courtSlots && value.courtSlots.length > 0) return;
+    if (value.courtId && value.slotIds && value.slotIds.length > 0) return;
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide courtSlots or courtId with slotIds",
+    });
+  });
 
 export const createPublicBookingBodySchema = bookingBodyBase;
 export const createAdminBookingBodySchema = bookingBodyBase;

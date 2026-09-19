@@ -85,18 +85,26 @@ export function UnifiedBookingSchedule({
     [date, bookableFloor],
   );
 
-  /** First session in openPlaySlots wins if hours overlap. */
-  const sessionByHourId = useMemo(() => {
+  /** Session start hour id → session (continuation hours omitted from render). */
+  const sessionByStartHourId = useMemo(() => {
     const map = new Map<string, TimeSlot>();
     for (const slot of openPlaySlots) {
-      for (const hourId of expandOpenPlaySessionToHourIds({
-        hour: slot.hour,
-        durationHours: slot.durationHours,
-      })) {
-        if (!map.has(hourId)) map.set(hourId, slot);
-      }
+      const startId = `${String(slot.hour).padStart(2, "0")}:00`;
+      if (!map.has(startId)) map.set(startId, slot);
     }
     return map;
+  }, [openPlaySlots]);
+
+  const continuationHourIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const slot of openPlaySlots) {
+      const covered = expandOpenPlaySessionToHourIds({
+        hour: slot.hour,
+        durationHours: slot.durationHours,
+      });
+      for (const hourId of covered.slice(1)) set.add(hourId);
+    }
+    return set;
   }, [openPlaySlots]);
 
   const scheduleLoading = occupancyLoading || capacityLoading;
@@ -233,7 +241,19 @@ export function UnifiedBookingSchedule({
                   key={group}
                   type="button"
                   aria-pressed={courtGroup === group}
-                  onClick={() => setCourtGroup(group)}
+                  onClick={() => {
+                    if (courtGroup !== group) {
+                      setCourtGroup(group);
+                      if (selection.plan === "court") {
+                        onSelectionChange({
+                          plan: null,
+                          courtId: "",
+                          slotIds: [],
+                          courtSlots: [],
+                        });
+                      }
+                    }
+                  }}
                   className={cn(
                     "px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] transition",
                     courtGroup === group
@@ -275,29 +295,45 @@ export function UnifiedBookingSchedule({
                   </div>
                 ))}
 
-                {DAY_HOURS.map((hour) => (
-                  <HourRow
-                    key={hour.id}
-                    hour={hour}
-                    courts={visibleCourts}
-                    date={date}
-                    selection={selection}
-                    gridBlocked={gridBlocked}
-                    openPlaySession={sessionByHourId.get(hour.id) ?? null}
-                    bookedCountBySlotId={bookedCountBySlotId}
-                    slotHold={slotHold}
-                    onCourtToggle={(courtId, hourId) => {
-                      onSelectionChange(
-                        applyCourtHourToggle(selection, courtId, hourId),
-                      );
-                    }}
-                    onOpenPlaySelect={(sessionId) => {
-                      onSelectionChange(
-                        applyOpenPlaySelect(selection, sessionId),
-                      );
-                    }}
-                  />
-                ))}
+                {DAY_HOURS.map((hour) => {
+                  if (continuationHourIds.has(hour.id)) return null;
+                  const openPlaySession =
+                    sessionByStartHourId.get(hour.id) ?? null;
+                  if (openPlaySession) {
+                    return (
+                      <OpenPlayBand
+                        key={`op-${openPlaySession.id}`}
+                        session={openPlaySession}
+                        courtCount={visibleCourts.length}
+                        date={date}
+                        selection={selection}
+                        gridBlocked={gridBlocked}
+                        bookedCountBySlotId={bookedCountBySlotId}
+                        onOpenPlaySelect={(sessionId) => {
+                          onSelectionChange(
+                            applyOpenPlaySelect(selection, sessionId),
+                          );
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <HourRow
+                      key={hour.id}
+                      hour={hour}
+                      courts={visibleCourts}
+                      date={date}
+                      selection={selection}
+                      gridBlocked={gridBlocked}
+                      slotHold={slotHold}
+                      onCourtToggle={(courtId, hourId) => {
+                        onSelectionChange(
+                          applyCourtHourToggle(selection, courtId, hourId),
+                        );
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
@@ -317,43 +353,112 @@ export function UnifiedBookingSchedule({
   );
 }
 
+function isCourtHourSelected(
+  selection: UnifiedBookingSelection,
+  courtId: string,
+  hourId: string,
+): boolean {
+  if (selection.plan !== "court") return false;
+  if (selection.courtSlots.length > 0) {
+    return selection.courtSlots.some(
+      (segment) =>
+        segment.courtId === courtId && segment.slotIds.includes(hourId),
+    );
+  }
+  return selection.courtId === courtId && selection.slotIds.includes(hourId);
+}
+
+function OpenPlayBand({
+  session,
+  courtCount,
+  date,
+  selection,
+  gridBlocked,
+  bookedCountBySlotId,
+  onOpenPlaySelect,
+}: {
+  session: TimeSlot;
+  courtCount: number;
+  date: string;
+  selection: UnifiedBookingSelection;
+  gridBlocked: boolean;
+  bookedCountBySlotId: Map<string, number>;
+  onOpenPlaySelect: (sessionId: string) => void;
+}) {
+  const duration = Math.max(session.durationHours ?? 2, 1);
+  const booked = bookedCountBySlotId.get(session.id) ?? 0;
+  const sessionPast = isSlotPast(date, session.hour);
+  const sessionFull = booked >= OPEN_PLAY_CAPACITY;
+  const openPlaySelected =
+    selection.plan === "open-play" && selection.slotIds[0] === session.id;
+  const openSlot = !sessionPast && !sessionFull && !gridBlocked;
+  const startLabel = formatHour(session.hour).replace(":00 ", "");
+  const endLabel = formatHour(session.hour + duration).replace(":00 ", "");
+  const label = sessionPast
+    ? "Past"
+    : sessionFull
+      ? `Full - ${booked}/${OPEN_PLAY_CAPACITY}`
+      : `Open Play - ${booked}/${OPEN_PLAY_CAPACITY}`;
+
+  return (
+    <>
+      <div
+        className="flex items-center gap-1 border-b border-zinc-100 px-2 py-2 text-[10px] font-semibold text-zinc-600"
+        style={{ gridRow: `span ${duration}` }}
+      >
+        <span aria-hidden>☀</span>
+        <span>
+          {startLabel}–{endLabel}
+        </span>
+      </div>
+      <button
+        type="button"
+        disabled={!openSlot}
+        aria-label={label}
+        onClick={() => onOpenPlaySelect(session.id)}
+        title={label}
+        style={{
+          gridRow: `span ${duration}`,
+          gridColumn: `span ${courtCount}`,
+        }}
+        className={cn(
+          "border-b border-l border-zinc-100 px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.04em] transition",
+          openPlaySelected
+            ? "bg-yellow text-black"
+            : openSlot
+              ? "bg-zinc-50 text-zinc-500 hover:bg-yellow/40 hover:text-zinc-800"
+              : "bg-zinc-100 text-zinc-400",
+        )}
+      >
+        {label}
+      </button>
+    </>
+  );
+}
+
 function HourRow({
   hour,
   courts,
   date,
   selection,
   gridBlocked,
-  openPlaySession,
-  bookedCountBySlotId,
   slotHold,
   onCourtToggle,
-  onOpenPlaySelect,
 }: {
   hour: TimeSlot;
   courts: typeof COURTS;
   date: string;
   selection: UnifiedBookingSelection;
   gridBlocked: boolean;
-  openPlaySession: TimeSlot | null;
-  bookedCountBySlotId: Map<string, number>;
   slotHold: (courtId: string, slotId: string) => "pending" | "approved" | null;
-  onCourtToggle: (courtId: string, hourId: string) => void;
-  onOpenPlaySelect: (sessionId: string) => void;
+  onCourtToggle: (
+    courtId: (typeof COURTS)[number]["id"],
+    hourId: string,
+  ) => void;
 }) {
   const past = isSlotPast(date, hour.hour);
   const endLabel = formatHour(hour.hour + 1).replace(":00 ", "");
   const startLabel = formatHour(hour.hour).replace(":00 ", "");
-  const booked = openPlaySession
-    ? (bookedCountBySlotId.get(openPlaySession.id) ?? 0)
-    : 0;
-  const sessionPast = openPlaySession
-    ? isSlotPast(date, openPlaySession.hour)
-    : false;
-  const sessionFull = booked >= OPEN_PLAY_CAPACITY;
-  const openPlaySelected =
-    selection.plan === "open-play" &&
-    openPlaySession !== null &&
-    selection.slotIds[0] === openPlaySession.id;
 
   return (
     <>
@@ -371,41 +476,8 @@ function HourRow({
           past,
           hasCourt: true,
         });
-
-        if (hold === null && openPlaySession) {
-          const openSlot = !sessionPast && !sessionFull && !gridBlocked;
-          const label = sessionPast
-            ? "Past"
-            : sessionFull
-              ? `Full - ${booked}/${OPEN_PLAY_CAPACITY}`
-              : `Open Play - ${booked}/${OPEN_PLAY_CAPACITY}`;
-          return (
-            <button
-              key={`${court.id}-${hour.id}`}
-              type="button"
-              disabled={!openSlot}
-              aria-label={`${court.name} ${label}`}
-              onClick={() => onOpenPlaySelect(openPlaySession.id)}
-              title={label}
-              className={cn(
-                "border-b border-l border-zinc-100 px-1 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.04em] transition",
-                openPlaySelected
-                  ? "bg-yellow text-black"
-                  : openSlot
-                    ? "bg-zinc-50 text-zinc-500 hover:bg-yellow/40 hover:text-zinc-800"
-                    : "bg-zinc-100 text-zinc-400",
-              )}
-            >
-              {label}
-            </button>
-          );
-        }
-
         const selectable = presentation.selectable && !gridBlocked;
-        const selected =
-          selection.plan === "court" &&
-          selection.courtId === court.id &&
-          selection.slotIds.includes(hour.id);
+        const selected = isCourtHourSelected(selection, court.id, hour.id);
 
         let label = "Available";
         if (past) label = "Past";

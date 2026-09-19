@@ -14,9 +14,10 @@ import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import {
-  COURTS,
   PLAN_META,
+  bookingCourtHours,
   bookingTotal,
+  courtsShortLabel,
   formatHour,
   formatLongDate,
   type BookingRequest,
@@ -61,10 +62,7 @@ function formatSlotTime(slotId: string) {
 }
 
 function bookingHours(booking: BookingRequest) {
-  if (booking.plan === "court") {
-    return Math.max(booking.slotIds.length, 1);
-  }
-  return 1;
+  return bookingCourtHours(booking);
 }
 
 function bookingTimeRange(booking: BookingRequest) {
@@ -334,7 +332,7 @@ function BookingCard({
   booking: BookingRequest;
   onOpen: () => void;
 }) {
-  const court = COURTS.find((item) => item.id === booking.courtId);
+  const courtName = courtsShortLabel(booking.courtId, booking.courtSlots);
   const meta = PLAN_META[booking.plan];
   const bucket = displayBucket(booking);
   const date = new Date(`${booking.date}T12:00:00`);
@@ -375,7 +373,7 @@ function BookingCard({
                 {hours} {hours === 1 ? "hour" : "hours"}
               </span>
               <span aria-hidden>·</span>
-              <span>{court?.name ?? "Court TBD"}</span>
+              <span>{courtName}</span>
             </p>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
               <span className="inline-flex items-center gap-1.5">
@@ -412,7 +410,7 @@ function BookingDetailSheet({
   booking: BookingRequest;
   onClose: () => void;
 }) {
-  const court = COURTS.find((item) => item.id === booking.courtId);
+  const courtName = courtsShortLabel(booking.courtId, booking.courtSlots);
   const meta = PLAN_META[booking.plan];
   const bucket = displayBucket(booking);
   const hours = bookingHours(booking);
@@ -481,11 +479,7 @@ function BookingDetailSheet({
               <DetailRow
                 icon={<MapPin size={16} />}
                 label="Court"
-                value={
-                  court
-                    ? `${court.name} · ${court.group}`
-                    : "Court not specified"
-                }
+                value={courtName || "Court not specified"}
               />
               <DetailRow
                 icon={<Clock3 size={16} />}
