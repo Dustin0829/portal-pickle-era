@@ -6,6 +6,7 @@ import {
   listAdminFoodMenu,
   listAdminFoodOrders,
   listMyFoodMenu,
+  listMyFoodOrders,
   patchAdminFoodMenuItem,
   patchAdminFoodOrder,
 } from "@/api/features/food/food.service";
@@ -20,6 +21,7 @@ import { isApiValidationError } from "@/api/lib/apply-field-errors-to-form";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 
 export const meFoodMenuQueryKey = ["me-food-menu"] as const;
+export const meFoodOrdersQueryKey = ["me-food-orders"] as const;
 export const adminFoodMenuQueryKey = ["admin-food-menu"] as const;
 export const adminFoodOrdersQueryKey = ["admin-food-orders"] as const;
 
@@ -31,12 +33,22 @@ export function useMyFoodMenu(enabled = true) {
   });
 }
 
+export function useMyFoodOrders(enabled = true) {
+  return useQuery({
+    queryKey: meFoodOrdersQueryKey,
+    queryFn: ({ signal }) => listMyFoodOrders(signal),
+    enabled,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useCreateMyFoodOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (values: CreateFoodOrderBody) => createMyFoodOrder(values),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: meFoodMenuQueryKey });
+      void queryClient.invalidateQueries({ queryKey: meFoodOrdersQueryKey });
       toast.success("Order placed");
     },
     onError: (error) => {

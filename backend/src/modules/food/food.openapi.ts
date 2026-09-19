@@ -34,6 +34,24 @@ export function registerFoodOpenApi(registry: OpenAPIRegistry) {
   });
 
   registry.registerPath({
+    method: "get",
+    path: "/me/food/orders",
+    operationId: "getMeFoodOrders",
+    tags: ["Food"],
+    responses: {
+      200: {
+        description: "Current user’s food orders (newest first)",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(z.array(foodOrderDtoSchema)),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
     method: "post",
     path: "/me/food/orders",
     operationId: "postMeFoodOrder",

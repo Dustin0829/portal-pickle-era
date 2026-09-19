@@ -3,15 +3,23 @@ import { Minus, Plus, UtensilsCrossed } from "lucide-react";
 import {
   useCreateMyFoodOrder,
   useMyFoodMenu,
+  useMyFoodOrders,
 } from "@/api/features/food/use-food";
-import type { FoodPayMode } from "@/api/features/food/food.schema";
+import type {
+  FoodOrderDto,
+  FoodPayMode,
+} from "@/api/features/food/food.schema";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
+import { foodOrderStatusLabel } from "@/lib/food/foodOrderStatus";
 import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { cn } from "@/lib/utils";
 
+const ACTIVE_ORDER_CAP = 20;
+
 export function FoodPage() {
   const { data, isPending, isError, refetch } = useMyFoodMenu();
+  const { data: myOrders } = useMyFoodOrders();
   const { mutate: placeOrder, isPending: isPlacing } = useCreateMyFoodOrder();
   const [qtyById, setQtyById] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState("");
@@ -53,6 +61,13 @@ export function FoodPage() {
     () => lineItems.reduce((sum, line) => sum + line.lineTotal, 0),
     [lineItems],
   );
+
+  const activeOrders = useMemo(() => {
+    const rows = (myOrders ?? []).filter((order) =>
+      ["pending", "preparing", "ready"].includes(order.status),
+    );
+    return rows.slice(0, ACTIVE_ORDER_CAP);
+  }, [myOrders]);
 
   function setQty(id: string, next: number) {
     setQtyById((prev) => {
@@ -116,7 +131,7 @@ export function FoodPage() {
             No menu items available yet.
           </div>
         ) : (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="grid items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="min-w-0">
               <div className="mb-3 border-b border-zinc-200">
                 <button
@@ -132,14 +147,14 @@ export function FoodPage() {
                   return (
                     <li
                       key={item.id}
-                      className="flex flex-col overflow-hidden border border-zinc-200 bg-white"
+                      className="flex h-full flex-col overflow-hidden border border-zinc-200 bg-white"
                     >
-                      <div className="aspect-[4/3] bg-zinc-100">
+                      <div className="aspect-[4/3] shrink-0 bg-zinc-100">
                         {item.imageUrl ? (
                           <img
                             src={item.imageUrl}
                             alt=""
-                            className="size-full object-cover"
+                            className="size-full object-cover object-center"
                           />
                         ) : (
                           <div className="grid size-full place-items-center text-zinc-300">
@@ -194,8 +209,8 @@ export function FoodPage() {
               </ul>
             </div>
 
-            <aside className="border border-zinc-200 bg-white lg:sticky lg:top-4 lg:self-start">
-              <div className="border-b border-zinc-200 px-4 py-3">
+            <aside className="flex min-h-0 flex-col border border-zinc-200 bg-white lg:min-h-full">
+              <div className="shrink-0 border-b border-zinc-200 px-4 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
                   Your order
                 </p>
@@ -206,35 +221,50 @@ export function FoodPage() {
                 </p>
               </div>
 
-              <ul className="max-h-64 space-y-3 overflow-y-auto px-4 py-3">
-                {lineItems.map((line) => (
-                  <li key={line.menuItemId} className="flex gap-2">
-                    <div className="size-10 shrink-0 overflow-hidden bg-zinc-100">
-                      {line.imageUrl ? (
-                        <img
-                          src={line.imageUrl}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid size-full place-items-center text-zinc-300">
-                          <UtensilsCrossed size={16} aria-hidden />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-zinc-900">
-                        {line.quantity}× {line.name}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {formatCentsAsPesos(line.lineTotal)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <ul className="space-y-3 px-4 py-3">
+                  {lineItems.map((line) => (
+                    <li key={line.menuItemId} className="flex gap-2">
+                      <div className="size-10 shrink-0 overflow-hidden bg-zinc-100">
+                        {line.imageUrl ? (
+                          <img
+                            src={line.imageUrl}
+                            alt=""
+                            className="size-full object-cover object-center"
+                          />
+                        ) : (
+                          <div className="grid size-full place-items-center text-zinc-300">
+                            <UtensilsCrossed size={16} aria-hidden />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-zinc-900">
+                          {line.quantity}× {line.name}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {formatCentsAsPesos(line.lineTotal)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
 
-              <div className="space-y-3 border-t border-zinc-200 px-4 py-3">
+                {activeOrders.length > 0 ? (
+                  <div className="border-t border-zinc-100 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+                      Active orders
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                      {activeOrders.map((order) => (
+                        <ActiveOrderRow key={order.id} order={order} />
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="shrink-0 space-y-3 border-t border-zinc-200 px-4 py-3">
                 <label className="flex flex-col gap-1 text-xs text-zinc-500">
                   Notes (optional)
                   <textarea
@@ -292,5 +322,37 @@ export function FoodPage() {
         )}
       </AppPageShell>
     </div>
+  );
+}
+
+function ActiveOrderRow({ order }: { order: FoodOrderDto }) {
+  const summary = order.lines
+    .map((line) => `${line.quantity}× ${line.name}`)
+    .join(", ");
+  const status = foodOrderStatusLabel(order.status);
+
+  return (
+    <li className="border border-zinc-100 bg-zinc-50 px-3 py-2">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 truncate text-xs font-semibold text-zinc-800">
+          {summary || "Order"}
+        </p>
+        <span
+          className={cn(
+            "shrink-0 text-[10px] font-bold uppercase tracking-[0.1em]",
+            order.status === "ready"
+              ? "text-green"
+              : order.status === "preparing"
+                ? "text-yellow"
+                : "text-zinc-500",
+          )}
+        >
+          {status}
+        </span>
+      </div>
+      <p className="mt-0.5 text-[11px] text-zinc-500">
+        {formatCentsAsPesos(order.totalCents)}
+      </p>
+    </li>
   );
 }
