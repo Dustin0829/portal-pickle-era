@@ -17,10 +17,8 @@ import { expandOpenPlaySessionToHourIds } from "@/lib/booking/openPlayHours";
 import {
   applyCourtHourToggle,
   applyOpenPlaySelect,
-  EMPTY_UNIFIED_SELECTION,
   type UnifiedBookingSelection,
 } from "@/lib/booking/unifiedBookingSelection";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +37,7 @@ export type UnifiedBookingScheduleProps = {
   prefer?: BookablePlan;
   openPlaySlots: TimeSlot[];
   slotStatusByKey: Map<string, "pending" | "approved">;
-  /** Kept for callers; reserved-for-OP lock is no longer applied (plan mode gates UX). */
+  /** Kept for callers; reserved-for-OP lock is no longer applied. */
   hoursBlockedByOpenPlay: Set<string>;
   bookedCountBySlotId: Map<string, number>;
   occupancyLoading: boolean;
@@ -60,7 +58,7 @@ export function UnifiedBookingSchedule({
   bookableFloor,
   selection,
   onSelectionChange,
-  prefer,
+  prefer: _prefer,
   openPlaySlots,
   slotStatusByKey,
   hoursBlockedByOpenPlay: _hoursBlockedByOpenPlay,
@@ -73,12 +71,9 @@ export function UnifiedBookingSchedule({
   onBack,
 }: UnifiedBookingScheduleProps) {
   void month;
+  void _prefer;
   void _hoursBlockedByOpenPlay;
-  const courtPrice = useFacilitySettingsStore((s) => s.plans.court.price);
   const [courtGroup, setCourtGroup] = useState<CourtGroup>("Indoor");
-  const [planMode, setPlanMode] = useState<BookablePlan>(
-    () => selection.plan ?? prefer ?? "court",
-  );
 
   const visibleCourts = useMemo(
     () => COURTS.filter((court) => court.group === courtGroup),
@@ -107,7 +102,6 @@ export function UnifiedBookingSchedule({
   const scheduleLoading = occupancyLoading || capacityLoading;
   const loadError = occupancyError || capacityError;
   const gridBlocked = Boolean(loadError) || scheduleLoading;
-  const activePlan = selection.plan ?? planMode;
 
   function slotHold(
     courtId: string,
@@ -120,16 +114,6 @@ export function UnifiedBookingSchedule({
     if (next < bookableFloor) return;
     onDateChange(next);
     onMonthChange(startOfMonth(parseDateKey(next)));
-  }
-
-  function choosePlan(mode: BookablePlan) {
-    setPlanMode(mode);
-    if (mode === "court" && selection.plan === "open-play") {
-      onSelectionChange(EMPTY_UNIFIED_SELECTION);
-    }
-    if (mode === "open-play" && selection.plan === "court") {
-      onSelectionChange(EMPTY_UNIFIED_SELECTION);
-    }
   }
 
   function shiftStrip(delta: number) {
@@ -171,27 +155,6 @@ export function UnifiedBookingSchedule({
         </div>
         <span className="size-9 shrink-0" />
       </header>
-
-      <div className="flex flex-wrap items-center gap-4 border-b border-zinc-200 bg-white px-4 py-3 sm:px-5">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
-          <input
-            type="checkbox"
-            checked={activePlan === "open-play"}
-            onChange={() => choosePlan("open-play")}
-            className="size-4 accent-zinc-900"
-          />
-          Open Play
-        </label>
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
-          <input
-            type="checkbox"
-            checked={activePlan === "court"}
-            onChange={() => choosePlan("court")}
-            className="size-4 accent-zinc-900"
-          />
-          Private Court (₱{courtPrice}/hr)
-        </label>
-      </div>
 
       <div className="flex items-center gap-1 border-b border-zinc-200 bg-white px-2 py-2 sm:px-3">
         <button
@@ -319,19 +282,16 @@ export function UnifiedBookingSchedule({
                     courts={visibleCourts}
                     date={date}
                     selection={selection}
-                    activePlan={activePlan}
                     gridBlocked={gridBlocked}
                     openPlaySession={sessionByHourId.get(hour.id) ?? null}
                     bookedCountBySlotId={bookedCountBySlotId}
                     slotHold={slotHold}
                     onCourtToggle={(courtId, hourId) => {
-                      setPlanMode("court");
                       onSelectionChange(
                         applyCourtHourToggle(selection, courtId, hourId),
                       );
                     }}
                     onOpenPlaySelect={(sessionId) => {
-                      setPlanMode("open-play");
                       onSelectionChange(
                         applyOpenPlaySelect(selection, sessionId),
                       );
@@ -362,7 +322,6 @@ function HourRow({
   courts,
   date,
   selection,
-  activePlan,
   gridBlocked,
   openPlaySession,
   bookedCountBySlotId,
@@ -374,7 +333,6 @@ function HourRow({
   courts: typeof COURTS;
   date: string;
   selection: UnifiedBookingSelection;
-  activePlan: BookablePlan;
   gridBlocked: boolean;
   openPlaySession: TimeSlot | null;
   bookedCountBySlotId: Map<string, number>;
@@ -385,7 +343,6 @@ function HourRow({
   const past = isSlotPast(date, hour.hour);
   const endLabel = formatHour(hour.hour + 1).replace(":00 ", "");
   const startLabel = formatHour(hour.hour).replace(":00 ", "");
-  const showOpenPlay = activePlan === "open-play" && openPlaySession !== null;
   const booked = openPlaySession
     ? (bookedCountBySlotId.get(openPlaySession.id) ?? 0)
     : 0;
@@ -415,13 +372,13 @@ function HourRow({
           hasCourt: true,
         });
 
-        if (hold === null && showOpenPlay && openPlaySession) {
+        if (hold === null && openPlaySession) {
           const openSlot = !sessionPast && !sessionFull && !gridBlocked;
           const label = sessionPast
             ? "Past"
             : sessionFull
-              ? `Full · ${booked}/${OPEN_PLAY_CAPACITY}`
-              : `Open Play · ${booked}/${OPEN_PLAY_CAPACITY}`;
+              ? `Full - ${booked}/${OPEN_PLAY_CAPACITY}`
+              : `Open Play - ${booked}/${OPEN_PLAY_CAPACITY}`;
           return (
             <button
               key={`${court.id}-${hour.id}`}
@@ -435,7 +392,7 @@ function HourRow({
                 openPlaySelected
                   ? "bg-yellow text-black"
                   : openSlot
-                    ? "bg-zinc-50 text-zinc-800 hover:bg-yellow/40"
+                    ? "bg-zinc-50 text-zinc-500 hover:bg-yellow/40 hover:text-zinc-800"
                     : "bg-zinc-100 text-zinc-400",
               )}
             >
@@ -470,7 +427,7 @@ function HourRow({
                 ? "bg-yellow text-black"
                 : past || !selectable
                   ? "bg-zinc-100 text-zinc-400"
-                  : "bg-white text-zinc-700 hover:bg-yellow/30",
+                  : "bg-white text-zinc-500 hover:bg-yellow/30 hover:text-zinc-800",
             )}
           >
             {label}

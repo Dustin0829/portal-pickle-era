@@ -14,6 +14,9 @@ const morningSession = {
   durationHours: 2,
 };
 
+const opLabel = (booked: number) =>
+  `Open Play - ${booked}/${OPEN_PLAY_CAPACITY}`;
+
 function renderSchedule(
   overrides: Partial<ComponentProps<typeof UnifiedBookingSchedule>> = {},
 ) {
@@ -45,37 +48,31 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
     cleanup();
   });
 
-  it("uses yellow selected date strip and has no colspan Open Play band", () => {
+  it("uses yellow chrome, no plan checkboxes, and mixes OP + Available in one grid", () => {
     const onBack = vi.fn();
     renderSchedule({ onBack });
 
     expect(screen.getByText(/select date & time/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^open play$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/private court/i)).not.toBeInTheDocument();
+
     const selectedDay = screen.getByRole("button", { name: /mon.*5.*oct/i });
     expect(selectedDay.className).toMatch(/bg-yellow/);
-    expect(selectedDay.className).not.toMatch(/bg-zinc-900/);
 
     expect(
       screen.queryByText(OPEN_PLAY_RESERVED_LABEL),
     ).not.toBeInTheDocument();
-    // No wide OP band — Private Court plan shows Available on covered hours
-    expect(screen.queryByText(/open play · 12\/30/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(opLabel(12)).length).toBe(6);
     expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("shows Open Play in hour×court cells when Open Play plan is active (Indoor)", () => {
-    const { onSelectionChange } = renderSchedule({
-      selection: { plan: "open-play", courtId: "in-1", slotIds: [] },
-      prefer: "open-play",
-    });
+  it("selects Open Play session from an inline cell (Indoor)", () => {
+    const { onSelectionChange } = renderSchedule();
 
-    const opCells = screen.getAllByText(`Open Play · 12/${OPEN_PLAY_CAPACITY}`);
-    // 2 covered hours × 3 indoor courts
-    expect(opCells.length).toBe(6);
-
-    fireEvent.click(opCells[0]!);
+    fireEvent.click(screen.getAllByText(opLabel(12))[0]!);
     expect(onSelectionChange).toHaveBeenCalledWith({
       plan: "open-play",
       courtId: "in-1",
@@ -83,36 +80,33 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
     });
   });
 
-  it("shows Open Play on Outdoor courts when Outdoor + Open Play plan", () => {
+  it("shows Open Play on Outdoor courts for covered hours", () => {
     renderSchedule({
-      selection: { plan: "open-play", courtId: "in-1", slotIds: ["07:00"] },
-      prefer: "open-play",
+      selection: {
+        plan: "open-play",
+        courtId: "in-1",
+        slotIds: ["07:00"],
+      },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /^outdoor$/i }));
     expect(screen.getByText(/crt 4/i)).toBeInTheDocument();
     expect(screen.queryByText(/crt 1/i)).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText(`Open Play · 12/${OPEN_PLAY_CAPACITY}`).length,
-    ).toBe(6);
+    expect(screen.getAllByText(opLabel(12)).length).toBe(6);
   });
 
-  it("lets Private Court plan select a court hour covered by Open Play", () => {
-    const { onSelectionChange } = renderSchedule({
-      selection: EMPTY_UNIFIED_SELECTION,
-      prefer: "court",
-    });
+  it("lets private court select on a non–Open-Play hour", () => {
+    const { onSelectionChange } = renderSchedule();
 
     const courtBtn = screen.getByRole("button", {
-      name: "Court 1 7:00 AM to 8:00 AM",
+      name: "Court 1 10:00 AM to 11:00 AM",
     });
     expect(courtBtn).toHaveTextContent(/available/i);
-    expect(courtBtn).not.toBeDisabled();
     fireEvent.click(courtBtn);
     expect(onSelectionChange).toHaveBeenCalledWith({
       plan: "court",
       courtId: "in-1",
-      slotIds: ["07:00"],
+      slotIds: ["10:00"],
     });
   });
 
@@ -120,11 +114,9 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
     renderSchedule({
       openPlaySlots: [],
       hoursBlockedByOpenPlay: new Set(),
-      selection: { plan: "open-play", courtId: "in-1", slotIds: [] },
-      prefer: "open-play",
     });
 
-    expect(screen.queryByText(/open play ·/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/open play -/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
   });
 
@@ -135,24 +127,21 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
         courtId: "in-1",
         slotIds: ["07:00"],
       },
-      prefer: "open-play",
     });
 
     const selected = screen
-      .getAllByText(`Open Play · 12/${OPEN_PLAY_CAPACITY}`)
+      .getAllByText(opLabel(12))
       .filter((el) => el.className.includes("bg-yellow"));
     expect(selected.length).toBe(6);
   });
 
   it("disables full Open Play cells", () => {
     renderSchedule({
-      selection: { plan: "open-play", courtId: "in-1", slotIds: [] },
-      prefer: "open-play",
       bookedCountBySlotId: new Map([["07:00", OPEN_PLAY_CAPACITY]]),
     });
 
     const fullCells = screen.getAllByText(
-      `Full · ${OPEN_PLAY_CAPACITY}/${OPEN_PLAY_CAPACITY}`,
+      `Full - ${OPEN_PLAY_CAPACITY}/${OPEN_PLAY_CAPACITY}`,
     );
     expect(fullCells.length).toBe(6);
     expect(fullCells[0]).toBeDisabled();
@@ -160,16 +149,11 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
 
   it("keeps private hold over Open Play presentation", () => {
     renderSchedule({
-      selection: { plan: "open-play", courtId: "in-1", slotIds: [] },
-      prefer: "open-play",
       slotStatusByKey: new Map([["in-1|07:00", "approved"]]),
     });
 
     const grid = screen.getByRole("grid", { name: /indoor court day grid/i });
     expect(within(grid).getByText(/^taken$/i)).toBeInTheDocument();
-    // Other courts still show Open Play on that hour
-    expect(
-      within(grid).getAllByText(`Open Play · 12/${OPEN_PLAY_CAPACITY}`).length,
-    ).toBeGreaterThan(0);
+    expect(within(grid).getAllByText(opLabel(12)).length).toBeGreaterThan(0);
   });
 });
