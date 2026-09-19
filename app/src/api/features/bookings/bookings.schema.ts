@@ -2,7 +2,10 @@ import { z } from "zod";
 import { nonEmptyString } from "@/api/schema/primitives.schema";
 import { paginatedQuerySchema } from "@/api/schema/primitives.schema";
 
+/** Historical + list/detail reads may still surface clinic. */
 export const bookingPlanSchema = z.enum(["court", "open-play", "clinic"]);
+/** New creates accept court | open-play only. */
+export const bookablePlanSchema = z.enum(["court", "open-play"]);
 export const bookingStatusSchema = z.enum(["pending", "approved", "rejected"]);
 export const courtIdSchema = z.enum([
   "in-1",
@@ -43,7 +46,7 @@ export const bookingOccupancyItemSchema = z.object({
 
 const bookingBodyBase = z
   .object({
-    plan: bookingPlanSchema.default("court"),
+    plan: bookablePlanSchema.default("court"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     courtId: courtIdSchema,
     slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),

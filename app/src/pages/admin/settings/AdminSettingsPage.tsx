@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { BookingPlan, TimeSlot } from "@/lib/booking/booking";
+import type { BookablePlan, TimeSlot } from "@/lib/booking/booking";
 import {
   previewCoveredHours,
   slotFromOpenPlayHour,
@@ -8,18 +8,15 @@ import {
 import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { FoodMenuSettingsSection } from "@/pages/admin/settings/FoodMenuSettingsSection";
 
-const PLAN_ORDER: BookingPlan[] = ["court", "open-play", "clinic"];
+const PLAN_ORDER: BookablePlan[] = ["court", "open-play"];
 const START_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 
-type PriceDraft = Record<BookingPlan, number>;
+type PriceDraft = Record<BookablePlan, number>;
 
-function pricesFromPlans(
-  plans: Record<BookingPlan, { price: number }>,
-): PriceDraft {
+function pricesFromPlans(plans: Record<string, { price: number }>): PriceDraft {
   return {
     court: plans.court.price,
     "open-play": plans["open-play"].price,
-    clinic: plans.clinic.price,
   };
 }
 

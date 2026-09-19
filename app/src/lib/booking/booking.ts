@@ -1,4 +1,8 @@
-export type BookingPlan = "court" | "open-play" | "clinic";
+/** Plans accepted on new creates and bookable UI pickers. */
+export type BookablePlan = "court" | "open-play";
+
+/** Full plan union including historical `clinic` rows. */
+export type BookingPlan = BookablePlan | "clinic";
 
 export type Court = {
   id: string;

@@ -10,6 +10,8 @@ const refetch = vi.fn();
 
 vi.mock("@/api/features/bookings/bookings.service", () => ({
   createAdminBooking: (...args: unknown[]) => createAdminBooking(...args),
+  listOccupancy: vi.fn(async () => []),
+  listOpenPlaySessions: vi.fn(async () => []),
 }));
 
 vi.mock("@/api/features/bookings/use-bookings", () => ({

@@ -4,6 +4,9 @@ import { paginatedQuerySchema } from "../../lib/pagination.schema.js";
 export const OPENING_DATE = "2026-10-05";
 export const OPEN_PLAY_CAPACITY = 30;
 
+/** Plans accepted on booking create (clinic retired from new bookings). */
+export const bookingPlanCreateSchema = z.enum(["court", "open-play"]);
+/** Full plan set for DTOs / occupancy (historical clinic rows may still appear). */
 export const bookingPlanApiSchema = z.enum(["court", "open-play", "clinic"]);
 export const bookingStatusSchema = z.enum(["pending", "approved", "rejected"]);
 export const courtIdSchema = z.enum(["in-1", "in-2", "in-3", "out-1", "out-2", "out-3"]);
@@ -50,7 +53,7 @@ export const bookingOccupancyItemSchema = z.object({
 
 const bookingBodyBase = z
   .object({
-    plan: bookingPlanApiSchema.default("court"),
+    plan: bookingPlanCreateSchema.default("court"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     courtId: courtIdSchema,
     slotIds: z.array(z.string().min(1).max(16)).min(1).max(24),

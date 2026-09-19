@@ -7,10 +7,12 @@ import { renderWithProviders } from "@/test/helpers/renderWithProviders";
 
 const createAdminBooking = vi.fn();
 const listOpenPlaySessions = vi.fn();
+const listOccupancy = vi.fn();
 
 vi.mock("@/api/features/bookings/bookings.service", () => ({
   createAdminBooking: (...args: unknown[]) => createAdminBooking(...args),
   listOpenPlaySessions: (...args: unknown[]) => listOpenPlaySessions(...args),
+  listOccupancy: (...args: unknown[]) => listOccupancy(...args),
 }));
 
 describe("WalkInBookingModal", () => {
@@ -19,6 +21,7 @@ describe("WalkInBookingModal", () => {
     localStorage.clear();
     createAdminBooking.mockReset();
     listOpenPlaySessions.mockReset();
+    listOccupancy.mockReset();
     useFacilitySettingsStore.getState().resetDefaults();
   });
 
@@ -28,7 +31,7 @@ describe("WalkInBookingModal", () => {
     createAdminBooking.mockResolvedValue({
       id: "b-walkin",
       plan: "court",
-      date: "2026-09-14",
+      date: "2026-10-05",
       courtId: "in-1",
       slotIds: ["08:00"],
       name: "Kai Mendoza",
@@ -39,10 +42,11 @@ describe("WalkInBookingModal", () => {
       receiptKey: null,
       receiptMimeType: null,
       status: "approved",
-      createdAt: "2026-09-14T00:00:00.000Z",
-      updatedAt: "2026-09-14T00:00:00.000Z",
+      createdAt: "2026-10-05T00:00:00.000Z",
+      updatedAt: "2026-10-05T00:00:00.000Z",
     });
     listOpenPlaySessions.mockResolvedValue([]);
+    listOccupancy.mockResolvedValue([]);
   });
 
   it("saves an approved booking using calendar defaults", async () => {
@@ -54,7 +58,7 @@ describe("WalkInBookingModal", () => {
       <WalkInBookingModal
         initial={{
           plan: "court",
-          date: "2026-09-14",
+          date: "2026-10-05",
           courtId: "in-1",
           slotIds: ["08:00"],
         }}
@@ -71,7 +75,7 @@ describe("WalkInBookingModal", () => {
     });
     expect(onCreated).toHaveBeenCalledTimes(1);
     expect(onCreated.mock.calls[0]?.[0]).toMatchObject({
-      date: "2026-09-14",
+      date: "2026-10-05",
       courtId: "in-1",
       slotIds: ["08:00"],
       status: "approved",
@@ -98,7 +102,7 @@ describe("WalkInBookingModal", () => {
       expect(screen.getByText("12/30")).toBeInTheDocument();
     });
     expect(screen.getByText("30/30 · Full")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/^Court$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/clinics & coaching/i)).not.toBeInTheDocument();
 
     const fullSession = screen.getByRole("button", {
       name: /4:00–6:00 PM/i,

@@ -5,14 +5,7 @@ import {
 } from "@/api/features/bookings/bookings.service";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { useLenis } from "lenis/react";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  Upload,
-  X,
-} from "lucide-react";
+import { Check, Copy, Upload, X } from "lucide-react";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -21,36 +14,34 @@ import {
   useState,
 } from "react";
 import {
-  COURTS,
-  OPEN_PLAY_CAPACITY,
   PAYMENT,
   PLAN_META,
-  SLOTS,
   allowsMultiSlot,
   bookingTotal,
   courtLabel,
-  dateKey,
-  OPENING_DATE,
   earliestBookableDateKey,
   formatLongDate,
-  isSlotPast,
   parseDateKey,
-  type BookingPlan,
+  type BookablePlan,
 } from "@/lib/booking/booking";
 import { coveredHoursForOpenPlaySlotIds } from "@/lib/booking/openPlayHours";
 import { useOpenPlaySlots } from "@/lib/booking/openPlaySlots";
 import { usePlanUnitPrice } from "@/lib/booking/planPrices";
+import {
+  EMPTY_UNIFIED_SELECTION,
+  toConfirmSelection,
+  type UnifiedBookingSelection,
+} from "@/lib/booking/unifiedBookingSelection";
 import { walletAppliedAndRemaining } from "@/lib/booking/walletBookingPay";
 import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { useMeWallet } from "@/api/features/wallet/use-wallet";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
-import { Skeleton } from "@/components/ui/skeleton";
-import { resolveCourtHourPresentation } from "@/lib/booking/courtSlotPresentation";
+import { UnifiedBookingSchedule } from "@/components/booking/UnifiedBookingSchedule";
 
 type Step = "schedule" | "pay" | "done";
 
-type BookingModalPreset = {
+export type BookingModalPreset = {
   date: string;
   courtId: string;
   slotIds: string[];
@@ -58,15 +49,12 @@ type BookingModalPreset = {
 };
 
 type BookingModalProps = {
-  plan: BookingPlan | null;
+  prefer?: BookablePlan;
   preset?: BookingModalPreset;
   onClose: () => void;
 };
 
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
-export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
-  const open = plan !== null;
+export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
   const lenis = useLenis();
   const { user, status: authStatus } = useAuth();
   const isAuthenticated = authStatus === "authenticated";
@@ -79,8 +67,15 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
     startOfMonth(parseDateKey(initialDate)),
   );
   const [date, setDate] = useState(() => initialDate);
-  const [courtId, setCourtId] = useState(() => preset?.courtId ?? "");
-  const [slotIds, setSlotIds] = useState<string[]>(() => preset?.slotIds ?? []);
+  const [selection, setSelection] = useState<UnifiedBookingSelection>(() =>
+    preset?.courtId && preset.slotIds?.length
+      ? {
+          plan: "court",
+          courtId: preset.courtId,
+          slotIds: preset.slotIds,
+        }
+      : EMPTY_UNIFIED_SELECTION,
+  );
   const [name, setName] = useState(() => user?.name ?? "");
   const [email, setEmail] = useState(() => user?.email ?? "");
   const [referenceId, setReferenceId] = useState("");
@@ -96,13 +91,43 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
     Set<string>
   >(() => new Set());
   const [occupancyLoading, setOccupancyLoading] = useState(false);
+  const [occupancyError, setOccupancyError] = useState("");
   const [bookedCountBySlotId, setBookedCountBySlotId] = useState<
     Map<string, number>
   >(() => new Map());
   const [capacityLoading, setCapacityLoading] = useState(false);
   const [capacityError, setCapacityError] = useState("");
   const openPlaySlots = useOpenPlaySlots();
+
+  const plan = selection.plan;
+  const courtId = selection.courtId;
+  const slotIds = selection.slotIds;
   const isOpenPlay = plan === "open-play";
+  const meta = plan ? PLAN_META[plan] : null;
+  const unitPrice = usePlanUnitPrice(plan ?? prefer ?? "court");
+  const multiSlot = plan ? allowsMultiSlot(plan) : false;
+  const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
+  const walletPay = isAuthenticated
+    ? walletAppliedAndRemaining({
+        balanceCents: wallet?.balanceCents ?? 0,
+        totalPesos: total,
+      })
+    : null;
+  const remainingCashPesos = walletPay
+    ? walletPay.remainingCashCents / 100
+    : total;
+  const needsReceipt = !walletPay || walletPay.remainingCashCents > 0;
+  const displayLabels = isOpenPlay
+    ? openPlaySlots
+        .filter((slot) => slotIds.includes(slot.id))
+        .map((slot) => slot.label)
+    : slotIds.map((id) => {
+        const hour = Number(id.slice(0, 2));
+        if (Number.isNaN(hour)) return id;
+        const suffix = hour >= 12 ? "PM" : "AM";
+        const h = hour % 12 === 0 ? 12 : hour % 12;
+        return `${h}:00 ${suffix}`;
+      });
 
   useEffect(() => {
     if (!user) return;
@@ -111,9 +136,9 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }, [user]);
 
   useEffect(() => {
-    if (!open || !date) return;
     const controller = new AbortController();
     setOccupancyLoading(true);
+    setOccupancyError("");
     void listOccupancy({ date }, controller.signal)
       .then((items) => {
         const next = new Map<string, "pending" | "approved">();
@@ -126,7 +151,6 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
           for (const slotId of item.slotIds) {
             const key = `${item.courtId}|${slotId}`;
             const existing = next.get(key);
-            // Approved wins over pending when both somehow exist.
             if (existing === "approved") continue;
             next.set(key, item.status);
           }
@@ -139,15 +163,17 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       .catch(() => {
         setSlotStatusByKey(new Map());
         setHoursBlockedByOpenPlay(new Set());
+        setOccupancyError(
+          "Couldn’t load court availability. Check your connection and try again.",
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setOccupancyLoading(false);
       });
     return () => controller.abort();
-  }, [open, date]);
+  }, [date]);
 
   useEffect(() => {
-    if (!open || !date || !isOpenPlay) return;
     const controller = new AbortController();
     setCapacityLoading(true);
     setCapacityError("");
@@ -169,31 +195,9 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
         if (!controller.signal.aborted) setCapacityLoading(false);
       });
     return () => controller.abort();
-  }, [open, date, isOpenPlay]);
-
-  function slotHold(
-    court: string,
-    slotId: string,
-  ): "pending" | "approved" | null {
-    return slotStatusByKey.get(`${court}|${slotId}`) ?? null;
-  }
-
-  function courtHasOpenHour(court: string) {
-    if (!plan || isOpenPlay) return false;
-    return SLOTS[plan].some(
-      (slot) =>
-        !isSlotPast(date, slot.hour) &&
-        slotHold(court, slot.id) === null &&
-        !hoursBlockedByOpenPlay.has(slot.id),
-    );
-  }
+  }, [date]);
 
   useEffect(() => {
-    if (!open) {
-      lenis?.start();
-      return;
-    }
-
     lenis?.stop();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -209,52 +213,11 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       window.removeEventListener("keydown", onKeyDown);
       lenis?.start();
     };
-  }, [open, onClose, lenis]);
-
-  const days = useMemo(() => monthCells(month), [month]);
-  const earliestMonth = startOfMonth(parseDateKey(bookableFloor));
-  const meta = plan ? PLAN_META[plan] : null;
-  const unitPrice = usePlanUnitPrice(plan ?? "court");
-  const slots = plan ? (isOpenPlay ? openPlaySlots : SLOTS[plan]) : [];
-  const multiSlot = plan ? allowsMultiSlot(plan) : false;
-  const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
-  const walletPay = isAuthenticated
-    ? walletAppliedAndRemaining({
-        balanceCents: wallet?.balanceCents ?? 0,
-        totalPesos: total,
-      })
-    : null;
-  const remainingCashPesos = walletPay
-    ? walletPay.remainingCashCents / 100
-    : total;
-  const needsReceipt = !walletPay || walletPay.remainingCashCents > 0;
-  const selectedLabels = slots
-    .filter((slot) => slotIds.includes(slot.id))
-    .map((slot) => slot.label);
-  const indoor = COURTS.filter((court) => court.group === "Indoor");
-  const outdoor = COURTS.filter((court) => court.group === "Outdoor");
-  const scheduleLoading = isOpenPlay
-    ? capacityLoading || occupancyLoading
-    : occupancyLoading;
+  }, [onClose, lenis]);
 
   function selectDate(next: string) {
     setDate(next);
-    setCourtId("");
-    setSlotIds([]);
-  }
-
-  function selectCourt(next: string) {
-    setCourtId(next);
-    setSlotIds([]);
-  }
-
-  function toggleSlot(id: string) {
-    if (isOpenPlay) setCourtId("in-1");
-    setSlotIds((current) => {
-      if (!multiSlot) return current[0] === id ? [] : [id];
-      if (current.includes(id)) return current.filter((slot) => slot !== id);
-      return [...current, id];
-    });
+    setSelection(EMPTY_UNIFIED_SELECTION);
   }
 
   function onReceipt(event: ChangeEvent<HTMLInputElement>) {
@@ -274,24 +237,15 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }
 
   function onBook() {
-    const resolvedCourtId = isOpenPlay ? courtId || "in-1" : courtId;
-    if (isOpenPlay && !courtId) setCourtId("in-1");
-    if (!resolvedCourtId || slotIds.length === 0) return;
+    const confirmed = toConfirmSelection(date, selection);
+    if (!confirmed) return;
     setStep("pay");
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const resolvedCourtId = plan === "open-play" ? courtId || "in-1" : courtId;
-    if (
-      !plan ||
-      !resolvedCourtId ||
-      slotIds.length === 0 ||
-      !name.trim() ||
-      !email.trim()
-    ) {
-      return;
-    }
+    const confirmed = toConfirmSelection(date, selection);
+    if (!confirmed || !name.trim() || !email.trim()) return;
     if (needsReceipt) {
       if (!referenceId.trim() || !receiptName || !receiptFile) return;
     }
@@ -304,18 +258,16 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
           ? await uploadReceiptFile(receiptFile)
           : null;
       await createPublicBooking({
-        plan,
-        date,
-        courtId: resolvedCourtId as
+        plan: confirmed.plan,
+        date: confirmed.date,
+        courtId: confirmed.courtId as
           | "in-1"
           | "in-2"
           | "in-3"
           | "out-1"
           | "out-2"
           | "out-3",
-        slotIds: slots
-          .filter((slot) => slotIds.includes(slot.id))
-          .map((slot) => slot.id),
+        slotIds: confirmed.slotIds,
         name: name.trim(),
         email: email.trim().toLowerCase(),
         ...(needsReceipt
@@ -343,7 +295,13 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
     }
   }
 
-  if (!open || !plan || !meta) return null;
+  const scheduleBlocked =
+    occupancyLoading ||
+    capacityLoading ||
+    Boolean(occupancyError) ||
+    Boolean(capacityError);
+  const canContinue =
+    Boolean(toConfirmSelection(date, selection)) && !scheduleBlocked;
 
   return (
     <div
@@ -404,288 +362,43 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
         ) : null}
 
         {step === "schedule" ? (
-          <div className="-mt-[60px] grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-            <div className="flex min-h-0 flex-col px-5 pt-6 sm:px-7 sm:pt-7 lg:border-r lg:border-white/10 lg:pr-6">
-              <div className="shrink-0 pr-10">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-yellow">
-                  {meta.eyebrow}
-                </p>
-                <h2
-                  id="booking-modal-title"
-                  className="display mt-2 text-[28px] text-white sm:text-[34px]"
-                >
-                  {meta.title}
-                </h2>
-                <p className="mt-1 text-sm text-white/60">
-                  ₱{unitPrice} {meta.unit}.{" "}
-                  {isOpenPlay
-                    ? "Pick a day and session."
-                    : "Pick a day, court, and time."}
-                </p>
-                {dateKey(new Date()) < OPENING_DATE ? (
-                  <p className="mt-2 text-xs leading-relaxed text-yellow/90">
-                    This is advance booking for October onwards. Earliest date:{" "}
-                    {formatLongDate(OPENING_DATE)}.
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="mt-5 min-h-0 flex-1">
-                <img
-                  src="/image.png"
-                  alt="Pickle Era court map: indoor courts 1 to 3, outdoor courts 4 to 6"
-                  className="h-36 w-full object-contain object-center lg:h-full"
-                />
-              </div>
-            </div>
-
-            <div className="flex min-h-0 flex-col px-5 pb-5 pt-4 sm:px-7 sm:pb-7 lg:pt-7">
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white">
-                    {month.toLocaleDateString("en-PH", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      className="grid h-8 w-8 place-items-center text-white/70 transition hover:text-yellow disabled:text-white/20"
-                      onClick={() => setMonth(addMonths(month, -1))}
-                      disabled={month <= earliestMonth}
-                      aria-label="Previous month"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      className="grid h-8 w-8 place-items-center text-white/70 transition hover:text-yellow"
-                      onClick={() => setMonth(addMonths(month, 1))}
-                      aria-label="Next month"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                  {WEEKDAYS.map((day) => (
-                    <span key={day} className="py-1">
-                      {day}
-                    </span>
-                  ))}
-                  {days.map((day, index) => {
-                    if (!day)
-                      return <span key={`pad-${index}`} className="h-9" />;
-                    const key = dateKey(day);
-                    const disabled = key < bookableFloor;
-                    const selected = key === date;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => selectDate(key)}
-                        className={`grid h-9 place-items-center text-[13px] transition ${
-                          selected
-                            ? "bg-yellow font-bold text-black"
-                            : disabled
-                              ? "text-white/20"
-                              : "text-white hover:bg-white/10"
-                        }`}
-                      >
-                        {day.getDate()}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
-                  {isOpenPlay
-                    ? `Sessions · ${formatLongDate(date)}`
-                    : `Available courts · ${formatLongDate(date)}`}
-                </p>
-
-                {scheduleLoading ? (
-                  <div
-                    className="mt-3 space-y-3"
-                    aria-busy="true"
-                    aria-label={
-                      isOpenPlay
-                        ? "Loading sessions"
-                        : "Loading courts and times"
-                    }
-                  >
-                    {!isOpenPlay ? (
-                      <div className="grid grid-cols-3 gap-2">
-                        {Array.from({ length: 3 }, (_, index) => (
-                          <Skeleton
-                            key={`court-sk-${index}`}
-                            className="h-10 rounded-lg bg-white/10"
-                          />
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="grid grid-cols-2 gap-2">
-                      {Array.from({ length: 4 }, (_, index) => (
-                        <Skeleton
-                          key={`slot-sk-${index}`}
-                          className="h-10 rounded-lg bg-white/10"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : isOpenPlay ? (
-                  <>
-                    {capacityError ? (
-                      <p className="mt-3 text-sm text-red-400" role="alert">
-                        {capacityError}
-                      </p>
-                    ) : null}
-                    <p className="mt-3 min-h-5 text-sm text-white/45">
-                      {capacityError
-                        ? "Sessions unavailable until capacity loads."
-                        : "Pick an open session."}
-                    </p>
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {slots.map((slot) => {
-                        const booked = bookedCountBySlotId.get(slot.id) ?? 0;
-                        const full = booked >= OPEN_PLAY_CAPACITY;
-                        const past = isSlotPast(date, slot.hour);
-                        const openSlot = !capacityError && !past && !full;
-                        const selected = slotIds.includes(slot.id);
-                        return (
-                          <button
-                            key={slot.id}
-                            type="button"
-                            disabled={!openSlot}
-                            onClick={() => toggleSlot(slot.id)}
-                            className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
-                              selected
-                                ? "bg-yellow text-black"
-                                : openSlot
-                                  ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                                  : "border border-white/10 text-white/25"
-                            }`}
-                          >
-                            <span>{slot.label}</span>
-                            <span
-                              className={`text-[9px] font-bold tracking-[0.16em] ${
-                                selected
-                                  ? "text-black/70"
-                                  : openSlot
-                                    ? "text-white/55"
-                                    : "text-white/30"
-                              }`}
-                            >
-                              {`${booked}/${OPEN_PLAY_CAPACITY}${full ? " · Full" : ""}`}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <CourtGroup
-                      label="Indoor"
-                      courts={indoor}
-                      selected={courtId}
-                      onSelect={selectCourt}
-                      hasOpening={courtHasOpenHour}
-                    />
-                    <CourtGroup
-                      label="Outdoor"
-                      courts={outdoor}
-                      selected={courtId}
-                      onSelect={selectCourt}
-                      hasOpening={courtHasOpenHour}
-                    />
-
-                    <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-white">
-                      Time slots
-                    </p>
-                    <p className="mt-1 min-h-5 text-sm text-white/45">
-                      {!courtId
-                        ? "Select a court to see open times."
-                        : multiSlot
-                          ? "Tap hours to add or remove."
-                          : "Pick an open session."}
-                    </p>
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {slots.map((slot) => {
-                        const hold = courtId
-                          ? slotHold(courtId, slot.id)
-                          : null;
-                        const past = courtId
-                          ? isSlotPast(date, slot.hour)
-                          : true;
-                        const openPlayHold = hoursBlockedByOpenPlay.has(
-                          slot.id,
-                        );
-                        const presentation = resolveCourtHourPresentation({
-                          hold,
-                          openPlayHold,
-                          past,
-                          hasCourt: Boolean(courtId),
-                        });
-                        const selected = slotIds.includes(slot.id);
-                        return (
-                          <button
-                            key={slot.id}
-                            type="button"
-                            disabled={!presentation.selectable}
-                            onClick={() => toggleSlot(slot.id)}
-                            className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
-                              selected
-                                ? "bg-yellow text-black"
-                                : presentation.className
-                            }`}
-                          >
-                            <span
-                              className={
-                                presentation.approved &&
-                                !presentation.reservedForOpenPlay
-                                  ? "line-through"
-                                  : undefined
-                              }
-                            >
-                              {presentation.label ?? slot.label}
-                            </span>
-                            {presentation.pending ? (
-                              <span className="text-[9px] font-bold tracking-[0.16em] text-amber-300">
-                                Pending
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-
+          <div className="-mt-[60px] flex min-h-0 flex-1 flex-col">
+            <UnifiedBookingSchedule
+              date={date}
+              month={month}
+              onMonthChange={setMonth}
+              onDateChange={selectDate}
+              bookableFloor={bookableFloor}
+              selection={selection}
+              onSelectionChange={setSelection}
+              prefer={prefer}
+              openPlaySlots={openPlaySlots}
+              slotStatusByKey={slotStatusByKey}
+              hoursBlockedByOpenPlay={hoursBlockedByOpenPlay}
+              bookedCountBySlotId={bookedCountBySlotId}
+              occupancyLoading={occupancyLoading}
+              capacityLoading={capacityLoading}
+              occupancyError={occupancyError}
+              capacityError={capacityError}
+            />
+            <div className="shrink-0 border-t border-white/10 px-5 py-4 sm:px-7">
               <button
                 type="button"
-                disabled={
-                  scheduleLoading ||
-                  Boolean(isOpenPlay && capacityError) ||
-                  (!isOpenPlay && !courtId) ||
-                  slotIds.length === 0
-                }
+                disabled={!canContinue}
                 onClick={onBook}
-                className="mt-4 h-12 w-full shrink-0 bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35"
+                className="h-12 w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35"
               >
-                {slotIds.length > 1
-                  ? `Book · ${slotIds.length} hrs · ₱${total}`
-                  : `Book · ₱${total || unitPrice}`}
+                {plan === "court" && slotIds.length > 1
+                  ? `Continue · ${slotIds.length} hrs · ₱${total}`
+                  : plan
+                    ? `Continue · ₱${total || unitPrice}`
+                    : `Continue · ₱${unitPrice}`}
               </button>
             </div>
           </div>
         ) : null}
 
-        {step === "pay" ? (
+        {step === "pay" && plan && meta ? (
           <form
             onSubmit={onSubmit}
             className="-mt-[60px] grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"
@@ -702,7 +415,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                   Pay to book.
                 </h2>
                 <p className="mt-1 text-sm text-white/60">
-                  {courtLabel(courtId)} · {formatLongDate(date)}
+                  {meta.title} · {courtLabel(courtId)} · {formatLongDate(date)}
                 </p>
 
                 <div className="mt-4 sm:mt-5">
@@ -734,7 +447,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                     </p>
                   ) : null}
                   <ul className="mt-2 space-y-0.5 text-sm text-white/55">
-                    {selectedLabels.map((label) => (
+                    {displayLabels.map((label) => (
                       <li key={label}>{label}</li>
                     ))}
                   </ul>
@@ -744,7 +457,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
               <div className="mt-5 hidden lg:block">
                 <img
                   src="/image.png"
-                  alt="Pickle Era court map"
+                  alt="Pickle Era court map: indoor courts 1 to 3, outdoor courts 4 to 6"
                   className="h-64 w-full object-contain object-center"
                 />
               </div>
@@ -869,52 +582,6 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   );
 }
 
-function CourtGroup({
-  label,
-  courts,
-  selected,
-  onSelect,
-  hasOpening,
-}: {
-  label: string;
-  courts: typeof COURTS;
-  selected: string;
-  onSelect: (id: string) => void;
-  hasOpening: (courtId: string) => boolean;
-}) {
-  return (
-    <div className="mt-4">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-        {label}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {courts.map((court) => {
-          const available = hasOpening(court.id);
-          const active = selected === court.id;
-          return (
-            <button
-              key={court.id}
-              type="button"
-              disabled={!available}
-              onClick={() => onSelect(court.id)}
-              className={`h-10 px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition ${
-                active
-                  ? "bg-yellow text-black"
-                  : available
-                    ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                    : "border border-white/10 text-white/25"
-              }`}
-            >
-              {court.name}
-              {!available ? " · Full" : ""}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function PaymentQr({ value }: { value: string }) {
   const cells = useMemo(() => {
     const size = 21;
@@ -976,24 +643,4 @@ function PaymentQr({ value }: { value: string }) {
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function addMonths(date: Date, count: number) {
-  return new Date(date.getFullYear(), date.getMonth() + count, 1);
-}
-
-function monthCells(month: Date) {
-  const first = startOfMonth(month);
-  const offset = first.getDay();
-  const lastDate = new Date(
-    month.getFullYear(),
-    month.getMonth() + 1,
-    0,
-  ).getDate();
-  const cells: Array<Date | null> = Array.from({ length: offset }, () => null);
-  for (let day = 1; day <= lastDate; day += 1) {
-    cells.push(new Date(month.getFullYear(), month.getMonth(), day));
-  }
-  while (cells.length < 42) cells.push(null);
-  return cells;
 }

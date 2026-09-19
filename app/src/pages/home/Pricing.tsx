@@ -7,7 +7,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { BookingButton } from "@/components/marketing/BookingButton";
-import { PLAN_META, type BookingPlan } from "@/lib/booking/booking";
+import { PLAN_META, type BookablePlan } from "@/lib/booking/booking";
 import { usePlanPrices } from "@/lib/booking/planPrices";
 
 const planCopy: Array<{
@@ -19,7 +19,7 @@ const planCopy: Array<{
   points: string[];
   cta: string;
   featured: boolean;
-  plan: BookingPlan;
+  plan: BookablePlan;
 }> = [
   {
     n: "01",
@@ -35,7 +35,7 @@ const planCopy: Array<{
     ],
     cta: "Book a court",
     featured: true,
-    plan: "court" as const,
+    plan: "court",
   },
   {
     n: "02",
@@ -51,23 +51,7 @@ const planCopy: Array<{
     ],
     cta: "Join open play",
     featured: false,
-    plan: "open-play" as const,
-  },
-  {
-    n: "03",
-    image: "/pricing-clinics.jpg",
-    title: "Clinics & Coaching",
-    body: "Learn, improve, and level up.",
-    unit: "/ session",
-    points: [
-      "Beginner to advanced sessions",
-      "Led by experienced coaches",
-      "Small group training",
-      "Technique, strategy, and game play",
-    ],
-    cta: "View clinics",
-    featured: false,
-    plan: "clinic" as const,
+    plan: "open-play",
   },
 ];
 
@@ -213,7 +197,7 @@ export function Pricing() {
             </p>
           </div>
 
-          <div className="grid items-stretch gap-4 md:grid-cols-3 lg:col-span-8">
+          <div className="grid items-stretch gap-4 md:grid-cols-2 lg:col-span-8">
             {planCopy.map((plan) => {
               const displayPrice = String(
                 savedPlans[plan.plan]?.price ?? PLAN_META[plan.plan].price,

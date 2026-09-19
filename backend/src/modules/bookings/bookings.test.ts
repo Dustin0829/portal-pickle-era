@@ -66,6 +66,45 @@ test("public booking schema rejects bad date", () => {
   );
 });
 
+test("public booking schema rejects clinic plan on create", () => {
+  assert.equal(
+    createPublicBookingBodySchema.safeParse({
+      plan: "clinic",
+      date: "2026-10-05",
+      courtId: "in-1",
+      slotIds: ["08:00"],
+      name: "Ada",
+      email: "ada@example.com",
+    }).success,
+    false,
+  );
+});
+
+test("public booking schema accepts court and open-play", () => {
+  assert.equal(
+    createPublicBookingBodySchema.safeParse({
+      plan: "court",
+      date: "2026-10-05",
+      courtId: "in-1",
+      slotIds: ["08:00"],
+      name: "Ada",
+      email: "ada@example.com",
+    }).success,
+    true,
+  );
+  assert.equal(
+    createPublicBookingBodySchema.safeParse({
+      plan: "open-play",
+      date: "2026-10-05",
+      courtId: "in-1",
+      slotIds: ["07:00"],
+      name: "Ada",
+      email: "ada@example.com",
+    }).success,
+    true,
+  );
+});
+
 test("occupancy query requires date or from+to", () => {
   assert.equal(occupancyQuerySchema.safeParse({}).success, false);
   assert.equal(occupancyQuerySchema.safeParse({ date: "2026-10-05" }).success, true);
