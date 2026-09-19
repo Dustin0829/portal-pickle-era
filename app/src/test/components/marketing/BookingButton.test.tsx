@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { BookingButton } from "@/components/marketing/BookingButton";
@@ -14,7 +14,9 @@ describe("BookingButton", () => {
 
     expect(screen.getByText(/select date & time/i)).toBeInTheDocument();
     expect(screen.queryByText(/private court/i)).not.toBeInTheDocument();
-    expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
+    });
   });
 
   it("renders children label when provided", () => {

@@ -268,7 +268,7 @@ export function BookingsPage() {
             </div>
           ) : (
             <>
-              <ul className="flex flex-col gap-3">
+              <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
                 {pageItems.map((item) => (
                   <BookingCard
                     key={item.id}
@@ -346,11 +346,11 @@ function BookingCard({
   const hours = bookingHours(booking);
 
   return (
-    <li>
+    <li className="border-b border-zinc-100 last:border-b-0">
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-stretch overflow-hidden rounded-2xl border border-zinc-200/80 bg-white text-left transition hover:border-yellow/40"
+        className="flex w-full items-stretch overflow-hidden bg-white text-left transition hover:bg-zinc-50/80"
       >
         <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-5 text-center sm:w-20">
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">

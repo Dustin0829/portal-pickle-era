@@ -1,11 +1,14 @@
 import { prisma } from "../../app/prisma.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
+import { resolveWaitlistImageUrl } from "./waitlist.images.js";
 import {
+  matchUserImageKey,
   normalizeWaitlistEmail,
   toWaitlistEntryDto,
   waitlistPublicSelect,
+  type WaitlistPublicRow,
 } from "./waitlist.mapper.js";
-import type { CreateWaitlistBody, ListWaitlistQuery } from "./waitlist.schema.js";
+import type { CreateWaitlistBody, ListWaitlistQuery, WaitlistEntryDto } from "./waitlist.schema.js";
 
 const allowedSortFields = ["createdAt", "email"] as const;
 
@@ -31,7 +34,7 @@ export async function upsertWaitlistEntry(body: CreateWaitlistBody) {
     select: waitlistPublicSelect,
   });
 
-  return toWaitlistEntryDto(row);
+  return toWaitlistEntryDto(row, null);
 }
 
 export async function listWaitlistEntries(query: ListWaitlistQuery) {
@@ -57,7 +60,28 @@ export async function listWaitlistEntries(query: ListWaitlistQuery) {
   ]);
 
   return {
-    items: rows.map(toWaitlistEntryDto),
+    items: await enrichWaitlistRowsWithImages(rows),
     meta: buildPaginationMeta(query.page, query.limit, total),
   };
+}
+
+/** Batch-load users by email and attach resolved image URLs (null on miss/failure). */
+export async function enrichWaitlistRowsWithImages(
+  rows: WaitlistPublicRow[],
+): Promise<WaitlistEntryDto[]> {
+  if (rows.length === 0) return [];
+
+  const emails = [...new Set(rows.map((r) => normalizeWaitlistEmail(r.email)))];
+  const users = await prisma.user.findMany({
+    where: { email: { in: emails } },
+    select: { email: true, image: true },
+  });
+
+  return Promise.all(
+    rows.map(async (row) => {
+      const imageKey = matchUserImageKey(row.email, users);
+      const imageUrl = await resolveWaitlistImageUrl(imageKey);
+      return toWaitlistEntryDto(row, imageUrl);
+    }),
+  );
 }

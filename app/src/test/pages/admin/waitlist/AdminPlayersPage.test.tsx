@@ -13,6 +13,7 @@ vi.mock("@/api/features/waitlist/use-waitlist", () => ({
           email: "ada@example.com",
           phone: null,
           source: "newsletter",
+          imageUrl: "https://cdn.example.com/ada.png",
           createdAt: "2026-09-01T12:00:00.000Z",
           updatedAt: "2026-09-01T12:00:00.000Z",
         },
@@ -22,6 +23,7 @@ vi.mock("@/api/features/waitlist/use-waitlist", () => ({
           email: "ben@example.com",
           phone: null,
           source: "booking",
+          imageUrl: null,
           createdAt: "2026-09-10T12:00:00.000Z",
           updatedAt: "2026-09-10T12:00:00.000Z",
         },
@@ -47,5 +49,16 @@ describe("AdminPlayersPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Newsletter")).toBeInTheDocument();
     expect(screen.getByText("Booking")).toBeInTheDocument();
+  });
+
+  it("renders profile image when imageUrl is present", () => {
+    const { container } = renderWithProviders(<AdminPlayersPage />, {
+      route: "/admin/players",
+    });
+
+    const img = container.querySelector(
+      'img[src="https://cdn.example.com/ada.png"]',
+    );
+    expect(img).toBeTruthy();
   });
 });

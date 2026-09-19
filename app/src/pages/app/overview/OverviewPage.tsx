@@ -114,7 +114,7 @@ export function OverviewPage() {
               }
             />
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
               {recent.map((item) => (
                 <RecentRequestRow key={item.id} booking={item} />
               ))}
@@ -180,7 +180,7 @@ function RecentRequestRow({ booking }: { booking: BookingRequest }) {
   const pending = booking.status === "pending";
 
   return (
-    <li className="flex items-stretch gap-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
+    <li className="flex items-stretch gap-0 border-b border-zinc-100 last:border-b-0">
       <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-4 text-center sm:w-20">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">
           {month}

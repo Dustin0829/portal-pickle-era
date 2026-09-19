@@ -124,13 +124,13 @@ export function AdminFoodOrdersPage() {
             No orders match this filter.
           </div>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
             {visible.map((order) => {
               const next = NEXT_STATUS[order.status];
               return (
                 <li
                   key={order.id}
-                  className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-5"
+                  className="border-b border-zinc-100 p-4 last:border-b-0 sm:p-5"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">

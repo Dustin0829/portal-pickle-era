@@ -255,14 +255,17 @@ export function AdminDashboardPage() {
               No activity in this range yet.
             </div>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
               {activities.map((item) => (
-                <li key={item.id}>
+                <li
+                  key={item.id}
+                  className="border-b border-zinc-100 last:border-b-0"
+                >
                   {item.href ? (
                     <Link
                       to={item.href}
                       className={cn(
-                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5 transition hover:border-yellow/50",
+                        "flex items-start justify-between gap-3 px-4 py-3.5 transition hover:bg-zinc-50/80",
                         item.tone === "yellow" &&
                           "border-l-[3px] border-l-yellow",
                         item.tone === "green" &&
@@ -274,7 +277,7 @@ export function AdminDashboardPage() {
                   ) : (
                     <div
                       className={cn(
-                        "flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-3.5",
+                        "flex items-start justify-between gap-3 px-4 py-3.5",
                         item.tone === "yellow" &&
                           "border-l-[3px] border-l-yellow",
                         item.tone === "green" &&

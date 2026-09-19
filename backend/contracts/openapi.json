@@ -272,6 +272,10 @@
               "booking"
             ]
           },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -287,6 +291,7 @@
           "email",
           "phone",
           "source",
+          "imageUrl",
           "createdAt",
           "updatedAt"
         ]
@@ -3049,6 +3054,10 @@
                             "booking"
                           ]
                         },
+                        "imageUrl": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time"
@@ -3064,6 +3073,7 @@
                         "email",
                         "phone",
                         "source",
+                        "imageUrl",
                         "createdAt",
                         "updatedAt"
                       ]
@@ -3317,6 +3327,10 @@
                                   "booking"
                                 ]
                               },
+                              "imageUrl": {
+                                "type": "string",
+                                "nullable": true
+                              },
                               "createdAt": {
                                 "type": "string",
                                 "format": "date-time"
@@ -3332,6 +3346,7 @@
                               "email",
                               "phone",
                               "source",
+                              "imageUrl",
                               "createdAt",
                               "updatedAt"
                             ]
