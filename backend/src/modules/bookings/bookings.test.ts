@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { UnauthorizedError } from "../../lib/errors.js";
 import {
+  generateTempPassword,
+  planInviteCredentialsEmail,
+} from "../../lib/auth/create-student-user.js";
+import { isResendConfigured } from "../../lib/resend/client.js";
+import {
   isBeforeOpeningDate,
   normalizeSlotIds,
   planFromApi,
@@ -18,6 +23,7 @@ import {
   occupancyQuerySchema,
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
+  patchBookingResponseSchema,
 } from "./bookings.schema.js";
 import {
   aggregateOpenPlayCounts,
@@ -185,4 +191,67 @@ test("listMyBookings requires session", async () => {
       return error instanceof UnauthorizedError && error.statusCode === 401;
     },
   );
+});
+
+test("planInviteCredentialsEmail: new user + configured → send", () => {
+  assert.equal(
+    planInviteCredentialsEmail({ createdNewUser: true, resendConfigured: true }),
+    "send",
+  );
+});
+
+test("planInviteCredentialsEmail: existing user skips invite (second approve no resend)", () => {
+  assert.equal(
+    planInviteCredentialsEmail({ createdNewUser: false, resendConfigured: true }),
+    "skip_existing_user",
+  );
+  assert.equal(
+    planInviteCredentialsEmail({ createdNewUser: false, resendConfigured: false }),
+    "skip_existing_user",
+  );
+});
+
+test("planInviteCredentialsEmail: missing env skips send", () => {
+  assert.equal(
+    planInviteCredentialsEmail({ createdNewUser: true, resendConfigured: false }),
+    "skip_not_configured",
+  );
+  assert.equal(isResendConfigured(), false);
+});
+
+test("generateTempPassword is non-empty URL-safe string", () => {
+  const password = generateTempPassword();
+  assert.ok(password.length >= 16);
+  assert.equal(password.includes("+"), false);
+  assert.equal(password.includes("/"), false);
+});
+
+test("patchBookingResponseSchema accepts inviteEmailWarning (email fail keeps approved shape)", () => {
+  const base = {
+    id: "bk_1",
+    plan: "court" as const,
+    date: "2026-10-05",
+    courtId: "in-1",
+    slotIds: ["08:00"],
+    name: "Ada",
+    email: "ada@example.com",
+    userId: "user_1",
+    referenceId: "REF",
+    receiptName: null,
+    receiptKey: null,
+    receiptMimeType: null,
+    status: "approved" as const,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  assert.equal(patchBookingResponseSchema.safeParse(base).success, true);
+  assert.equal(
+    patchBookingResponseSchema.safeParse({
+      ...base,
+      inviteEmailWarning: "Invite email failed: rate limited",
+    }).success,
+    true,
+  );
+  assert.equal(patchBookingBodySchema.safeParse({ status: "rejected" }).success, true);
 });

@@ -100,6 +100,11 @@ export const patchBookingBodySchema = z
   })
   .strict();
 
+/** PATCH approve may include a non-fatal invite email warning. */
+export const patchBookingResponseSchema = bookingDtoSchema.extend({
+  inviteEmailWarning: z.string().optional(),
+});
+
 export const listUsersQuerySchema = paginatedQuerySchema.extend({
   role: z.enum(["student", "admin"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
@@ -118,4 +123,5 @@ export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
 export type OpenPlaySessionItem = z.infer<typeof openPlaySessionItemSchema>;
 export type OpenPlaySessionsQuery = z.infer<typeof openPlaySessionsQuerySchema>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
+export type PatchBookingResponse = z.infer<typeof patchBookingResponseSchema>;
 export type ListUsersQuery = z.input<typeof listUsersQuerySchema>;
