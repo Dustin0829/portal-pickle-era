@@ -140,6 +140,7 @@ export async function sendPlayerInviteEmail(input: {
 }): Promise<SendEmailResult> {
   const portalUrl = resolvePublicAppUrl();
   const loginUrl = `${portalUrl}/login`;
+  const forgotUrl = `${portalUrl}/forgot-password`;
   const subject = "Your Pickle Era portal login";
   const text = [
     "Your booking was approved. You can sign in to the player portal with these credentials:",
@@ -148,7 +149,8 @@ export async function sendPlayerInviteEmail(input: {
     `Email: ${input.to}`,
     `Temporary password: ${input.tempPassword}`,
     "",
-    "Please change your password after you log in (Profile or forgot-password).",
+    "Please change your password after you log in.",
+    `If you lose this password, reset it here: ${forgotUrl}`,
   ].join("\n");
 
   const html = `
@@ -158,7 +160,36 @@ export async function sendPlayerInviteEmail(input: {
       <li><strong>Email:</strong> ${escapeHtml(input.to)}</li>
       <li><strong>Temporary password:</strong> ${escapeHtml(input.tempPassword)}</li>
     </ul>
-    <p>Please change your password after you log in (Profile or forgot-password).</p>
+    <p>Please change your password after you log in.</p>
+    <p>If you lose this password, <a href="${forgotUrl}">reset it here</a>.</p>
+  `.trim();
+
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
+/** Password reset link for forgot-password (SPA URL with token). */
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  token: string;
+}): Promise<SendEmailResult> {
+  const portalUrl = resolvePublicAppUrl();
+  const resetUrl = `${portalUrl}/reset-password?token=${encodeURIComponent(input.token)}`;
+  const subject = "Reset your Pickle Era password";
+  const text = [
+    "We received a request to reset your Pickle Era password.",
+    "",
+    `Open this link to choose a new password: ${resetUrl}`,
+    "",
+    "If you did not request this, you can ignore this email.",
+    "",
+    "— Pickle Era",
+  ].join("\n");
+
+  const html = `
+    <p>We received a request to reset your Pickle Era password.</p>
+    <p><a href="${resetUrl}">Choose a new password</a></p>
+    <p>If you did not request this, you can ignore this email.</p>
+    <p>— Pickle Era</p>
   `.trim();
 
   return sendEmail({ to: input.to, subject, html, text });

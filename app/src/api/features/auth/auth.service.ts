@@ -1,11 +1,15 @@
 import api from "@/api/client";
 import {
   authUserSchema,
+  forgotPasswordBodySchema,
   loginBodySchema,
   patchMeBodySchema,
+  resetPasswordBodySchema,
   signupBodySchema,
+  type ForgotPasswordBody,
   type LoginBody,
   type PatchMeBody,
+  type ResetPasswordBody,
   type SignupBody,
 } from "@/api/features/auth/auth.schema";
 import type { AuthUser } from "@/api/features/auth/auth.types";
@@ -45,4 +49,14 @@ export async function patchMe(input: PatchMeBody) {
   const body = patchMeBodySchema.parse(input);
   const { data } = await api.patch("/auth/me", body);
   return toAuthUser(data);
+}
+
+export async function forgotPassword(input: ForgotPasswordBody) {
+  const body = forgotPasswordBodySchema.parse(input);
+  await api.post("/auth/forgot-password", body);
+}
+
+export async function resetPassword(input: ResetPasswordBody) {
+  const body = resetPasswordBodySchema.parse(input);
+  await api.post("/auth/reset-password", body);
 }

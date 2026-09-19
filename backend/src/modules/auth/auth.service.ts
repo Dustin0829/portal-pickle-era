@@ -3,6 +3,7 @@ import { APIError } from "better-auth";
 import { fromNodeHeaders } from "better-auth/node";
 import { prisma } from "../../app/prisma.js";
 import { ConflictError, UnauthorizedError } from "../../lib/errors.js";
+import { resolvePublicAppUrl } from "../../lib/resend/client.js";
 import { auth } from "./auth.js";
 import { isUserRole, type AuthUser } from "./auth.constants.js";
 import { normalizeEmail, toUserDto, userPublicSelect } from "./auth.mapper.js";
@@ -151,4 +152,56 @@ export async function getUserDtoById(userId: string): Promise<UserDto> {
     select: userPublicSelect,
   });
   return toUserDto(user);
+}
+
+export async function requestPasswordResetWithBetterAuth(
+  body: { email: string },
+  req: Request,
+): Promise<{ ok: true; message: string }> {
+  const email = normalizeEmail(body.email);
+  const redirectTo = `${resolvePublicAppUrl()}/reset-password`;
+
+  try {
+    await callWithHeaders(() =>
+      auth.api.requestPasswordReset({
+        body: {
+          email,
+          redirectTo,
+        },
+        headers: fromNodeHeaders(req.headers),
+        returnHeaders: true,
+      }),
+    );
+  } catch (error) {
+    // Enumeration-safe: treat most failures as generic success for the client.
+    // Re-throw only hard misconfiguration (reset disabled).
+    if (error instanceof APIError) {
+      const message = error.message || "";
+      if (/isn't enabled|RESET_PASSWORD_DISABLED/i.test(message)) {
+        mapAuthError(error);
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    message: "If an account exists for that email, check your inbox for a reset link.",
+  };
+}
+
+export async function resetPasswordWithBetterAuth(
+  body: { token: string; newPassword: string },
+  req: Request,
+): Promise<{ ok: true }> {
+  await callWithHeaders(() =>
+    auth.api.resetPassword({
+      body: {
+        token: body.token,
+        newPassword: body.newPassword,
+      },
+      headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
+    }),
+  );
+  return { ok: true };
 }

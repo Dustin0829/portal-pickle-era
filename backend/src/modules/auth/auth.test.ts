@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { isUserRole } from "./auth.constants.js";
-import { loginBodySchema, signupBodySchema } from "./auth.schema.js";
+import {
+  forgotPasswordBodySchema,
+  loginBodySchema,
+  resetPasswordBodySchema,
+  signupBodySchema,
+} from "./auth.schema.js";
 import { normalizeEmail, toUserDto } from "./auth.mapper.js";
 import { toAuthUser } from "./auth.service.js";
 
@@ -67,4 +72,24 @@ test("patch me schema is name-only strict", async () => {
   const { patchMeBodySchema } = await import("./auth.schema.js");
   assert.equal(patchMeBodySchema.safeParse({ name: "New" }).success, true);
   assert.equal(patchMeBodySchema.safeParse({ name: "New", role: "admin" }).success, false);
+});
+
+test("forgot password schema requires email", () => {
+  assert.equal(forgotPasswordBodySchema.safeParse({ email: "x" }).success, false);
+  assert.equal(forgotPasswordBodySchema.safeParse({ email: "ada@example.com" }).success, true);
+});
+
+test("reset password schema requires token and password length 8+", () => {
+  assert.equal(
+    resetPasswordBodySchema.safeParse({ token: "t", newPassword: "short" }).success,
+    false,
+  );
+  assert.equal(
+    resetPasswordBodySchema.safeParse({ token: "", newPassword: "password1" }).success,
+    false,
+  );
+  assert.equal(
+    resetPasswordBodySchema.safeParse({ token: "t", newPassword: "password1" }).success,
+    true,
+  );
 });

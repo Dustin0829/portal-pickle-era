@@ -2,11 +2,19 @@ import type { Request, Response } from "express";
 import { sendSuccess } from "../../lib/api-response.js";
 import { UnauthorizedError } from "../../lib/errors.js";
 import { appendSetCookieHeaders, clearLegacySessionCookie } from "./auth.cookies.js";
-import type { LoginBody, PatchMeBody, SignupBody } from "./auth.schema.js";
+import type {
+  ForgotPasswordBody,
+  LoginBody,
+  PatchMeBody,
+  ResetPasswordBody,
+  SignupBody,
+} from "./auth.schema.js";
 import {
   getUserDtoById,
   loginWithBetterAuth,
   logoutWithBetterAuth,
+  requestPasswordResetWithBetterAuth,
+  resetPasswordWithBetterAuth,
   signupWithBetterAuth,
   updateMe,
 } from "./auth.service.js";
@@ -48,4 +56,14 @@ export async function patchMeController(req: Request, res: Response) {
   }
   const user = await updateMe(req.authUser.id, req.body as PatchMeBody);
   return sendSuccess(res, user, "ok", 200);
+}
+
+export async function forgotPasswordController(req: Request, res: Response) {
+  const result = await requestPasswordResetWithBetterAuth(req.body as ForgotPasswordBody, req);
+  return sendSuccess(res, result, "ok", 200);
+}
+
+export async function resetPasswordController(req: Request, res: Response) {
+  const result = await resetPasswordWithBetterAuth(req.body as ResetPasswordBody, req);
+  return sendSuccess(res, result, "ok", 200);
 }

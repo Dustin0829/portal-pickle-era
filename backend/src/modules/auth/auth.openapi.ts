@@ -2,8 +2,10 @@ import type { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { standardErrorResponses, successResponseSchema } from "../../lib/openapi-helpers.js";
 import {
+  forgotPasswordBodySchema,
   loginBodySchema,
   patchMeBodySchema,
+  resetPasswordBodySchema,
   signupBodySchema,
   userDtoSchema,
 } from "./auth.schema.js";
@@ -57,6 +59,57 @@ export function registerAuthOpenApi(registry: OpenAPIRegistry) {
     responses: {
       200: {
         description: "Logged out",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(z.object({ ok: z.literal(true) })),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/auth/forgot-password",
+    operationId: "postAuthForgotPassword",
+    tags: ["Auth"],
+    request: {
+      body: {
+        content: { "application/json": { schema: forgotPasswordBodySchema } },
+      },
+    },
+    responses: {
+      200: {
+        description: "Generic success (enumeration-safe)",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(
+              z.object({
+                ok: z.literal(true),
+                message: z.string(),
+              }),
+            ),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/auth/reset-password",
+    operationId: "postAuthResetPassword",
+    tags: ["Auth"],
+    request: {
+      body: {
+        content: { "application/json": { schema: resetPasswordBodySchema } },
+      },
+    },
+    responses: {
+      200: {
+        description: "Password updated",
         content: {
           "application/json": {
             schema: successResponseSchema(z.object({ ok: z.literal(true) })),

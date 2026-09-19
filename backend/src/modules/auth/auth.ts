@@ -7,6 +7,7 @@ import {
   resolveBetterAuthUrl,
 } from "../../app/env.js";
 import { prisma } from "../../app/prisma.js";
+import { sendPasswordResetEmail } from "../../lib/resend/client.js";
 
 const cookieDomain = env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
 
@@ -21,6 +22,10 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    sendResetPassword: async ({ user, token }) => {
+      // Prefer SPA link with token (API baseURL is not the marketing app).
+      await sendPasswordResetEmail({ to: user.email, token });
+    },
   },
   user: {
     additionalFields: {

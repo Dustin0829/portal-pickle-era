@@ -11,6 +11,7 @@ import {
   getMe,
   login as loginRequest,
   logout as logoutRequest,
+  resetPassword as resetPasswordRequest,
   signup as signupRequest,
 } from "@/api/features/auth/auth.service";
 import type { AuthUser } from "@/api/features/auth/auth.types";
@@ -27,7 +28,10 @@ type AuthContextValue = {
     password: string;
   }) => Promise<AuthUser>;
   logout: () => Promise<void>;
-  resetPassword: (input: { email: string; password: string }) => Promise<void>;
+  resetPassword: (input: {
+    token: string;
+    newPassword: string;
+  }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -90,11 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(
-    async (_input: { email: string; password: string }) => {
-      void _input;
-      throw new Error(
-        "Password reset is not available yet. Contact the facility.",
-      );
+    async (input: { token: string; newPassword: string }) => {
+      await resetPasswordRequest(input);
     },
     [],
   );
