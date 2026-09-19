@@ -31,6 +31,15 @@ export async function createMyFoodOrder(input: CreateFoodOrderBody) {
   return foodOrderDtoSchema.parse(data);
 }
 
+export async function listMyFoodOrders(signal?: AbortSignal) {
+  const { data } = await api.get("/me/food/orders", { signal });
+  const payload = data as { items?: unknown } | unknown;
+  const items = Array.isArray(payload)
+    ? payload
+    : ((payload as { items?: unknown }).items ?? []);
+  return z.array(foodOrderDtoSchema).parse(items);
+}
+
 export async function listAdminFoodMenu(signal?: AbortSignal) {
   const { data } = await api.get("/admin/food/menu", { signal });
   const payload = data as { items?: unknown } | unknown;

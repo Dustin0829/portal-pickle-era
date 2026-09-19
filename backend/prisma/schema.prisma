@@ -136,8 +136,12 @@ model Booking {
   id                 String        @id @default(cuid())
   plan               BookingPlan
   date               String
+  /** Primary / first court — kept for indexes and Open Play placeholder. */
   courtId            String        @map("court_id")
+  /** Union of hours (Open Play session ids, or all court-hour ids). */
   slotIds            String[]      @map("slot_ids")
+  /** Court plan segments: [{ courtId, slotIds }]. Null/legacy rows use courtId+slotIds. */
+  courtSlots         Json?         @map("court_slots")
   name               String
   email              String
   userId             String?       @map("user_id")

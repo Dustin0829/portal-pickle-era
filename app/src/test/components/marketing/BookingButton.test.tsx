@@ -1,10 +1,24 @@
-import { screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingButton } from "@/components/marketing/BookingButton";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
 
+vi.mock("@/api/features/bookings/bookings.service", () => ({
+  listOccupancy: vi.fn().mockResolvedValue([]),
+  listOpenPlaySessions: vi.fn().mockResolvedValue([]),
+  createPublicBooking: vi.fn(),
+}));
+
 describe("BookingButton", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("defaults label to Book a court and opens booking modal on opening month", async () => {
     const user = userEvent.setup();
     renderWithProviders(<BookingButton />);

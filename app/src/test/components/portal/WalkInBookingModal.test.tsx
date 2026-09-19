@@ -34,6 +34,7 @@ describe("WalkInBookingModal", () => {
       date: "2026-10-05",
       courtId: "in-1",
       slotIds: ["08:00"],
+      courtSlots: [{ courtId: "in-1", slotIds: ["08:00"] }],
       name: "Kai Mendoza",
       email: "walk-in@pickleera.local",
       userId: null,
@@ -41,6 +42,7 @@ describe("WalkInBookingModal", () => {
       receiptName: "Walk-in / cash",
       receiptKey: null,
       receiptMimeType: null,
+      walletAppliedCents: 0,
       status: "approved",
       createdAt: "2026-10-05T00:00:00.000Z",
       updatedAt: "2026-10-05T00:00:00.000Z",
@@ -73,6 +75,14 @@ describe("WalkInBookingModal", () => {
     await waitFor(() => {
       expect(createAdminBooking).toHaveBeenCalledTimes(1);
     });
+    expect(createAdminBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan: "court",
+        date: "2026-10-05",
+        courtSlots: [{ courtId: "in-1", slotIds: ["08:00"] }],
+        name: "Kai Mendoza",
+      }),
+    );
     expect(onCreated).toHaveBeenCalledTimes(1);
     expect(onCreated.mock.calls[0]?.[0]).toMatchObject({
       date: "2026-10-05",
@@ -99,16 +109,15 @@ describe("WalkInBookingModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByText(/12\/30/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/12\/30/)).toBeInTheDocument();
     });
-    expect(screen.getAllByText(/full - 30\/30/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/full - 30\/30/i)).toBeInTheDocument();
     expect(screen.queryByText(/clinics & coaching/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/private court/i)).not.toBeInTheDocument();
 
-    const fullSession = screen.getAllByRole("button", {
+    const fullSession = screen.getByRole("button", {
       name: /full - 30\/30/i,
-    })[0];
-    expect(fullSession).toBeDefined();
+    });
     expect(fullSession).toBeDisabled();
   });
 

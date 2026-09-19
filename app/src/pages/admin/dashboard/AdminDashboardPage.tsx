@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ClipboardList, PhilippinePeso, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminBookings } from "@/api/features/bookings/use-bookings";
+import { useAdminFoodOrders } from "@/api/features/food/use-food";
 import { useAdminWaitlistList } from "@/api/features/waitlist/use-waitlist";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalRangeSelect } from "@/components/portal/PortalRangeSelect";
@@ -15,12 +16,14 @@ import {
 } from "@/components/portal/portalRange";
 import {
   PLAN_META,
+  bookingCourtHours,
   bookingTotal,
   dateKey,
   type BookingRequest,
 } from "@/lib/booking/booking";
 import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
+import { foodOrderStatusLabel } from "@/lib/food/foodOrderStatus";
 import { cn } from "@/lib/utils";
 
 type RangePreset = PortalRangeValue;
@@ -35,8 +38,7 @@ type ActivityItem = {
 };
 
 function bookingHours(booking: BookingRequest) {
-  if (booking.plan === "court") return Math.max(booking.slotIds.length, 1);
-  return 1;
+  return bookingCourtHours(booking);
 }
 
 function bookingAmount(booking: BookingRequest) {
@@ -96,6 +98,11 @@ export function AdminDashboardPage() {
     order: "desc",
   });
   const waitlistQuery = useAdminWaitlistList("");
+  const foodOrdersQuery = useAdminFoodOrders({
+    page: 1,
+    limit: 40,
+    order: "desc",
+  });
 
   const bookings = useMemo(
     () => (bookingsQuery.data?.items ?? []).map(bookingDtoToRequest),
@@ -110,6 +117,11 @@ export function AdminDashboardPage() {
         name: item.name,
       })),
     [waitlistQuery.data?.items],
+  );
+
+  const foodOrders = useMemo(
+    () => foodOrdersQuery.data?.items ?? [],
+    [foodOrdersQuery.data?.items],
   );
 
   const rangedBookings = useMemo(
@@ -158,11 +170,33 @@ export function AdminDashboardPage() {
       });
     }
 
+    for (const order of foodOrders) {
+      const status = foodOrderStatusLabel(order.status);
+      const who = order.userName ?? order.userEmail ?? "Player";
+      const summary = order.lines
+        .map((line) => `${line.quantity}× ${line.name}`)
+        .slice(0, 2)
+        .join(", ");
+      items.push({
+        id: `food-${order.id}`,
+        at: order.updatedAt || order.createdAt,
+        title: `Food order · ${status}`,
+        detail: `${who}${summary ? ` · ${summary}` : ""}`,
+        tone:
+          order.status === "ready"
+            ? "green"
+            : order.status === "preparing"
+              ? "yellow"
+              : "zinc",
+        href: "/admin/food",
+      });
+    }
+
     return items
       .filter((item) => inRange(createdDay(item.at), start, end))
       .sort((a, b) => b.at.localeCompare(a.at))
       .slice(0, 10);
-  }, [bookings, start, end]);
+  }, [bookings, foodOrders, start, end]);
 
   const rangeLabel =
     PORTAL_RANGE_OPTIONS.find((item) => item.value === preset)?.label ??
@@ -171,11 +205,21 @@ export function AdminDashboardPage() {
   const statsPending =
     (bookingsQuery.isPending && !bookingsQuery.data) ||
     (waitlistQuery.isPending && !waitlistQuery.data);
-  const activityPending = bookingsQuery.isPending && !bookingsQuery.data;
+  const activityPending =
+    bookingsQuery.isPending &&
+    !bookingsQuery.data &&
+    foodOrdersQuery.isPending &&
+    !foodOrdersQuery.data;
   const bookingsError =
     bookingsQuery.isError && !bookingsQuery.data
       ? "Could not load bookings."
       : null;
+  const foodError =
+    foodOrdersQuery.isError && !foodOrdersQuery.data
+      ? "Could not load food orders."
+      : null;
+  const activityError =
+    bookingsError && foodError ? "Could not load recent activity." : null;
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -243,53 +287,60 @@ export function AdminDashboardPage() {
 
           {activityPending ? (
             <PortalListSkeleton rows={5} />
-          ) : bookingsError ? (
+          ) : activityError ? (
             <div
               className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500"
               role="alert"
             >
-              {bookingsError}
+              {activityError}
             </div>
           ) : activities.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-8 text-sm text-zinc-500">
               No activity in this range yet.
             </div>
           ) : (
-            <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
-              {activities.map((item) => (
-                <li
-                  key={item.id}
-                  className="border-b border-zinc-100 last:border-b-0"
-                >
-                  {item.href ? (
-                    <Link
-                      to={item.href}
-                      className={cn(
-                        "flex items-start justify-between gap-3 px-4 py-3.5 transition hover:bg-zinc-50/80",
-                        item.tone === "yellow" &&
-                          "border-l-[3px] border-l-yellow",
-                        item.tone === "green" &&
-                          "border-l-[3px] border-l-green",
-                      )}
-                    >
-                      <ActivityBody item={item} />
-                    </Link>
-                  ) : (
-                    <div
-                      className={cn(
-                        "flex items-start justify-between gap-3 px-4 py-3.5",
-                        item.tone === "yellow" &&
-                          "border-l-[3px] border-l-yellow",
-                        item.tone === "green" &&
-                          "border-l-[3px] border-l-green",
-                      )}
-                    >
-                      <ActivityBody item={item} />
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              {bookingsError || foodError ? (
+                <p className="text-xs text-zinc-500" role="status">
+                  {bookingsError ?? foodError} Showing what is available.
+                </p>
+              ) : null}
+              <ul className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
+                {activities.map((item) => (
+                  <li
+                    key={item.id}
+                    className="border-b border-zinc-100 last:border-b-0"
+                  >
+                    {item.href ? (
+                      <Link
+                        to={item.href}
+                        className={cn(
+                          "flex items-start justify-between gap-3 px-4 py-3.5 transition hover:bg-zinc-50/80",
+                          item.tone === "yellow" &&
+                            "border-l-[3px] border-l-yellow",
+                          item.tone === "green" &&
+                            "border-l-[3px] border-l-green",
+                        )}
+                      >
+                        <ActivityBody item={item} />
+                      </Link>
+                    ) : (
+                      <div
+                        className={cn(
+                          "flex items-start justify-between gap-3 px-4 py-3.5",
+                          item.tone === "yellow" &&
+                            "border-l-[3px] border-l-yellow",
+                          item.tone === "green" &&
+                            "border-l-[3px] border-l-green",
+                        )}
+                      >
+                        <ActivityBody item={item} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </section>
       </AppPageShell>

@@ -10,6 +10,7 @@ import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import {
   PLAN_META,
   bookingTotal,
+  courtsShortLabel,
   dateKey,
   earliestBookableDateKey,
   parseDateKey,
@@ -22,6 +23,7 @@ import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import {
   EMPTY_UNIFIED_SELECTION,
   toConfirmSelection,
+  totalSelectedCourtHours,
   type UnifiedBookingSelection,
 } from "@/lib/booking/unifiedBookingSelection";
 import { UnifiedBookingSchedule } from "@/components/booking/UnifiedBookingSchedule";
@@ -54,14 +56,30 @@ export function WalkInBookingModal({
   const [month, setMonth] = useState(() => startOfMonth(parseDateKey(date)));
   const [selection, setSelection] = useState<UnifiedBookingSelection>(() => {
     if (initial?.slotIds?.length && initial.courtId) {
+      const courtId = initial.courtId as
+        | "in-1"
+        | "in-2"
+        | "in-3"
+        | "out-1"
+        | "out-2"
+        | "out-3";
       return {
         plan: initial.plan === "open-play" ? "open-play" : "court",
-        courtId: initial.courtId,
+        courtId,
         slotIds: initial.slotIds,
+        courtSlots:
+          initial.plan === "open-play"
+            ? []
+            : [{ courtId, slotIds: initial.slotIds }],
       };
     }
     if (initial?.plan === "open-play") {
-      return { plan: "open-play", courtId: "in-1", slotIds: [] };
+      return {
+        plan: "open-play",
+        courtId: "in-1",
+        slotIds: [],
+        courtSlots: [],
+      };
     }
     return EMPTY_UNIFIED_SELECTION;
   });
@@ -86,7 +104,7 @@ export function WalkInBookingModal({
 
   const plan = selection.plan;
   const openPlaySlots = useOpenPlaySlots();
-  const hours = Math.max(selection.slotIds.length, 1);
+  const hours = totalSelectedCourtHours(selection);
   const unitPrice = usePlanUnitPrice(plan ?? "court");
   const total = plan
     ? bookingTotal(plan, plan === "court" ? hours : 1, unitPrice)
@@ -192,14 +210,18 @@ export function WalkInBookingModal({
       const dto = await createAdminBooking({
         plan: payload.plan,
         date: payload.date,
-        courtId: payload.courtId as
-          | "in-1"
-          | "in-2"
-          | "in-3"
-          | "out-1"
-          | "out-2"
-          | "out-3",
-        slotIds: payload.slotIds,
+        ...(payload.courtSlots?.length
+          ? { courtSlots: payload.courtSlots }
+          : {
+              courtId: payload.courtId as
+                | "in-1"
+                | "in-2"
+                | "in-3"
+                | "out-1"
+                | "out-2"
+                | "out-3",
+              slotIds: payload.slotIds,
+            }),
         name: name.trim(),
         email: email.trim().toLowerCase() || "walk-in@pickleera.local",
         referenceId: referenceId.trim() || "WALK-IN",
@@ -312,7 +334,11 @@ export function WalkInBookingModal({
 
             <p className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
               {plan
-                ? `Total ${PLAN_META[plan].title}: ₱${total.toLocaleString("en-PH")} · marked approved on create`
+                ? `Total ${PLAN_META[plan].title}${
+                    plan === "court" && selection.courtSlots.length
+                      ? ` · ${courtsShortLabel(selection.courtId, selection.courtSlots)}`
+                      : ""
+                  }: ₱${total.toLocaleString("en-PH")} · marked approved on create`
                 : "Select an Open Play session or court hours."}
             </p>
 

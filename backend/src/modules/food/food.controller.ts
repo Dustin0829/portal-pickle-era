@@ -13,12 +13,17 @@ import {
   listAdminFoodOrders,
   listAdminMenu,
   listAvailableMenu,
+  listMyFoodOrders,
   patchFoodOrderStatus,
   patchMenuItem,
 } from "./food.service.js";
 
 export async function listMyMenuController(_req: Request, res: Response) {
   return sendSuccess(res, await listAvailableMenu(), "ok", 200);
+}
+
+export async function listMyFoodOrdersController(req: Request, res: Response) {
+  return sendSuccess(res, await listMyFoodOrders(req.authUser), "ok", 200);
 }
 
 export async function createMyFoodOrderController(req: Request, res: Response) {

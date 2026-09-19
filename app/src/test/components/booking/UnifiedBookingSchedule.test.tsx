@@ -43,12 +43,12 @@ function renderSchedule(
   return { onSelectionChange, props };
 }
 
-describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
+describe("UnifiedBookingSchedule merged Open Play + multi-court", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("uses yellow chrome, no plan checkboxes, and mixes OP + Available in one grid", () => {
+  it("uses yellow chrome and one merged Open Play control per session", () => {
     const onBack = vi.fn();
     renderSchedule({ onBack });
 
@@ -62,37 +62,40 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
     expect(
       screen.queryByText(OPEN_PLAY_RESERVED_LABEL),
     ).not.toBeInTheDocument();
-    expect(screen.getAllByText(opLabel(12)).length).toBe(6);
+    expect(screen.getAllByText(opLabel(12))).toHaveLength(1);
+    expect(screen.getByText("7AM–9AM")).toBeInTheDocument();
     expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("selects Open Play session from an inline cell (Indoor)", () => {
+  it("selects Open Play from the merged band", () => {
     const { onSelectionChange } = renderSchedule();
 
-    fireEvent.click(screen.getAllByText(opLabel(12))[0]!);
+    fireEvent.click(screen.getByText(opLabel(12)));
     expect(onSelectionChange).toHaveBeenCalledWith({
       plan: "open-play",
       courtId: "in-1",
       slotIds: ["07:00"],
+      courtSlots: [],
     });
   });
 
-  it("shows Open Play on Outdoor courts for covered hours", () => {
+  it("shows one Open Play control on Outdoor as well", () => {
     renderSchedule({
       selection: {
         plan: "open-play",
         courtId: "in-1",
         slotIds: ["07:00"],
+        courtSlots: [],
       },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /^outdoor$/i }));
     expect(screen.getByText(/crt 4/i)).toBeInTheDocument();
     expect(screen.queryByText(/crt 1/i)).not.toBeInTheDocument();
-    expect(screen.getAllByText(opLabel(12)).length).toBe(6);
+    expect(screen.getAllByText(opLabel(12))).toHaveLength(1);
   });
 
   it("lets private court select on a non–Open-Play hour", () => {
@@ -107,7 +110,46 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
       plan: "court",
       courtId: "in-1",
       slotIds: ["10:00"],
+      courtSlots: [{ courtId: "in-1", slotIds: ["10:00"] }],
     });
+  });
+
+  it("accumulates a second court without clearing the first", () => {
+    const { onSelectionChange } = renderSchedule({
+      selection: {
+        plan: "court",
+        courtId: "in-1",
+        slotIds: ["10:00"],
+        courtSlots: [{ courtId: "in-1", slotIds: ["10:00"] }],
+      },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Court 2 10:00 AM to 11:00 AM" }),
+    );
+    expect(onSelectionChange).toHaveBeenCalledWith({
+      plan: "court",
+      courtId: "in-1",
+      slotIds: ["10:00"],
+      courtSlots: [
+        { courtId: "in-1", slotIds: ["10:00"] },
+        { courtId: "in-2", slotIds: ["10:00"] },
+      ],
+    });
+  });
+
+  it("clears private selection when switching Indoor/Outdoor", () => {
+    const { onSelectionChange } = renderSchedule({
+      selection: {
+        plan: "court",
+        courtId: "in-1",
+        slotIds: ["10:00"],
+        courtSlots: [{ courtId: "in-1", slotIds: ["10:00"] }],
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^outdoor$/i }));
+    expect(onSelectionChange).toHaveBeenCalledWith(EMPTY_UNIFIED_SELECTION);
   });
 
   it("shows only private rows when there are no Open Play sessions", () => {
@@ -120,40 +162,40 @@ describe("UnifiedBookingSchedule yellow + inline Open Play", () => {
     expect(screen.getAllByText(/^available$/i).length).toBeGreaterThan(0);
   });
 
-  it("marks all covered Open Play cells selected for a multi-hour session", () => {
+  it("marks the single merged Open Play control selected", () => {
     renderSchedule({
       selection: {
         plan: "open-play",
         courtId: "in-1",
         slotIds: ["07:00"],
+        courtSlots: [],
       },
     });
 
     const selected = screen
       .getAllByText(opLabel(12))
       .filter((el) => el.className.includes("bg-yellow"));
-    expect(selected.length).toBe(6);
+    expect(selected).toHaveLength(1);
   });
 
-  it("disables full Open Play cells", () => {
+  it("disables full Open Play band", () => {
     renderSchedule({
       bookedCountBySlotId: new Map([["07:00", OPEN_PLAY_CAPACITY]]),
     });
 
-    const fullCells = screen.getAllByText(
+    const fullCell = screen.getByText(
       `Full - ${OPEN_PLAY_CAPACITY}/${OPEN_PLAY_CAPACITY}`,
     );
-    expect(fullCells.length).toBe(6);
-    expect(fullCells[0]).toBeDisabled();
+    expect(fullCell).toBeDisabled();
   });
 
-  it("keeps private hold over Open Play presentation", () => {
+  it("keeps one Open Play band even when a covered hour has a private hold", () => {
     renderSchedule({
       slotStatusByKey: new Map([["in-1|07:00", "approved"]]),
     });
 
     const grid = screen.getByRole("grid", { name: /indoor court day grid/i });
-    expect(within(grid).getByText(/^taken$/i)).toBeInTheDocument();
-    expect(within(grid).getAllByText(opLabel(12)).length).toBeGreaterThan(0);
+    expect(within(grid).queryByText(/^taken$/i)).not.toBeInTheDocument();
+    expect(within(grid).getAllByText(opLabel(12))).toHaveLength(1);
   });
 });

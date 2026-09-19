@@ -26,14 +26,17 @@ import {
   bookingPublicSelect,
   isBeforeOpeningDate,
   normalizeBookingEmail,
-  normalizeSlotIds,
+  parseCourtSlots,
   planFromApi,
   toBookingDto,
-  toOccupancyItem,
+  toOccupancyItems,
+  totalCourtHours,
+  unionSlotIds,
 } from "./bookings.mapper.js";
 import {
   OPENING_DATE,
   OPEN_PLAY_CAPACITY,
+  type CourtSlot,
   type CreateAdminBookingBody,
   type CreatePublicBookingBody,
   type ListBookingsQuery,
@@ -140,13 +143,15 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
 
   const email = normalizeBookingEmail(authUser?.email || body.email);
   const name = body.name.trim() || authUser?.name || "";
-  const slotIds = normalizeSlotIds(body.slotIds);
-  if (slotIds.length === 0) {
-    throw new ValidationError("At least one slot is required");
+  const courtSlots = resolveCourtSlotsFromBody(body);
+  if (courtSlots.length === 0) {
+    throw new ValidationError("At least one court slot is required");
   }
 
   const plan = planFromApi(body.plan);
-  const totalCents = bookingTotalCents(plan, slotIds.length, body.unitPricePesos);
+  const hourCount =
+    plan === "open_play" ? unionSlotIds(courtSlots).length : totalCourtHours(courtSlots);
+  const totalCents = bookingTotalCents(plan, hourCount, body.unitPricePesos);
   let walletAppliedCents = 0;
   if (authUser && body.walletAppliedCents !== undefined) {
     const wallet = await prisma.wallet.upsert({
@@ -164,8 +169,6 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
 
   const remainingCents = totalCents - walletAppliedCents;
   if (remainingCents > 0 && !body.receiptKey?.trim()) {
-    // Keep soft: public flow historically allowed empty receipt in some paths;
-    // only enforce when wallet partial and cash remains — require reference or receipt.
     if (!body.referenceId?.trim() && !body.receiptName?.trim()) {
       throw new ValidationError("Add GCash reference or receipt for the remaining balance");
     }
@@ -174,8 +177,7 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
   const booking = await createBookingRow({
     plan,
     date: body.date,
-    courtId: body.courtId,
-    slotIds,
+    courtSlots,
     name,
     email,
     userId: authUser?.id ?? null,
@@ -201,7 +203,6 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
 
   const dto = toBookingDto(booking);
 
-  // Best-effort: payment-received ack must not fail the booking create.
   const referenceId = body.referenceId?.trim();
   void sendBookingPaymentReceivedEmail({
     to: email,
@@ -222,16 +223,15 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
 
 export async function createAdminBooking(body: CreateAdminBookingBody) {
   const email = normalizeBookingEmail(body.email);
-  const slotIds = normalizeSlotIds(body.slotIds);
-  if (slotIds.length === 0) {
-    throw new ValidationError("At least one slot is required");
+  const courtSlots = resolveCourtSlotsFromBody(body);
+  if (courtSlots.length === 0) {
+    throw new ValidationError("At least one court slot is required");
   }
 
   const booking = await createBookingRow({
     plan: planFromApi(body.plan),
     date: body.date,
-    courtId: body.courtId,
-    slotIds,
+    courtSlots,
     name: body.name.trim(),
     email,
     userId: null,
@@ -244,6 +244,19 @@ export async function createAdminBooking(body: CreateAdminBookingBody) {
   });
 
   return toBookingDto(booking);
+}
+
+function resolveCourtSlotsFromBody(body: CreatePublicBookingBody): CourtSlot[] {
+  if (body.courtSlots != null && body.courtSlots.length > 0) {
+    return parseCourtSlots(body.courtSlots);
+  }
+  if (body.courtId != null && body.slotIds != null) {
+    return parseCourtSlots(null, {
+      courtId: body.courtId,
+      slotIds: body.slotIds,
+    });
+  }
+  return [];
 }
 
 export async function listOccupancy(query: OccupancyQuery) {
@@ -261,7 +274,7 @@ export async function listOccupancy(query: OccupancyQuery) {
     select: bookingOccupancySelect,
     orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   });
-  return rows.map(toOccupancyItem);
+  return rows.flatMap(toOccupancyItems);
 }
 
 export async function listMyBookings(authUser: AuthUser | undefined) {
@@ -488,8 +501,7 @@ async function debitWalletForBooking(
 async function createBookingRow(input: {
   plan: ReturnType<typeof planFromApi>;
   date: string;
-  courtId: string;
-  slotIds: string[];
+  courtSlots: CourtSlot[];
   name: string;
   email: string;
   userId: string | null;
@@ -500,32 +512,55 @@ async function createBookingRow(input: {
   walletAppliedCents: number;
   status: "pending" | "approved";
 }) {
+  const courtSlots = parseCourtSlots(input.courtSlots);
+  if (courtSlots.length === 0) {
+    throw new ValidationError("At least one court slot is required");
+  }
+  const primaryCourtId = courtSlots[0]!.courtId;
+  const allSlotIds = unionSlotIds(courtSlots);
+
   return prisma.$transaction(async (tx) => {
     await assertNoCrossPlanConflict(tx, {
       plan: input.plan,
       date: input.date,
-      slotIds: input.slotIds,
+      slotIds: allSlotIds,
     });
 
     if (usesOpenPlayCapacity(input.plan)) {
-      for (const slotId of input.slotIds) {
+      for (const slotId of allSlotIds) {
         const booked = await countOpenPlaySeats(tx, input.date, slotId);
         assertOpenPlayHasSeat(booked, slotId);
       }
     } else {
-      const blockers = await tx.booking.findMany({
+      const existingRows = await tx.booking.findMany({
         where: {
           date: input.date,
-          courtId: input.courtId,
+          plan: { in: ["court", "clinic"] },
           status: { in: ["pending", "approved"] },
-          slotIds: { hasSome: input.slotIds },
         },
-        select: { id: true },
-        take: 1,
+        select: {
+          id: true,
+          courtId: true,
+          slotIds: true,
+          courtSlots: true,
+        },
       });
 
-      if (blockers.length > 0) {
-        throw new ConflictError("One or more slots are already booked for this court and date");
+      for (const segment of courtSlots) {
+        const conflict = existingRows.some((row) => {
+          const segments = parseCourtSlots(row.courtSlots, {
+            courtId: row.courtId,
+            slotIds: row.slotIds,
+          });
+          return segments.some(
+            (existing) =>
+              existing.courtId === segment.courtId &&
+              existing.slotIds.some((id) => segment.slotIds.includes(id)),
+          );
+        });
+        if (conflict) {
+          throw new ConflictError("One or more slots are already booked for this court and date");
+        }
       }
     }
 
@@ -534,7 +569,22 @@ async function createBookingRow(input: {
     }
 
     return tx.booking.create({
-      data: input,
+      data: {
+        plan: input.plan,
+        date: input.date,
+        courtId: primaryCourtId,
+        slotIds: allSlotIds,
+        courtSlots,
+        name: input.name,
+        email: input.email,
+        userId: input.userId,
+        referenceId: input.referenceId,
+        receiptName: input.receiptName,
+        receiptKey: input.receiptKey,
+        receiptMimeType: input.receiptMimeType,
+        walletAppliedCents: input.walletAppliedCents,
+        status: input.status,
+      },
       select: bookingPublicSelect,
     });
   });

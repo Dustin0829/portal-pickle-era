@@ -13,6 +13,7 @@ export function bookingDtoToRequest(dto: BookingDto): BookingRequest {
     courtId: dto.courtId,
     slotId: dto.slotIds[0],
     slotIds: dto.slotIds,
+    courtSlots: dto.courtSlots,
     name: dto.name,
     email: dto.email,
     referenceId: dto.referenceId,

@@ -7,6 +7,7 @@ import {
   createMyFoodOrderController,
   listAdminFoodOrdersController,
   listAdminMenuController,
+  listMyFoodOrdersController,
   listMyMenuController,
   patchAdminFoodOrderController,
   patchAdminMenuItemController,
@@ -26,6 +27,7 @@ export const foodAdminRouter = Router();
 
 foodMeRouter.use(loadSession, requireSession);
 foodMeRouter.get("/menu", asyncHandler(listMyMenuController));
+foodMeRouter.get("/orders", asyncHandler(listMyFoodOrdersController));
 foodMeRouter.post(
   "/orders",
   validateBody(createFoodOrderBodySchema),

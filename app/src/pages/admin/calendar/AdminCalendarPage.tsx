@@ -34,7 +34,7 @@ export function AdminCalendarPage() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-4 py-4 sm:px-6 sm:py-5">
+      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-4 py-8 sm:px-6 sm:py-10">
         <header className="mb-3 flex max-w-xl shrink-0 flex-col gap-1">
           <h1 className="display text-[32px] text-zinc-900 sm:text-[40px]">
             Court <span className="text-yellow">calendar</span>

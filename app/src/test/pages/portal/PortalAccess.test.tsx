@@ -30,10 +30,17 @@ vi.mock("@/api/features/auth/auth.service", () => ({
 }));
 
 vi.mock("@/api/features/bookings/use-bookings", () => ({
-  useMyBookings: () => ({ data: [], isLoading: false }),
+  useMyBookings: () => ({
+    data: [],
+    isLoading: false,
+    isPending: false,
+    isError: false,
+  }),
   useAdminBookings: () => ({
     data: { items: [] },
     isLoading: false,
+    isPending: false,
+    isError: false,
     refetch: vi.fn(),
   }),
   useAdminUsers: () => ({ data: { items: [] }, isLoading: false }),
@@ -45,6 +52,28 @@ vi.mock("@/api/features/bookings/use-bookings", () => ({
   occupancyQueryKey: ["bookings-occupancy"],
   adminBookingsQueryKey: ["admin-bookings"],
   adminUsersQueryKey: ["admin-users"],
+}));
+
+vi.mock("@/api/features/food/use-food", () => ({
+  useMyFoodOrders: () => ({
+    data: [],
+    isPending: false,
+    isError: false,
+  }),
+  useAdminFoodOrders: () => ({
+    data: { items: [] },
+    isPending: false,
+    isError: false,
+  }),
+  useMyFoodMenu: () => ({
+    data: [],
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useCreateMyFoodOrder: () => ({ mutate: vi.fn(), isPending: false }),
+  meFoodOrdersQueryKey: ["me-food-orders"],
+  adminFoodOrdersQueryKey: ["admin-food-orders"],
 }));
 
 function seedSession(role: "student" | "admin") {
@@ -173,7 +202,7 @@ describe("portal smoke", () => {
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/you don’t have any booking requests yet/i),
+      screen.getByText(/no recent bookings or food orders yet/i),
     ).toBeInTheDocument();
   });
 

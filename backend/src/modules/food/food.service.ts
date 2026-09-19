@@ -151,6 +151,17 @@ export async function createMyFoodOrder(authUser: AuthUser | undefined, body: Cr
   return toFoodOrderDto(order);
 }
 
+export async function listMyFoodOrders(authUser: AuthUser | undefined) {
+  if (!authUser) throw new UnauthorizedError();
+  const rows = await prisma.foodOrder.findMany({
+    where: { userId: authUser.id },
+    select: foodOrderSelect,
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+  return rows.map((row) => toFoodOrderDto(row));
+}
+
 export async function listAdminFoodOrders(query: ListAdminFoodOrdersQuery) {
   const where = query.status ? { status: query.status } : {};
   const [rows, total] = await Promise.all([
