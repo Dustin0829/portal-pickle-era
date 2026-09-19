@@ -23,4 +23,4 @@
 ## 4. Ship
 
 - [x] 4.1 `/opsx-verify` (api + web)
-- [ ] 4.2 `/opsx-pr` (branch `feat/portal-list-container-avatars`)
+- [x] 4.2 `/opsx-pr` (branch `feat/portal-list-container-avatars`)
