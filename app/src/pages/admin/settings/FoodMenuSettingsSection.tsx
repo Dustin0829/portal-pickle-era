@@ -85,7 +85,7 @@ export function FoodMenuSettingsSection() {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
+    <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-5 lg:col-span-2">
       <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-yellow">
         Food menu
       </h2>

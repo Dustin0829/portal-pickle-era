@@ -114,7 +114,7 @@ export function AdminWalletTopUpsPage() {
             </label>
 
             <div
-              className="inline-flex gap-1 rounded-2xl border border-zinc-200/80 bg-white p-1.5 shadow-sm"
+              className="inline-flex gap-1 rounded-2xl border border-zinc-200/80 bg-white p-1.5"
               role="tablist"
               aria-label="Top-up status"
             >
@@ -155,13 +155,13 @@ export function AdminWalletTopUpsPage() {
             <PortalListSkeleton rows={5} />
           ) : listStatus === "error" ? (
             <div
-              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
               role="alert"
             >
               Could not load top-ups.
             </div>
           ) : listStatus === "empty" ? (
-            <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm">
+            <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500">
               {filter === "pending" ? "No pending top-ups." : "No top-ups yet."}
             </div>
           ) : (
@@ -217,7 +217,7 @@ function AdminTopUpRow({
   onOpenDetail: () => void;
 }) {
   return (
-    <li className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+    <li className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
       <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:gap-0 lg:p-0">
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:px-4 lg:py-4">
           <div className="grid size-11 shrink-0 place-items-center rounded-full bg-green/15 text-zinc-600">
@@ -520,7 +520,7 @@ function InfoCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200/90 bg-white px-3.5 py-3 shadow-sm">
+    <section className="rounded-xl border border-zinc-200/90 bg-white px-3.5 py-3">
       <div className="flex items-center gap-2.5">
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-800">
           {icon}

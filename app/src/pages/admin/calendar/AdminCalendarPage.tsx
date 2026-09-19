@@ -49,7 +49,7 @@ export function AdminCalendarPage() {
           <PortalCalendarSkeleton />
         ) : isError && !data ? (
           <div
-            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
             role="alert"
           >
             Could not load calendar bookings.

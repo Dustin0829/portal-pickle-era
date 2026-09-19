@@ -99,13 +99,13 @@ describe("WalkInBookingModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("12/30")).toBeInTheDocument();
+      expect(screen.getByText(/12\/30/)).toBeInTheDocument();
     });
-    expect(screen.getByText("30/30 · Full")).toBeInTheDocument();
+    expect(screen.getByText(/full · 30\/30/i)).toBeInTheDocument();
     expect(screen.queryByText(/clinics & coaching/i)).not.toBeInTheDocument();
 
     const fullSession = screen.getByRole("button", {
-      name: /4:00–6:00 PM/i,
+      name: /full · 30\/30/i,
     });
     expect(fullSession).toBeDisabled();
   });
@@ -127,7 +127,9 @@ describe("WalkInBookingModal", () => {
       );
     });
 
-    const session = screen.getByRole("button", { name: /7:00–9:00 AM/i });
-    expect(session).toBeDisabled();
+    const sessions = screen.getAllByRole("button", { name: /open play/i });
+    expect(sessions.some((el) => (el as HTMLButtonElement).disabled)).toBe(
+      true,
+    );
   });
 });

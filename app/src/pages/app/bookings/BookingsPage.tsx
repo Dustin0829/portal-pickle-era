@@ -124,7 +124,7 @@ function BookingFilterSelect({
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-11 min-w-[9.5rem] items-center justify-between gap-3 rounded-full border border-zinc-200/80 bg-white px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 shadow-sm transition hover:border-zinc-300"
+        className="inline-flex h-11 min-w-[9.5rem] items-center justify-between gap-3 rounded-full border border-zinc-200/80 bg-white px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 transition hover:border-zinc-300"
       >
         <span>{selected.label}</span>
         <ChevronDown
@@ -237,13 +237,13 @@ export function BookingsPage() {
             <PortalListSkeleton rows={4} />
           ) : isError && !data ? (
             <div
-              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-md"
+              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
               role="alert"
             >
               Could not load your bookings.
             </div>
           ) : visible.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 shadow-md">
+            <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8">
               <p className="text-sm text-zinc-500">
                 {bookings.length === 0
                   ? `No bookings for ${user?.email ?? "this account"} yet.`
@@ -344,7 +344,7 @@ function BookingCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-stretch overflow-hidden rounded-2xl border border-zinc-200/80 bg-white text-left shadow-md transition hover:border-yellow/40 hover:shadow-lg"
+        className="flex w-full items-stretch overflow-hidden rounded-2xl border border-zinc-200/80 bg-white text-left transition hover:border-yellow/40"
       >
         <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-5 text-center sm:w-20">
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">
@@ -502,7 +502,7 @@ function BookingDetailSheet({
           </div>
 
           <div className="relative flex min-h-[240px] flex-col bg-zinc-50 md:min-h-0">
-            <p className="absolute left-4 top-4 z-10 rounded-full border border-zinc-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600 shadow-sm">
+            <p className="absolute left-4 top-4 z-10 rounded-full border border-zinc-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
               Payment proof
             </p>
             {booking.receiptDataUrl &&
@@ -580,7 +580,7 @@ function StatusPill({ bucket }: { bucket: Exclude<BookingFilter, "all"> }) {
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
         bucket === "pending" &&
-          "border-yellow bg-yellow text-black shadow-sm shadow-yellow/40",
+          "border-yellow bg-yellow text-black shadow-yellow/40",
         bucket === "approved" && "border-green/40 bg-green/10 text-green",
         bucket === "completed" && "border-zinc-200 bg-zinc-50 text-zinc-600",
         bucket === "cancelled" && "border-maroon/40 bg-maroon/10 text-maroon",

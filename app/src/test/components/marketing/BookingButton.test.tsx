@@ -12,10 +12,8 @@ describe("BookingButton", () => {
     const button = screen.getByRole("button", { name: /book a court/i });
     await user.click(button);
 
-    expect(
-      screen.getByRole("heading", { name: /schedule/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/october 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/select date & time/i)).toBeInTheDocument();
+    expect(screen.getByText(/private court/i)).toBeInTheDocument();
   });
 
   it("renders children label when provided", () => {

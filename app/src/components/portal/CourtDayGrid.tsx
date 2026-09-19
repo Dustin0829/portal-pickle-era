@@ -189,7 +189,7 @@ export function CourtDayGrid({
         {readOnly ? " · read-only" : ""}.
       </p>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
         <div className="grid shrink-0 grid-cols-7 border-b border-zinc-200">
           {WEEKDAYS.map((day) => (
             <div
@@ -506,7 +506,7 @@ function DayScheduleModal({
                       className={cn(
                         "flex flex-col items-center justify-center rounded-xl border px-2 py-2.5 transition",
                         selected
-                          ? "border-amber-400 bg-amber-400 text-zinc-900 shadow-sm"
+                          ? "border-amber-400 bg-amber-400 text-zinc-900"
                           : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900",
                       )}
                     >
@@ -565,8 +565,8 @@ function DayScheduleModal({
                                 className={cn(
                                   "flex w-full flex-col items-center justify-center rounded-xl border-2 px-3 py-3 text-center text-[12px] font-bold tracking-tight transition",
                                   picked
-                                    ? "border-amber-400 bg-amber-400 text-zinc-900 shadow-md"
-                                    : "border-green/40 bg-green text-white shadow-sm shadow-green/25 hover:brightness-110",
+                                    ? "border-amber-400 bg-amber-400 text-zinc-900"
+                                    : "border-green/40 bg-green text-white shadow-green/25 hover:brightness-110",
                                 )}
                               >
                                 {slot.label}
@@ -586,7 +586,7 @@ function DayScheduleModal({
                                 "border-zinc-200 bg-zinc-100 text-zinc-400",
                               !pending &&
                                 !approved &&
-                                "border-green/40 bg-green text-white shadow-sm shadow-green/25",
+                                "border-green/40 bg-green text-white shadow-green/25",
                             )}
                           >
                             <span
@@ -686,7 +686,7 @@ function DayBookingRow({ booking }: { booking: BookingRequest }) {
   const planTitle = PLAN_META[booking.plan]?.title ?? booking.plan;
 
   return (
-    <li className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+    <li className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
       <div className="absolute inset-y-0 left-0 w-1 bg-maroon" aria-hidden />
       <div className="pl-1">
         <div className="flex items-center gap-3 px-3.5 py-3.5">

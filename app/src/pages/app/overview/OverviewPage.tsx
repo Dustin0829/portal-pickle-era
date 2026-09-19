@@ -100,7 +100,7 @@ export function OverviewPage() {
             <PortalListSkeleton rows={3} />
           ) : isError && !data ? (
             <div
-              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500 shadow-sm"
+              className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
               role="alert"
             >
               Could not load your bookings.
@@ -136,7 +136,7 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-4 shadow-sm transition hover:border-yellow/40"
+      className="group flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-4 transition hover:border-yellow/40"
     >
       <span
         className={cn(
@@ -174,7 +174,7 @@ function RecentRequestRow({ booking }: { booking: BookingRequest }) {
   const pending = booking.status === "pending";
 
   return (
-    <li className="flex items-stretch gap-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+    <li className="flex items-stretch gap-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
       <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-4 text-center sm:w-20">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">
           {month}
@@ -192,7 +192,7 @@ function RecentRequestRow({ booking }: { booking: BookingRequest }) {
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
                 pending
-                  ? "border-yellow bg-yellow text-black shadow-sm shadow-yellow/40"
+                  ? "border-yellow bg-yellow text-black shadow-yellow/40"
                   : booking.status === "approved"
                     ? "border-green/40 bg-green/10 text-green"
                     : "border-zinc-200 bg-zinc-50 text-zinc-500",
@@ -220,7 +220,7 @@ function RecentRequestRow({ booking }: { booking: BookingRequest }) {
 
 function EmptyOverview({ onBook }: { onBook: () => void }) {
   return (
-    <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 shadow-sm">
+    <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8">
       <p className="text-sm text-zinc-500">
         You don’t have any booking requests yet. Book from the marketing site or
         start here.

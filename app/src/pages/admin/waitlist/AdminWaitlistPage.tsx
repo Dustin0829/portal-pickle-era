@@ -169,7 +169,7 @@ export function AdminPlayersPage() {
           </div>
         </header>
 
-        <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
           {tablePending ? (
             <PortalTableSkeleton />
           ) : isError ? (
