@@ -5,16 +5,9 @@ import {
 } from "@/api/features/bookings/bookings.service";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { useLenis } from "lenis/react";
-import { Check, Copy, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import {
-  type ChangeEvent,
-  type FormEvent,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  PAYMENT,
   PLAN_META,
   allowsMultiSlot,
   bookingTotal,
@@ -37,9 +30,13 @@ import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { useMeWallet } from "@/api/features/wallet/use-wallet";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
+import { PaymentMethodCarousel } from "@/components/booking/PaymentMethodCarousel";
 import { UnifiedBookingSchedule } from "@/components/booking/UnifiedBookingSchedule";
+import { usePaymentMethods } from "@/lib/wallet/paymentSettings";
+import { cn } from "@/lib/utils";
 
 type Step = "schedule" | "pay" | "done";
+type PayMethod = "cash" | "credits";
 
 export type BookingModalPreset = {
   date: string;
@@ -51,14 +48,22 @@ export type BookingModalPreset = {
 type BookingModalProps = {
   prefer?: BookablePlan;
   preset?: BookingModalPreset;
+  /** Player portal only — show Pay with credits (partial wallet + GCash). */
+  allowCreditsPay?: boolean;
   onClose: () => void;
 };
 
-export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
+export function BookingModal({
+  prefer,
+  preset,
+  allowCreditsPay = false,
+  onClose,
+}: BookingModalProps) {
   const lenis = useLenis();
   const { user, status: authStatus } = useAuth();
   const isAuthenticated = authStatus === "authenticated";
-  const { data: wallet } = useMeWallet(isAuthenticated);
+  const creditsPayAvailable = allowCreditsPay && isAuthenticated;
+  const { data: wallet } = useMeWallet(creditsPayAvailable);
   const bookableFloor = earliestBookableDateKey();
   const initialDate =
     preset?.date && preset.date >= bookableFloor ? preset.date : bookableFloor;
@@ -81,9 +86,10 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
   const [referenceId, setReferenceId] = useState("");
   const [receiptName, setReceiptName] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [copied, setCopied] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [payMethod, setPayMethod] = useState<PayMethod>("cash");
+  const paymentMethods = usePaymentMethods();
   const [slotStatusByKey, setSlotStatusByKey] = useState<
     Map<string, "pending" | "approved">
   >(() => new Map());
@@ -107,16 +113,20 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
   const unitPrice = usePlanUnitPrice(plan ?? prefer ?? "court");
   const multiSlot = plan ? allowsMultiSlot(plan) : false;
   const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
-  const walletPay = isAuthenticated
+  const balanceCents = wallet?.balanceCents ?? 0;
+  const useCredits = creditsPayAvailable && payMethod === "credits";
+  const walletPay = useCredits
     ? walletAppliedAndRemaining({
-        balanceCents: wallet?.balanceCents ?? 0,
+        balanceCents,
         totalPesos: total,
       })
     : null;
+  const walletAppliedCents = walletPay?.walletAppliedCents ?? 0;
   const remainingCashPesos = walletPay
     ? walletPay.remainingCashCents / 100
     : total;
   const needsReceipt = !walletPay || walletPay.remainingCashCents > 0;
+  const canUseCredits = creditsPayAvailable && balanceCents > 0;
   const displayLabels = isOpenPlay
     ? openPlaySlots
         .filter((slot) => slotIds.includes(slot.id))
@@ -226,16 +236,6 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
     setReceiptName(file?.name ?? "");
   }
 
-  async function copyNumber() {
-    try {
-      await navigator.clipboard.writeText(PAYMENT.number.replaceAll(" ", ""));
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setCopied(false);
-    }
-  }
-
   function onBook() {
     const confirmed = toConfirmSelection(date, selection);
     if (!confirmed) return;
@@ -283,7 +283,7 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
         ...(isAuthenticated
           ? {
               unitPricePesos: unitPrice,
-              walletAppliedCents: walletPay?.walletAppliedCents ?? 0,
+              walletAppliedCents: useCredits ? walletAppliedCents : 0,
             }
           : {}),
       });
@@ -442,10 +442,10 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
                   </p>
                   {walletPay && walletPay.walletAppliedCents > 0 ? (
                     <p className="mt-2 text-sm text-white/70">
-                      Wallet applies{" "}
+                      Credits apply{" "}
                       {formatCentsAsPesos(walletPay.walletAppliedCents)}
                       {walletPay.remainingCashCents > 0
-                        ? ` · Pay ${formatCentsAsPesos(walletPay.remainingCashCents)} via GCash`
+                        ? ` · Pay ${formatCentsAsPesos(walletPay.remainingCashCents)} via cash`
                         : " · Covered in full"}
                     </p>
                   ) : null}
@@ -467,43 +467,54 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
             </div>
 
             <div className="px-5 pb-5 pt-6 sm:px-7 sm:pb-7 lg:pt-7">
-              {needsReceipt ? (
-                <div className="grid items-start gap-4 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-8">
-                  <div className="mx-auto w-full max-w-[168px] border border-white/10 bg-white p-3 sm:mx-0">
-                    <PaymentQr value={PAYMENT.number} />
-                    <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-black/70">
-                      Scan to pay
-                    </p>
+              {creditsPayAvailable ? (
+                <fieldset className="mb-5">
+                  <legend className="text-[11px] font-bold uppercase tracking-[0.16em] text-yellow">
+                    Pay with
+                  </legend>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPayMethod("cash")}
+                      className={cn(
+                        "h-9 px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                        payMethod === "cash"
+                          ? "bg-yellow text-black"
+                          : "border border-white/20 text-white/70 hover:border-yellow hover:text-yellow",
+                      )}
+                    >
+                      Cash / transfer
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canUseCredits}
+                      onClick={() => setPayMethod("credits")}
+                      className={cn(
+                        "h-9 px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                        payMethod === "credits"
+                          ? "bg-yellow text-black"
+                          : "border border-white/20 text-white/70 hover:border-yellow hover:text-yellow",
+                        !canUseCredits && "cursor-not-allowed opacity-40",
+                      )}
+                    >
+                      Pay with credits
+                      {creditsPayAvailable
+                        ? ` · ${formatCentsAsPesos(balanceCents)}`
+                        : ""}
+                    </button>
                   </div>
+                </fieldset>
+              ) : null}
 
-                  <div className="min-w-0 text-center sm:text-left">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-yellow">
-                      {PAYMENT.method}
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-white">
-                      {PAYMENT.name}
-                    </p>
-                    <div className="mt-3 flex items-center justify-center gap-2 sm:justify-start">
-                      <p className="text-lg font-bold tracking-wide text-white sm:text-[22px]">
-                        {PAYMENT.number}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => void copyNumber()}
-                        className="grid h-9 w-9 shrink-0 place-items-center border border-white/20 text-white transition hover:border-yellow hover:text-yellow"
-                        aria-label="Copy GCash number"
-                      >
-                        {copied ? <Check size={14} /> : <Copy size={14} />}
-                      </button>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-yellow">
-                      Send ₱{remainingCashPesos}, then upload your receipt.
-                    </p>
-                  </div>
-                </div>
+              {needsReceipt ? (
+                <PaymentMethodCarousel
+                  methods={paymentMethods}
+                  variant="dark"
+                  amountHint={`Send ₱${remainingCashPesos}, then upload your receipt.`}
+                />
               ) : (
                 <p className="text-sm text-white/70">
-                  Your wallet covers this booking. No GCash receipt needed —
+                  Your credits cover this booking. No cash receipt needed —
                   we&apos;ll confirm after review.
                 </p>
               )}
@@ -582,65 +593,6 @@ export function BookingModal({ prefer, preset, onClose }: BookingModalProps) {
         ) : null}
       </div>
     </div>
-  );
-}
-
-function PaymentQr({ value }: { value: string }) {
-  const cells = useMemo(() => {
-    const size = 21;
-    const grid = Array.from({ length: size }, () =>
-      Array.from({ length: size }, () => false),
-    );
-
-    function stamp(x: number, y: number) {
-      for (let row = 0; row < 7; row += 1) {
-        for (let col = 0; col < 7; col += 1) {
-          const edge = row === 0 || row === 6 || col === 0 || col === 6;
-          const inner = row >= 2 && row <= 4 && col >= 2 && col <= 4;
-          grid[y + row][x + col] = edge || inner;
-        }
-      }
-    }
-
-    stamp(0, 0);
-    stamp(size - 7, 0);
-    stamp(0, size - 7);
-
-    let seed = 0;
-    for (let index = 0; index < value.length; index += 1)
-      seed = (seed * 33 + value.charCodeAt(index)) >>> 0;
-    for (let row = 0; row < size; row += 1) {
-      for (let col = 0; col < size; col += 1) {
-        if (grid[row][col]) continue;
-        seed = (seed * 1103515245 + 12345) >>> 0;
-        grid[row][col] = seed % 3 !== 0;
-      }
-    }
-
-    return grid;
-  }, [value]);
-
-  return (
-    <svg
-      viewBox="0 0 21 21"
-      className="aspect-square w-full"
-      aria-hidden="true"
-    >
-      {cells.map((row, y) =>
-        row.map((on, x) =>
-          on ? (
-            <rect
-              key={`${x}-${y}`}
-              x={x}
-              y={y}
-              width="1"
-              height="1"
-              fill="#1D1D1B"
-            />
-          ) : null,
-        ),
-      )}
-    </svg>
   );
 }
 

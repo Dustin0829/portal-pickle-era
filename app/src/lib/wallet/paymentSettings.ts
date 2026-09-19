@@ -1,25 +1,43 @@
 import { PAYMENT } from "@/lib/booking/booking";
 import {
-  useFacilitySettingsStore,
+  resolvePaymentMethods,
+  type FacilityPaymentMethod,
   type PaymentSettings,
-} from "@/lib/stores/facilitySettingsStore";
+} from "@/lib/booking/paymentMethods";
+import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 
-/** Saved GCash display settings, falling back to booking defaults. */
+/** Active cash channels for booking / wallet top-up. */
+export function readPaymentMethods(): FacilityPaymentMethod[] {
+  const state = useFacilitySettingsStore.getState();
+  return resolvePaymentMethods({
+    paymentMethods: state.paymentMethods,
+    payment: state.payment,
+  });
+}
+
+export function usePaymentMethods(): FacilityPaymentMethod[] {
+  const paymentMethods = useFacilitySettingsStore((s) => s.paymentMethods);
+  const payment = useFacilitySettingsStore((s) => s.payment);
+  return resolvePaymentMethods({ paymentMethods, payment });
+}
+
+/** @deprecated Prefer usePaymentMethods — returns first method. */
 export function readPaymentSettings(): PaymentSettings {
-  const saved = useFacilitySettingsStore.getState().payment;
+  const [first] = readPaymentMethods();
   return {
-    method: saved.method || PAYMENT.method,
-    name: saved.name || PAYMENT.name,
-    number: saved.number || PAYMENT.number,
+    method: first?.label || PAYMENT.method,
+    name: first?.name || PAYMENT.name,
+    number: first?.number || PAYMENT.number,
   };
 }
 
-/** React hook for facility GCash / payment display. */
+/** @deprecated Prefer usePaymentMethods — returns first method. */
 export function usePaymentSettings(): PaymentSettings {
-  const payment = useFacilitySettingsStore((state) => state.payment);
+  const methods = usePaymentMethods();
+  const first = methods[0];
   return {
-    method: payment.method || PAYMENT.method,
-    name: payment.name || PAYMENT.name,
-    number: payment.number || PAYMENT.number,
+    method: first?.label || PAYMENT.method,
+    name: first?.name || PAYMENT.name,
+    number: first?.number || PAYMENT.number,
   };
 }
