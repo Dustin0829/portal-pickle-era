@@ -26,4 +26,4 @@
 ## 4. Ship
 
 - [x] 4.1 `/opsx-verify` (api + web)
-- [ ] 4.2 `/opsx-pr` (branch `feat/portal-flat-compact-ui`)
+- [x] 4.2 `/opsx-pr` (branch `feat/portal-flat-compact-ui`)
