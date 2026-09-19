@@ -26,6 +26,7 @@ export const bookingDtoSchema = z.object({
   receiptName: z.string().nullable(),
   receiptKey: z.string().nullable(),
   receiptMimeType: z.string().nullable(),
+  walletAppliedCents: z.number().int().nonnegative().default(0),
   status: bookingStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -52,6 +53,13 @@ const bookingBodyBase = z
     receiptName: z.string().trim().max(180).optional(),
     receiptKey: z.string().trim().max(512).optional(),
     receiptMimeType: z.string().trim().max(120).optional(),
+    unitPricePesos: z.number().positive().max(100_000).optional(),
+    walletAppliedCents: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(5_000_000)
+      .optional(),
   })
   .strict();
 

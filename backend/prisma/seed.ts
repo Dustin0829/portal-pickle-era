@@ -100,6 +100,32 @@ async function main() {
   for (const player of PLAYER_FIXTURES) {
     await upsertCredentialUser({ ...player, role: "student" });
   }
+
+  const foodCount = await prisma.foodMenuItem.count();
+  if (foodCount === 0) {
+    await prisma.foodMenuItem.createMany({
+      data: [
+        {
+          name: "Iced Tea",
+          priceCents: 5000,
+          category: "Drinks",
+          available: true,
+        },
+        {
+          name: "Chicken Sandwich",
+          priceCents: 18000,
+          category: "Food",
+          available: true,
+        },
+        {
+          name: "Energy Bar",
+          priceCents: 7500,
+          category: "Snacks",
+          available: true,
+        },
+      ],
+    });
+  }
 }
 
 main()

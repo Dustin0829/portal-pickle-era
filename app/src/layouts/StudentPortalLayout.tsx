@@ -5,6 +5,7 @@ import {
   CalendarRange,
   Home,
   UserRound,
+  UtensilsCrossed,
   Wallet,
 } from "lucide-react";
 import { ProtectedRoute } from "@/components/guards/ProtectedRoute";
@@ -15,6 +16,7 @@ const items = [
   { to: "/app", label: "Overview", end: true, icon: Home },
   { to: "/app/bookings", label: "My bookings", icon: CalendarDays },
   { to: "/app/calendar", label: "Court calendar", icon: CalendarRange },
+  { to: "/app/food", label: "Food", icon: UtensilsCrossed },
   { to: "/app/wallet", label: "Wallet", icon: Wallet },
   { to: "/app/profile", label: "Profile", icon: UserRound },
 ];

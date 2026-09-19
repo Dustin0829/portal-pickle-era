@@ -11,6 +11,7 @@ import { registerExamplesOpenApi } from "../modules/examples/examples.openapi.js
 import { registerHealthOpenApi } from "../modules/health/health.openapi.js";
 import { registerUploadsOpenApi } from "../modules/uploads/uploads.openapi.js";
 import { registerWaitlistOpenApi } from "../modules/waitlist/waitlist.openapi.js";
+import { registerFoodOpenApi } from "../modules/food/food.openapi.js";
 import { registerWalletOpenApi } from "../modules/wallet/wallet.openapi.js";
 
 extendZodWithOpenApi(z);
@@ -26,6 +27,7 @@ export function buildOpenApiRegistry() {
   registerAuthOpenApi(registry);
   registerBookingsOpenApi(registry);
   registerWalletOpenApi(registry);
+  registerFoodOpenApi(registry);
 
   return registry;
 }

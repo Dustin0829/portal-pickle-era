@@ -43,7 +43,34 @@ import {
   type PatchBookingBody,
 } from "./bookings.schema.js";
 
+import { coveredHoursForOpenPlaySlotIds, hourSetsOverlap } from "./open-play-hours.js";
+
 const bookingSortFields = ["createdAt", "date"] as const;
+
+/** Default unit prices in pesos (match app PLAN_META). */
+export const DEFAULT_PLAN_PRICE_PESOS: Record<"court" | "open_play" | "clinic", number> = {
+  court: 300,
+  open_play: 250,
+  clinic: 500,
+};
+
+export function bookingTotalCents(
+  plan: "court" | "open_play" | "clinic",
+  slotCount: number,
+  unitPricePesos?: number,
+): number {
+  const pesos = unitPricePesos ?? DEFAULT_PLAN_PRICE_PESOS[plan];
+  return Math.round(pesos * 100) * Math.max(slotCount, 0);
+}
+
+export function clampWalletAppliedCents(input: {
+  requested: number | undefined;
+  balanceCents: number;
+  totalCents: number;
+}): number {
+  if (input.requested === undefined || input.requested <= 0) return 0;
+  return Math.min(input.requested, input.balanceCents, input.totalCents);
+}
 
 export { OPEN_PLAY_CAPACITY };
 
@@ -118,8 +145,34 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
     throw new ValidationError("At least one slot is required");
   }
 
+  const plan = planFromApi(body.plan);
+  const totalCents = bookingTotalCents(plan, slotIds.length, body.unitPricePesos);
+  let walletAppliedCents = 0;
+  if (authUser && body.walletAppliedCents !== undefined) {
+    const wallet = await prisma.wallet.upsert({
+      where: { userId: authUser.id },
+      create: { userId: authUser.id, balanceCents: 0 },
+      update: {},
+      select: { balanceCents: true },
+    });
+    walletAppliedCents = clampWalletAppliedCents({
+      requested: body.walletAppliedCents,
+      balanceCents: wallet.balanceCents,
+      totalCents,
+    });
+  }
+
+  const remainingCents = totalCents - walletAppliedCents;
+  if (remainingCents > 0 && !body.receiptKey?.trim()) {
+    // Keep soft: public flow historically allowed empty receipt in some paths;
+    // only enforce when wallet partial and cash remains — require reference or receipt.
+    if (!body.referenceId?.trim() && !body.receiptName?.trim()) {
+      throw new ValidationError("Add GCash reference or receipt for the remaining balance");
+    }
+  }
+
   const booking = await createBookingRow({
-    plan: planFromApi(body.plan),
+    plan,
     date: body.date,
     courtId: body.courtId,
     slotIds,
@@ -130,6 +183,7 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
     receiptName: body.receiptName?.trim() || null,
     receiptKey: body.receiptKey?.trim() || null,
     receiptMimeType: body.receiptMimeType?.trim() || null,
+    walletAppliedCents,
     status: "pending",
   });
 
@@ -185,6 +239,7 @@ export async function createAdminBooking(body: CreateAdminBookingBody) {
     receiptName: body.receiptName?.trim() || "Walk-in / cash",
     receiptKey: body.receiptKey?.trim() || null,
     receiptMimeType: body.receiptMimeType?.trim() || null,
+    walletAppliedCents: 0,
     status: "approved",
   });
 
@@ -260,7 +315,14 @@ export async function listAdminBookings(query: ListBookingsQuery) {
 export async function patchBookingStatus(id: string, body: PatchBookingBody) {
   const existing = await prisma.booking.findUnique({
     where: { id },
-    select: { id: true, status: true, email: true, name: true, userId: true },
+    select: {
+      id: true,
+      status: true,
+      email: true,
+      name: true,
+      userId: true,
+      walletAppliedCents: true,
+    },
   });
   if (!existing) {
     throw new NotFoundError("Booking not found");
@@ -285,6 +347,10 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
     );
     createdNewUser = ensured.createdNewUser;
     tempPassword = ensured.tempPassword;
+
+    if (existing.walletAppliedCents > 0) {
+      await debitWalletForBooking(tx, ensured.user.id, existing.walletAppliedCents);
+    }
 
     return tx.booking.update({
       where: { id },
@@ -370,6 +436,73 @@ export async function listAdminUsers(query: ListUsersQuery) {
   };
 }
 
+async function assertNoCrossPlanConflict(
+  tx: Prisma.TransactionClient,
+  input: {
+    plan: "open_play" | "court" | "clinic";
+    date: string;
+    slotIds: string[];
+  },
+) {
+  if (input.plan === "open_play") {
+    const covered = coveredHoursForOpenPlaySlotIds(input.slotIds);
+    if (covered.length === 0) return;
+    const blockers = await tx.booking.findMany({
+      where: {
+        date: input.date,
+        plan: { in: ["court", "clinic"] },
+        status: { in: ["pending", "approved"] },
+        slotIds: { hasSome: covered },
+      },
+      select: { id: true },
+      take: 1,
+    });
+    if (blockers.length > 0) {
+      throw new ConflictError(
+        "This Open Play session overlaps court hours already booked for that date",
+      );
+    }
+    return;
+  }
+
+  const openPlayRows = await tx.booking.findMany({
+    where: {
+      date: input.date,
+      plan: "open_play",
+      status: { in: ["pending", "approved"] },
+    },
+    select: { slotIds: true },
+  });
+  for (const row of openPlayRows) {
+    const covered = coveredHoursForOpenPlaySlotIds(row.slotIds);
+    if (hourSetsOverlap(covered, input.slotIds)) {
+      throw new ConflictError(
+        "One or more hours overlap an Open Play session already booked for that date",
+      );
+    }
+  }
+}
+
+async function debitWalletForBooking(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  amountCents: number,
+) {
+  if (amountCents <= 0) return;
+  await tx.wallet.upsert({
+    where: { userId },
+    create: { userId, balanceCents: 0 },
+    update: {},
+  });
+  const updated = await tx.wallet.updateMany({
+    where: { userId, balanceCents: { gte: amountCents } },
+    data: { balanceCents: { decrement: amountCents } },
+  });
+  if (updated.count !== 1) {
+    throw new ConflictError("Insufficient wallet balance to apply credits to this booking");
+  }
+}
+
 async function createBookingRow(input: {
   plan: ReturnType<typeof planFromApi>;
   date: string;
@@ -382,9 +515,16 @@ async function createBookingRow(input: {
   receiptName: string | null;
   receiptKey: string | null;
   receiptMimeType: string | null;
+  walletAppliedCents: number;
   status: "pending" | "approved";
 }) {
   return prisma.$transaction(async (tx) => {
+    await assertNoCrossPlanConflict(tx, {
+      plan: input.plan,
+      date: input.date,
+      slotIds: input.slotIds,
+    });
+
     if (usesOpenPlayCapacity(input.plan)) {
       for (const slotId of input.slotIds) {
         const booked = await countOpenPlaySeats(tx, input.date, slotId);
@@ -405,6 +545,10 @@ async function createBookingRow(input: {
       if (blockers.length > 0) {
         throw new ConflictError("One or more slots are already booked for this court and date");
       }
+    }
+
+    if (input.status === "approved" && input.userId && input.walletAppliedCents > 0) {
+      await debitWalletForBooking(tx, input.userId, input.walletAppliedCents);
     }
 
     return tx.booking.create({

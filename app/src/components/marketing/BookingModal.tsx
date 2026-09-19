@@ -37,8 +37,15 @@ import {
   parseDateKey,
   type BookingPlan,
 } from "@/lib/booking/booking";
+import {
+  coveredHoursForOpenPlaySlotIds,
+  expandOpenPlaySessionToHourIds,
+} from "@/lib/booking/openPlayHours";
 import { useOpenPlaySlots } from "@/lib/booking/openPlaySlots";
 import { usePlanUnitPrice } from "@/lib/booking/planPrices";
+import { walletAppliedAndRemaining } from "@/lib/booking/walletBookingPay";
+import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
+import { useMeWallet } from "@/api/features/wallet/use-wallet";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,7 +70,9 @@ const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const open = plan !== null;
   const lenis = useLenis();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
+  const isAuthenticated = authStatus === "authenticated";
+  const { data: wallet } = useMeWallet(isAuthenticated);
   const bookableFloor = earliestBookableDateKey();
   const initialDate =
     preset?.date && preset.date >= bookableFloor ? preset.date : bookableFloor;
@@ -85,6 +94,10 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const [slotStatusByKey, setSlotStatusByKey] = useState<
     Map<string, "pending" | "approved">
   >(() => new Map());
+  const [hoursBlockedByOpenPlay, setHoursBlockedByOpenPlay] = useState<
+    Set<string>
+  >(() => new Set());
+  const [courtOccupiedHours, setCourtOccupiedHours] = useState<string[]>([]);
   const [occupancyLoading, setOccupancyLoading] = useState(false);
   const [bookedCountBySlotId, setBookedCountBySlotId] = useState<
     Map<string, number>
@@ -94,6 +107,20 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const openPlaySlots = useOpenPlaySlots();
   const isOpenPlay = plan === "open-play";
 
+  const sessionsBlockedByCourt = useMemo(() => {
+    const occupied = new Set(courtOccupiedHours);
+    return new Set(
+      openPlaySlots
+        .filter((slot) =>
+          expandOpenPlaySessionToHourIds({
+            hour: slot.hour,
+            durationHours: slot.durationHours,
+          }).some((hourId) => occupied.has(hourId)),
+        )
+        .map((slot) => slot.id),
+    );
+  }, [courtOccupiedHours, openPlaySlots]);
+
   useEffect(() => {
     if (!user) return;
     setName((current) => current || user.name);
@@ -101,14 +128,21 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   }, [user]);
 
   useEffect(() => {
-    if (!open || !date || isOpenPlay) return;
+    if (!open || !date) return;
     const controller = new AbortController();
     setOccupancyLoading(true);
     void listOccupancy({ date }, controller.signal)
       .then((items) => {
         const next = new Map<string, "pending" | "approved">();
+        const openPlaySlotIds: string[] = [];
+        const courtHours: string[] = [];
         for (const item of items) {
+          if (item.plan === "open-play") {
+            openPlaySlotIds.push(...item.slotIds);
+            continue;
+          }
           for (const slotId of item.slotIds) {
+            courtHours.push(slotId);
             const key = `${item.courtId}|${slotId}`;
             const existing = next.get(key);
             // Approved wins over pending when both somehow exist.
@@ -117,15 +151,21 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
           }
         }
         setSlotStatusByKey(next);
+        setHoursBlockedByOpenPlay(
+          new Set(coveredHoursForOpenPlaySlotIds(openPlaySlotIds)),
+        );
+        setCourtOccupiedHours(courtHours);
       })
       .catch(() => {
         setSlotStatusByKey(new Map());
+        setHoursBlockedByOpenPlay(new Set());
+        setCourtOccupiedHours([]);
       })
       .finally(() => {
         if (!controller.signal.aborted) setOccupancyLoading(false);
       });
     return () => controller.abort();
-  }, [open, date, isOpenPlay]);
+  }, [open, date]);
 
   useEffect(() => {
     if (!open || !date || !isOpenPlay) return;
@@ -163,7 +203,9 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
     if (!plan || isOpenPlay) return false;
     return SLOTS[plan].some(
       (slot) =>
-        !isSlotPast(date, slot.hour) && slotHold(court, slot.id) === null,
+        !isSlotPast(date, slot.hour) &&
+        slotHold(court, slot.id) === null &&
+        !hoursBlockedByOpenPlay.has(slot.id),
     );
   }
 
@@ -197,12 +239,24 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const slots = plan ? (isOpenPlay ? openPlaySlots : SLOTS[plan]) : [];
   const multiSlot = plan ? allowsMultiSlot(plan) : false;
   const total = plan ? bookingTotal(plan, slotIds.length, unitPrice) : 0;
+  const walletPay = isAuthenticated
+    ? walletAppliedAndRemaining({
+        balanceCents: wallet?.balanceCents ?? 0,
+        totalPesos: total,
+      })
+    : null;
+  const remainingCashPesos = walletPay
+    ? walletPay.remainingCashCents / 100
+    : total;
+  const needsReceipt = !walletPay || walletPay.remainingCashCents > 0;
   const selectedLabels = slots
     .filter((slot) => slotIds.includes(slot.id))
     .map((slot) => slot.label);
   const indoor = COURTS.filter((court) => court.group === "Indoor");
   const outdoor = COURTS.filter((court) => court.group === "Outdoor");
-  const scheduleLoading = isOpenPlay ? capacityLoading : occupancyLoading;
+  const scheduleLoading = isOpenPlay
+    ? capacityLoading || occupancyLoading
+    : occupancyLoading;
 
   function selectDate(next: string) {
     setDate(next);
@@ -255,18 +309,21 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       !resolvedCourtId ||
       slotIds.length === 0 ||
       !name.trim() ||
-      !email.trim() ||
-      !referenceId.trim() ||
-      !receiptName ||
-      !receiptFile
+      !email.trim()
     ) {
       return;
+    }
+    if (needsReceipt) {
+      if (!referenceId.trim() || !receiptName || !receiptFile) return;
     }
 
     setSubmitError("");
     setSubmitting(true);
     try {
-      const upload = await uploadReceiptFile(receiptFile);
+      const upload =
+        needsReceipt && receiptFile
+          ? await uploadReceiptFile(receiptFile)
+          : null;
       await createPublicBooking({
         plan,
         date,
@@ -282,10 +339,22 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
           .map((slot) => slot.id),
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        referenceId: referenceId.trim(),
-        receiptName,
-        receiptKey: upload.receiptKey,
-        receiptMimeType: upload.receiptMimeType,
+        ...(needsReceipt
+          ? {
+              referenceId: referenceId.trim(),
+              receiptName,
+              receiptKey: upload!.receiptKey,
+              receiptMimeType: upload!.receiptMimeType,
+            }
+          : {
+              referenceId: referenceId.trim() || undefined,
+            }),
+        ...(isAuthenticated
+          ? {
+              unitPricePesos: unitPrice,
+              walletAppliedCents: walletPay?.walletAppliedCents ?? 0,
+            }
+          : {}),
       });
       setStep("done");
     } catch (error) {
@@ -505,7 +574,11 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                         const booked = bookedCountBySlotId.get(slot.id) ?? 0;
                         const full = booked >= OPEN_PLAY_CAPACITY;
                         const past = isSlotPast(date, slot.hour);
-                        const openSlot = !capacityError && !past && !full;
+                        const blockedByCourt = sessionsBlockedByCourt.has(
+                          slot.id,
+                        );
+                        const openSlot =
+                          !capacityError && !past && !full && !blockedByCourt;
                         const selected = slotIds.includes(slot.id);
                         return (
                           <button
@@ -531,8 +604,9 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                                     : "text-white/30"
                               }`}
                             >
-                              {booked}/{OPEN_PLAY_CAPACITY}
-                              {full ? " · Full" : ""}
+                              {blockedByCourt
+                                ? "Court booked"
+                                : `${booked}/${OPEN_PLAY_CAPACITY}${full ? " · Full" : ""}`}
                             </span>
                           </button>
                         );
@@ -574,11 +648,17 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                         const past = courtId
                           ? isSlotPast(date, slot.hour)
                           : true;
+                        const openPlayHold = hoursBlockedByOpenPlay.has(
+                          slot.id,
+                        );
                         const openSlot =
-                          Boolean(courtId) && !past && hold === null;
+                          Boolean(courtId) &&
+                          !past &&
+                          hold === null &&
+                          !openPlayHold;
                         const selected = slotIds.includes(slot.id);
                         const pending = hold === "pending";
-                        const approved = hold === "approved";
+                        const approved = hold === "approved" || openPlayHold;
                         return (
                           <button
                             key={slot.id}
@@ -605,6 +685,10 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                             {pending ? (
                               <span className="text-[9px] font-bold tracking-[0.16em] text-amber-300">
                                 Pending
+                              </span>
+                            ) : openPlayHold ? (
+                              <span className="text-[9px] font-bold tracking-[0.16em] text-white/40">
+                                Open play
                               </span>
                             ) : null}
                           </button>
@@ -659,7 +743,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                     Amount due
                   </p>
                   <p className="display mt-1 text-[36px] leading-none text-yellow sm:text-[48px]">
-                    ₱{total}
+                    ₱{needsReceipt ? remainingCashPesos : 0}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-white">
                     {slotIds.length}{" "}
@@ -671,7 +755,17 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                         ? "session"
                         : "sessions"}{" "}
                     × ₱{unitPrice}
+                    {total !== remainingCashPesos ? ` · Total ₱${total}` : ""}
                   </p>
+                  {walletPay && walletPay.walletAppliedCents > 0 ? (
+                    <p className="mt-2 text-sm text-white/70">
+                      Wallet applies{" "}
+                      {formatCentsAsPesos(walletPay.walletAppliedCents)}
+                      {walletPay.remainingCashCents > 0
+                        ? ` · Pay ${formatCentsAsPesos(walletPay.remainingCashCents)} via GCash`
+                        : " · Covered in full"}
+                    </p>
+                  ) : null}
                   <ul className="mt-2 space-y-0.5 text-sm text-white/55">
                     {selectedLabels.map((label) => (
                       <li key={label}>{label}</li>
@@ -690,39 +784,46 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
             </div>
 
             <div className="px-5 pb-5 pt-6 sm:px-7 sm:pb-7 lg:pt-7">
-              <div className="grid items-start gap-4 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-8">
-                <div className="mx-auto w-full max-w-[168px] border border-white/10 bg-white p-3 sm:mx-0">
-                  <PaymentQr value={PAYMENT.number} />
-                  <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-black/70">
-                    Scan to pay
-                  </p>
-                </div>
-
-                <div className="min-w-0 text-center sm:text-left">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-yellow">
-                    {PAYMENT.method}
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    {PAYMENT.name}
-                  </p>
-                  <div className="mt-3 flex items-center justify-center gap-2 sm:justify-start">
-                    <p className="text-lg font-bold tracking-wide text-white sm:text-[22px]">
-                      {PAYMENT.number}
+              {needsReceipt ? (
+                <div className="grid items-start gap-4 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-8">
+                  <div className="mx-auto w-full max-w-[168px] border border-white/10 bg-white p-3 sm:mx-0">
+                    <PaymentQr value={PAYMENT.number} />
+                    <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-black/70">
+                      Scan to pay
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => void copyNumber()}
-                      className="grid h-9 w-9 shrink-0 place-items-center border border-white/20 text-white transition hover:border-yellow hover:text-yellow"
-                      aria-label="Copy GCash number"
-                    >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-yellow">
-                    Send ₱{total}, then upload your receipt.
-                  </p>
+
+                  <div className="min-w-0 text-center sm:text-left">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-yellow">
+                      {PAYMENT.method}
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-white">
+                      {PAYMENT.name}
+                    </p>
+                    <div className="mt-3 flex items-center justify-center gap-2 sm:justify-start">
+                      <p className="text-lg font-bold tracking-wide text-white sm:text-[22px]">
+                        {PAYMENT.number}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void copyNumber()}
+                        className="grid h-9 w-9 shrink-0 place-items-center border border-white/20 text-white transition hover:border-yellow hover:text-yellow"
+                        aria-label="Copy GCash number"
+                      >
+                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-yellow">
+                      Send ₱{remainingCashPesos}, then upload your receipt.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm text-white/70">
+                  Your wallet covers this booking. No GCash receipt needed —
+                  we&apos;ll confirm after review.
+                </p>
+              )}
 
               <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
                 <input
@@ -741,27 +842,31 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                   placeholder="Your email"
                   className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow"
                 />
-                <input
-                  type="text"
-                  required
-                  value={referenceId}
-                  onChange={(event) => setReferenceId(event.target.value)}
-                  placeholder="Reference ID"
-                  className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow sm:col-span-2"
-                />
-                <label className="flex h-12 cursor-pointer items-center gap-3 border border-white/10 bg-transparent px-4 text-sm text-white/70 transition hover:border-yellow sm:col-span-2">
-                  <Upload size={16} />
-                  <span className="truncate">
-                    {receiptName || "Upload receipt"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    required
-                    className="sr-only"
-                    onChange={onReceipt}
-                  />
-                </label>
+                {needsReceipt ? (
+                  <>
+                    <input
+                      type="text"
+                      required
+                      value={referenceId}
+                      onChange={(event) => setReferenceId(event.target.value)}
+                      placeholder="Reference ID"
+                      className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow sm:col-span-2"
+                    />
+                    <label className="flex h-12 cursor-pointer items-center gap-3 border border-white/10 bg-transparent px-4 text-sm text-white/70 transition hover:border-yellow sm:col-span-2">
+                      <Upload size={16} />
+                      <span className="truncate">
+                        {receiptName || "Upload receipt"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        required
+                        className="sr-only"
+                        onChange={onReceipt}
+                      />
+                    </label>
+                  </>
+                ) : null}
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -777,7 +882,11 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                   disabled={submitting}
                   className="pay-action w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:opacity-60 sm:flex-1"
                 >
-                  {submitting ? "Submitting…" : `Submit proof · ₱${total}`}
+                  {submitting
+                    ? "Submitting…"
+                    : needsReceipt
+                      ? `Submit proof · ₱${remainingCashPesos}`
+                      : "Submit booking"}
                 </button>
               </div>
               {submitError ? (

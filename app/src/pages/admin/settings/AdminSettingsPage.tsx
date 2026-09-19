@@ -1,8 +1,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { BookingPlan, TimeSlot } from "@/lib/booking/booking";
-import { slotFromOpenPlayHour } from "@/lib/booking/openPlaySlots";
+import {
+  previewCoveredHours,
+  slotFromOpenPlayHour,
+} from "@/lib/booking/openPlaySlots";
 import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import { FoodMenuSettingsSection } from "@/pages/admin/settings/FoodMenuSettingsSection";
 
 const PLAN_ORDER: BookingPlan[] = ["court", "open-play", "clinic"];
 const START_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
@@ -76,7 +80,7 @@ export function AdminSettingsPage() {
     setSavingSlots(true);
     setSlotsSaved(false);
     const next = [...slotsDraft]
-      .map((slot) => slotFromOpenPlayHour(slot.hour))
+      .map((slot) => slotFromOpenPlayHour(slot.hour, slot.durationHours ?? 2))
       .sort((a, b) => a.hour - b.hour);
     setOpenPlaySlots(next);
     window.setTimeout(() => {
@@ -224,23 +228,29 @@ export function AdminSettingsPage() {
             Open Play sessions
           </h2>
           <p className="mt-1.5 text-sm text-zinc-500">
-            Each session is 2 hours. Saved sessions appear on marketing Open
-            Play booking (this browser).
+            Set session start and duration. Covered court hours are blocked
+            facility-wide. Saved sessions appear on Open Play booking (this
+            browser).
           </p>
           <form className="mt-3 flex flex-col gap-2.5" onSubmit={onSaveSlots}>
             <ul className="flex flex-col gap-2">
               {slotsDraft.map((slot, index) => (
                 <li
                   key={`${slot.id}-${index}`}
-                  className="flex items-center justify-between gap-3"
+                  className="flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <label className="min-w-0 text-sm text-zinc-600">
-                    Session {index + 1}
-                    <span className="mt-0.5 block text-[11px] text-zinc-400">
-                      {slot.label}
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <label className="text-sm text-zinc-600">
+                      Session {index + 1}
+                      <span className="mt-0.5 block text-[11px] text-zinc-400">
+                        {slot.label}
+                      </span>
+                    </label>
+                    <p className="mt-1 text-[11px] text-zinc-400">
+                      Covers {previewCoveredHours(slot).join(", ") || "—"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <select
                       aria-label={`Start hour for session ${index + 1}`}
                       value={slot.hour}
@@ -249,7 +259,12 @@ export function AdminSettingsPage() {
                         const hour = Number(event.target.value);
                         setSlotsDraft((prev) =>
                           prev.map((item, i) =>
-                            i === index ? slotFromOpenPlayHour(hour) : item,
+                            i === index
+                              ? slotFromOpenPlayHour(
+                                  hour,
+                                  item.durationHours ?? 2,
+                                )
+                              : item,
                           ),
                         );
                       }}
@@ -257,7 +272,32 @@ export function AdminSettingsPage() {
                     >
                       {START_HOURS.map((hour) => (
                         <option key={hour} value={hour}>
-                          {slotFromOpenPlayHour(hour).label}
+                          {
+                            slotFromOpenPlayHour(hour, slot.durationHours ?? 2)
+                              .label
+                          }
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label={`Duration for session ${index + 1}`}
+                      value={slot.durationHours ?? 2}
+                      onChange={(event) => {
+                        setSlotsSaved(false);
+                        const durationHours = Number(event.target.value);
+                        setSlotsDraft((prev) =>
+                          prev.map((item, i) =>
+                            i === index
+                              ? slotFromOpenPlayHour(item.hour, durationHours)
+                              : item,
+                          ),
+                        );
+                      }}
+                      className="h-9 rounded-xl border border-zinc-200 bg-white px-2 text-sm text-zinc-900 outline-none focus:border-yellow"
+                    >
+                      {[1, 2, 3, 4].map((hours) => (
+                        <option key={hours} value={hours}>
+                          {hours}h
                         </option>
                       ))}
                     </select>
@@ -360,6 +400,8 @@ export function AdminSettingsPage() {
             </div>
           </form>
         </section>
+
+        <FoodMenuSettingsSection />
       </div>
     </div>
   );
