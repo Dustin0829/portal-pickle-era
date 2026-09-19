@@ -13,13 +13,12 @@ import {
   type TimeSlot,
 } from "@/lib/booking/booking";
 import { resolveCourtHourPresentation } from "@/lib/booking/courtSlotPresentation";
+import { expandOpenPlaySessionToHourIds } from "@/lib/booking/openPlayHours";
 import {
   applyCourtHourToggle,
   applyOpenPlaySelect,
-  EMPTY_UNIFIED_SELECTION,
   type UnifiedBookingSelection,
 } from "@/lib/booking/unifiedBookingSelection";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +37,7 @@ export type UnifiedBookingScheduleProps = {
   prefer?: BookablePlan;
   openPlaySlots: TimeSlot[];
   slotStatusByKey: Map<string, "pending" | "approved">;
+  /** Kept for callers; reserved-for-OP lock is no longer applied. */
   hoursBlockedByOpenPlay: Set<string>;
   bookedCountBySlotId: Map<string, number>;
   occupancyLoading: boolean;
@@ -58,10 +58,10 @@ export function UnifiedBookingSchedule({
   bookableFloor,
   selection,
   onSelectionChange,
-  prefer,
+  prefer: _prefer,
   openPlaySlots,
   slotStatusByKey,
-  hoursBlockedByOpenPlay,
+  hoursBlockedByOpenPlay: _hoursBlockedByOpenPlay,
   bookedCountBySlotId,
   occupancyLoading,
   capacityLoading,
@@ -71,11 +71,9 @@ export function UnifiedBookingSchedule({
   onBack,
 }: UnifiedBookingScheduleProps) {
   void month;
-  const courtPrice = useFacilitySettingsStore((s) => s.plans.court.price);
+  void _prefer;
+  void _hoursBlockedByOpenPlay;
   const [courtGroup, setCourtGroup] = useState<CourtGroup>("Indoor");
-  const [planMode, setPlanMode] = useState<BookablePlan>(
-    () => selection.plan ?? prefer ?? "court",
-  );
 
   const visibleCourts = useMemo(
     () => COURTS.filter((court) => court.group === courtGroup),
@@ -87,10 +85,23 @@ export function UnifiedBookingSchedule({
     [date, bookableFloor],
   );
 
+  /** First session in openPlaySlots wins if hours overlap. */
+  const sessionByHourId = useMemo(() => {
+    const map = new Map<string, TimeSlot>();
+    for (const slot of openPlaySlots) {
+      for (const hourId of expandOpenPlaySessionToHourIds({
+        hour: slot.hour,
+        durationHours: slot.durationHours,
+      })) {
+        if (!map.has(hourId)) map.set(hourId, slot);
+      }
+    }
+    return map;
+  }, [openPlaySlots]);
+
   const scheduleLoading = occupancyLoading || capacityLoading;
   const loadError = occupancyError || capacityError;
   const gridBlocked = Boolean(loadError) || scheduleLoading;
-  const activePlan = selection.plan ?? planMode;
 
   function slotHold(
     courtId: string,
@@ -103,16 +114,6 @@ export function UnifiedBookingSchedule({
     if (next < bookableFloor) return;
     onDateChange(next);
     onMonthChange(startOfMonth(parseDateKey(next)));
-  }
-
-  function choosePlan(mode: BookablePlan) {
-    setPlanMode(mode);
-    if (mode === "court" && selection.plan === "open-play") {
-      onSelectionChange(EMPTY_UNIFIED_SELECTION);
-    }
-    if (mode === "open-play" && selection.plan === "court") {
-      onSelectionChange(EMPTY_UNIFIED_SELECTION);
-    }
   }
 
   function shiftStrip(delta: number) {
@@ -133,13 +134,13 @@ export function UnifiedBookingSchedule({
         compact ? "gap-3" : "gap-0",
       )}
     >
-      <header className="flex items-center gap-3 bg-zinc-900 px-4 py-3 text-white sm:px-5">
+      <header className="flex items-center gap-3 bg-yellow px-4 py-3 text-black sm:px-5">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label="Back"
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-white/20 text-white transition hover:border-yellow hover:text-yellow"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-black/20 text-black transition hover:border-black hover:bg-black/5"
           >
             <ChevronLeft size={18} />
           </button>
@@ -154,27 +155,6 @@ export function UnifiedBookingSchedule({
         </div>
         <span className="size-9 shrink-0" />
       </header>
-
-      <div className="flex flex-wrap items-center gap-4 border-b border-zinc-200 bg-white px-4 py-3 sm:px-5">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
-          <input
-            type="checkbox"
-            checked={activePlan === "open-play"}
-            onChange={() => choosePlan("open-play")}
-            className="size-4 accent-zinc-900"
-          />
-          Open Play
-        </label>
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
-          <input
-            type="checkbox"
-            checked={activePlan === "court"}
-            onChange={() => choosePlan("court")}
-            className="size-4 accent-zinc-900"
-          />
-          Private Court (₱{courtPrice}/hr)
-        </label>
-      </div>
 
       <div className="flex items-center gap-1 border-b border-zinc-200 bg-white px-2 py-2 sm:px-3">
         <button
@@ -199,7 +179,7 @@ export function UnifiedBookingSchedule({
                 className={cn(
                   "flex min-w-[4.25rem] shrink-0 flex-col items-center rounded-md px-2 py-2 text-center transition",
                   selected
-                    ? "bg-zinc-900 text-white"
+                    ? "bg-yellow text-black"
                     : "text-zinc-600 hover:bg-zinc-100",
                   disabled && "opacity-30",
                 )}
@@ -295,57 +275,6 @@ export function UnifiedBookingSchedule({
                   </div>
                 ))}
 
-                {openPlaySlots.map((slot) => {
-                  const past = isSlotPast(date, slot.hour);
-                  const booked = bookedCountBySlotId.get(slot.id) ?? 0;
-                  const full = booked >= OPEN_PLAY_CAPACITY;
-                  const selected =
-                    selection.plan === "open-play" &&
-                    selection.slotIds[0] === slot.id;
-                  const openSlot = !past && !full && !gridBlocked;
-                  const endHour = slot.hour + (slot.durationHours ?? 2);
-                  return (
-                    <div key={`op-${slot.id}`} className="contents">
-                      <div className="flex items-center gap-1 border-b border-zinc-100 px-2 py-2 text-[10px] font-semibold text-zinc-600">
-                        <span aria-hidden>☀</span>
-                        <span>
-                          {formatHour(slot.hour).replace(":00 ", "")}–
-                          {formatHour(endHour).replace(":00 ", "")}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={!openSlot}
-                        onClick={() => {
-                          setPlanMode("open-play");
-                          onSelectionChange(
-                            applyOpenPlaySelect(selection, slot.id),
-                          );
-                        }}
-                        style={{
-                          gridColumn: `2 / span ${visibleCourts.length}`,
-                        }}
-                        className={cn(
-                          "border-b border-l border-zinc-100 px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.06em] transition",
-                          selected
-                            ? "bg-yellow text-black"
-                            : openSlot
-                              ? "bg-zinc-50 text-zinc-800 hover:bg-yellow/40"
-                              : "bg-zinc-100 text-zinc-400",
-                        )}
-                      >
-                        {past
-                          ? "Past"
-                          : full
-                            ? `Full · ${booked}/${OPEN_PLAY_CAPACITY}`
-                            : selected
-                              ? `Open Play · ${booked}/${OPEN_PLAY_CAPACITY}`
-                              : `Open Play · ${booked}/${OPEN_PLAY_CAPACITY}`}
-                      </button>
-                    </div>
-                  );
-                })}
-
                 {DAY_HOURS.map((hour) => (
                   <HourRow
                     key={hour.id}
@@ -354,12 +283,17 @@ export function UnifiedBookingSchedule({
                     date={date}
                     selection={selection}
                     gridBlocked={gridBlocked}
+                    openPlaySession={sessionByHourId.get(hour.id) ?? null}
+                    bookedCountBySlotId={bookedCountBySlotId}
                     slotHold={slotHold}
-                    hoursBlockedByOpenPlay={hoursBlockedByOpenPlay}
-                    onToggle={(courtId, hourId) => {
-                      setPlanMode("court");
+                    onCourtToggle={(courtId, hourId) => {
                       onSelectionChange(
                         applyCourtHourToggle(selection, courtId, hourId),
+                      );
+                    }}
+                    onOpenPlaySelect={(sessionId) => {
+                      onSelectionChange(
+                        applyOpenPlaySelect(selection, sessionId),
                       );
                     }}
                   />
@@ -389,22 +323,37 @@ function HourRow({
   date,
   selection,
   gridBlocked,
+  openPlaySession,
+  bookedCountBySlotId,
   slotHold,
-  hoursBlockedByOpenPlay,
-  onToggle,
+  onCourtToggle,
+  onOpenPlaySelect,
 }: {
   hour: TimeSlot;
   courts: typeof COURTS;
   date: string;
   selection: UnifiedBookingSelection;
   gridBlocked: boolean;
+  openPlaySession: TimeSlot | null;
+  bookedCountBySlotId: Map<string, number>;
   slotHold: (courtId: string, slotId: string) => "pending" | "approved" | null;
-  hoursBlockedByOpenPlay: Set<string>;
-  onToggle: (courtId: string, hourId: string) => void;
+  onCourtToggle: (courtId: string, hourId: string) => void;
+  onOpenPlaySelect: (sessionId: string) => void;
 }) {
   const past = isSlotPast(date, hour.hour);
   const endLabel = formatHour(hour.hour + 1).replace(":00 ", "");
   const startLabel = formatHour(hour.hour).replace(":00 ", "");
+  const booked = openPlaySession
+    ? (bookedCountBySlotId.get(openPlaySession.id) ?? 0)
+    : 0;
+  const sessionPast = openPlaySession
+    ? isSlotPast(date, openPlaySession.hour)
+    : false;
+  const sessionFull = booked >= OPEN_PLAY_CAPACITY;
+  const openPlaySelected =
+    selection.plan === "open-play" &&
+    openPlaySession !== null &&
+    selection.slotIds[0] === openPlaySession.id;
 
   return (
     <>
@@ -416,13 +365,42 @@ function HourRow({
       </div>
       {courts.map((court) => {
         const hold = slotHold(court.id, hour.id);
-        const openPlayHold = hoursBlockedByOpenPlay.has(hour.id);
         const presentation = resolveCourtHourPresentation({
           hold,
-          openPlayHold,
+          openPlayHold: false,
           past,
           hasCourt: true,
         });
+
+        if (hold === null && openPlaySession) {
+          const openSlot = !sessionPast && !sessionFull && !gridBlocked;
+          const label = sessionPast
+            ? "Past"
+            : sessionFull
+              ? `Full - ${booked}/${OPEN_PLAY_CAPACITY}`
+              : `Open Play - ${booked}/${OPEN_PLAY_CAPACITY}`;
+          return (
+            <button
+              key={`${court.id}-${hour.id}`}
+              type="button"
+              disabled={!openSlot}
+              aria-label={`${court.name} ${label}`}
+              onClick={() => onOpenPlaySelect(openPlaySession.id)}
+              title={label}
+              className={cn(
+                "border-b border-l border-zinc-100 px-1 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.04em] transition",
+                openPlaySelected
+                  ? "bg-yellow text-black"
+                  : openSlot
+                    ? "bg-zinc-50 text-zinc-500 hover:bg-yellow/40 hover:text-zinc-800"
+                    : "bg-zinc-100 text-zinc-400",
+              )}
+            >
+              {label}
+            </button>
+          );
+        }
+
         const selectable = presentation.selectable && !gridBlocked;
         const selected =
           selection.plan === "court" &&
@@ -431,8 +409,6 @@ function HourRow({
 
         let label = "Available";
         if (past) label = "Past";
-        else if (presentation.reservedForOpenPlay)
-          label = presentation.label ?? "Reserved";
         else if (presentation.pending) label = "Pending";
         else if (presentation.approved) label = "Taken";
         else if (selected) label = "Selected";
@@ -443,7 +419,7 @@ function HourRow({
             type="button"
             disabled={!selectable}
             aria-label={`${court.name} ${hour.label}`}
-            onClick={() => onToggle(court.id, hour.id)}
+            onClick={() => onCourtToggle(court.id, hour.id)}
             title={label}
             className={cn(
               "border-b border-l border-zinc-100 px-1 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.04em] transition",
@@ -451,9 +427,7 @@ function HourRow({
                 ? "bg-yellow text-black"
                 : past || !selectable
                   ? "bg-zinc-100 text-zinc-400"
-                  : presentation.reservedForOpenPlay
-                    ? "bg-yellow/80 text-black"
-                    : "bg-white text-zinc-700 hover:bg-yellow/30",
+                  : "bg-white text-zinc-500 hover:bg-yellow/30 hover:text-zinc-800",
             )}
           >
             {label}

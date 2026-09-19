@@ -99,14 +99,16 @@ describe("WalkInBookingModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/12\/30/)).toBeInTheDocument();
+      expect(screen.getAllByText(/12\/30/).length).toBeGreaterThan(0);
     });
-    expect(screen.getByText(/full · 30\/30/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/full - 30\/30/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/clinics & coaching/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/private court/i)).not.toBeInTheDocument();
 
-    const fullSession = screen.getByRole("button", {
-      name: /full · 30\/30/i,
-    });
+    const fullSession = screen.getAllByRole("button", {
+      name: /full - 30\/30/i,
+    })[0];
+    expect(fullSession).toBeDefined();
     expect(fullSession).toBeDisabled();
   });
 
