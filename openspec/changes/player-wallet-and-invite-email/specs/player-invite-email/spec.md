@@ -57,6 +57,20 @@ Re-approving or repeating the invite path for the same booking/user MUST NOT cre
 - **WHEN** a booking is already approved and an admin patches status to `approved` again (or the invite hook re-runs)
 - **THEN** no duplicate User is created and no credentials invite is re-sent
 
+### Requirement: Payment-received email on public booking submit
+
+When a visitor successfully submits a public booking with payment proof (pending status), the system MUST send a best-effort acknowledgment email via Resend stating that payment was received and the team will review it. Failure to send MUST NOT roll back or fail the booking create.
+
+#### Scenario: Submit sends review ack
+
+- **WHEN** a public booking is created successfully with a valid email
+- **THEN** a payment-received / under-review email is attempted to that address
+
+#### Scenario: Email failure keeps booking
+
+- **WHEN** the payment-received email fails or Resend is not configured
+- **THEN** the booking remains created as pending and the failure is logged only
+
 ### Requirement: Env documentation for Resend
 
 `RESEND_API_KEY` and `EMAIL_FROM` MUST be documented in `backend/.env.example` and Railway deploy notes. Runtime MUST read them only through the backend env module (never from the SPA).

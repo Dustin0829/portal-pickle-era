@@ -93,6 +93,47 @@ export async function sendEmail(input: {
   }
 }
 
+/** Ack after marketing booking + payment proof submit (pending review). */
+export async function sendBookingPaymentReceivedEmail(input: {
+  to: string;
+  name: string;
+  date: string;
+  referenceId?: string;
+}): Promise<SendEmailResult> {
+  const displayName = input.name.trim() || "there";
+  const refLine = input.referenceId?.trim() ? `Reference: ${input.referenceId.trim()}` : null;
+  const subject = "Payment received — we’ll review your booking";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    "We received your booking payment proof. Our team will review it shortly.",
+    "",
+    `Date: ${input.date}`,
+    ...(refLine ? [refLine] : []),
+    "",
+    "You’ll get another email once your booking is approved (with portal login details if this is your first visit).",
+    "",
+    "— Pickle Era",
+  ].join("\n");
+
+  const html = `
+    <p>Hi ${escapeHtml(displayName)},</p>
+    <p>We received your booking payment proof. Our team will review it shortly.</p>
+    <ul>
+      <li><strong>Date:</strong> ${escapeHtml(input.date)}</li>
+      ${
+        refLine
+          ? `<li><strong>Reference:</strong> ${escapeHtml(input.referenceId!.trim())}</li>`
+          : ""
+      }
+    </ul>
+    <p>You’ll get another email once your booking is approved (with portal login details if this is your first visit).</p>
+    <p>— Pickle Era</p>
+  `.trim();
+
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
 export async function sendPlayerInviteEmail(input: {
   to: string;
   tempPassword: string;

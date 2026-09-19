@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isResendConfigured, resolvePublicAppUrl, sendEmail } from "./client.js";
+import {
+  isResendConfigured,
+  resolvePublicAppUrl,
+  sendBookingPaymentReceivedEmail,
+  sendEmail,
+} from "./client.js";
 
 test("isResendConfigured is false when env unset (local default)", () => {
   assert.equal(isResendConfigured(), false);
@@ -22,5 +27,18 @@ test("sendEmail skips without throwing when Resend env unset", async () => {
   if (!result.sent) {
     assert.equal(result.reason, "not_configured");
     assert.match(result.message, /RESEND_API_KEY|EMAIL_FROM/);
+  }
+});
+
+test("sendBookingPaymentReceivedEmail skips without throwing when Resend env unset", async () => {
+  const result = await sendBookingPaymentReceivedEmail({
+    to: "player@example.com",
+    name: "Ada",
+    date: "2026-10-05",
+    referenceId: "GCASH-1",
+  });
+  assert.equal(result.sent, false);
+  if (!result.sent) {
+    assert.equal(result.reason, "not_configured");
   }
 });

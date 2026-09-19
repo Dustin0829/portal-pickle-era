@@ -11,7 +11,11 @@ import {
   ValidationError,
 } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
-import { isResendConfigured, sendPlayerInviteEmail } from "../../lib/resend/client.js";
+import {
+  isResendConfigured,
+  sendBookingPaymentReceivedEmail,
+  sendPlayerInviteEmail,
+} from "../../lib/resend/client.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { upsertWaitlistEntry } from "../waitlist/waitlist.service.js";
@@ -141,7 +145,25 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
     }
   }
 
-  return toBookingDto(booking);
+  const dto = toBookingDto(booking);
+
+  // Best-effort: payment-received ack must not fail the booking create.
+  const referenceId = body.referenceId?.trim();
+  void sendBookingPaymentReceivedEmail({
+    to: email,
+    name,
+    date: body.date,
+    ...(referenceId ? { referenceId } : {}),
+  }).then((result) => {
+    if (!result.sent) {
+      logger.info("booking_payment_received_email_skipped_or_failed", {
+        bookingId: dto.id,
+        reason: result.reason,
+      });
+    }
+  });
+
+  return dto;
 }
 
 export async function createAdminBooking(body: CreateAdminBookingBody) {
