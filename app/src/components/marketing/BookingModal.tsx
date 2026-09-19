@@ -37,10 +37,7 @@ import {
   parseDateKey,
   type BookingPlan,
 } from "@/lib/booking/booking";
-import {
-  coveredHoursForOpenPlaySlotIds,
-  expandOpenPlaySessionToHourIds,
-} from "@/lib/booking/openPlayHours";
+import { coveredHoursForOpenPlaySlotIds } from "@/lib/booking/openPlayHours";
 import { useOpenPlaySlots } from "@/lib/booking/openPlaySlots";
 import { usePlanUnitPrice } from "@/lib/booking/planPrices";
 import { walletAppliedAndRemaining } from "@/lib/booking/walletBookingPay";
@@ -49,6 +46,7 @@ import { useMeWallet } from "@/api/features/wallet/use-wallet";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveCourtHourPresentation } from "@/lib/booking/courtSlotPresentation";
 
 type Step = "schedule" | "pay" | "done";
 
@@ -97,7 +95,6 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const [hoursBlockedByOpenPlay, setHoursBlockedByOpenPlay] = useState<
     Set<string>
   >(() => new Set());
-  const [courtOccupiedHours, setCourtOccupiedHours] = useState<string[]>([]);
   const [occupancyLoading, setOccupancyLoading] = useState(false);
   const [bookedCountBySlotId, setBookedCountBySlotId] = useState<
     Map<string, number>
@@ -106,20 +103,6 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
   const [capacityError, setCapacityError] = useState("");
   const openPlaySlots = useOpenPlaySlots();
   const isOpenPlay = plan === "open-play";
-
-  const sessionsBlockedByCourt = useMemo(() => {
-    const occupied = new Set(courtOccupiedHours);
-    return new Set(
-      openPlaySlots
-        .filter((slot) =>
-          expandOpenPlaySessionToHourIds({
-            hour: slot.hour,
-            durationHours: slot.durationHours,
-          }).some((hourId) => occupied.has(hourId)),
-        )
-        .map((slot) => slot.id),
-    );
-  }, [courtOccupiedHours, openPlaySlots]);
 
   useEffect(() => {
     if (!user) return;
@@ -135,14 +118,12 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
       .then((items) => {
         const next = new Map<string, "pending" | "approved">();
         const openPlaySlotIds: string[] = [];
-        const courtHours: string[] = [];
         for (const item of items) {
           if (item.plan === "open-play") {
             openPlaySlotIds.push(...item.slotIds);
             continue;
           }
           for (const slotId of item.slotIds) {
-            courtHours.push(slotId);
             const key = `${item.courtId}|${slotId}`;
             const existing = next.get(key);
             // Approved wins over pending when both somehow exist.
@@ -154,12 +135,10 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
         setHoursBlockedByOpenPlay(
           new Set(coveredHoursForOpenPlaySlotIds(openPlaySlotIds)),
         );
-        setCourtOccupiedHours(courtHours);
       })
       .catch(() => {
         setSlotStatusByKey(new Map());
         setHoursBlockedByOpenPlay(new Set());
-        setCourtOccupiedHours([]);
       })
       .finally(() => {
         if (!controller.signal.aborted) setOccupancyLoading(false);
@@ -574,11 +553,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                         const booked = bookedCountBySlotId.get(slot.id) ?? 0;
                         const full = booked >= OPEN_PLAY_CAPACITY;
                         const past = isSlotPast(date, slot.hour);
-                        const blockedByCourt = sessionsBlockedByCourt.has(
-                          slot.id,
-                        );
-                        const openSlot =
-                          !capacityError && !past && !full && !blockedByCourt;
+                        const openSlot = !capacityError && !past && !full;
                         const selected = slotIds.includes(slot.id);
                         return (
                           <button
@@ -604,9 +579,7 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                                     : "text-white/30"
                               }`}
                             >
-                              {blockedByCourt
-                                ? "Court booked"
-                                : `${booked}/${OPEN_PLAY_CAPACITY}${full ? " · Full" : ""}`}
+                              {`${booked}/${OPEN_PLAY_CAPACITY}${full ? " · Full" : ""}`}
                             </span>
                           </button>
                         );
@@ -651,44 +624,38 @@ export function BookingModal({ plan, preset, onClose }: BookingModalProps) {
                         const openPlayHold = hoursBlockedByOpenPlay.has(
                           slot.id,
                         );
-                        const openSlot =
-                          Boolean(courtId) &&
-                          !past &&
-                          hold === null &&
-                          !openPlayHold;
+                        const presentation = resolveCourtHourPresentation({
+                          hold,
+                          openPlayHold,
+                          past,
+                          hasCourt: Boolean(courtId),
+                        });
                         const selected = slotIds.includes(slot.id);
-                        const pending = hold === "pending";
-                        const approved = hold === "approved" || openPlayHold;
                         return (
                           <button
                             key={slot.id}
                             type="button"
-                            disabled={!openSlot}
+                            disabled={!presentation.selectable}
                             onClick={() => toggleSlot(slot.id)}
                             className={`flex min-h-10 flex-col items-center justify-center gap-0.5 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
                               selected
                                 ? "bg-yellow text-black"
-                                : openSlot
-                                  ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                                  : pending
-                                    ? "border border-amber-400/45 bg-amber-400/10 text-amber-100"
-                                    : approved
-                                      ? "border border-white/10 text-white/35"
-                                      : "border border-white/10 text-white/25"
+                                : presentation.className
                             }`}
                           >
                             <span
-                              className={approved ? "line-through" : undefined}
+                              className={
+                                presentation.approved &&
+                                !presentation.reservedForOpenPlay
+                                  ? "line-through"
+                                  : undefined
+                              }
                             >
-                              {slot.label}
+                              {presentation.label ?? slot.label}
                             </span>
-                            {pending ? (
+                            {presentation.pending ? (
                               <span className="text-[9px] font-bold tracking-[0.16em] text-amber-300">
                                 Pending
-                              </span>
-                            ) : openPlayHold ? (
-                              <span className="text-[9px] font-bold tracking-[0.16em] text-white/40">
-                                Open play
                               </span>
                             ) : null}
                           </button>
