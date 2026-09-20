@@ -2,8 +2,11 @@ import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
+import {
+  clearFacilitySettingsCache,
+  seedFacilitySettings,
+} from "@/test/helpers/facilitySettings";
 
 const createAdminBooking = vi.fn();
 const listOpenPlaySessions = vi.fn();
@@ -15,6 +18,11 @@ vi.mock("@/api/features/bookings/bookings.service", () => ({
   listOccupancy: (...args: unknown[]) => listOccupancy(...args),
 }));
 
+vi.mock("@/api/features/facility-settings/facility-settings.service", () => ({
+  getFacilitySettings: vi.fn(async () => seedFacilitySettings()),
+  patchFacilitySettings: vi.fn(),
+}));
+
 describe("WalkInBookingModal", () => {
   afterEach(() => {
     cleanup();
@@ -22,12 +30,13 @@ describe("WalkInBookingModal", () => {
     createAdminBooking.mockReset();
     listOpenPlaySessions.mockReset();
     listOccupancy.mockReset();
-    useFacilitySettingsStore.getState().resetDefaults();
+    clearFacilitySettingsCache();
   });
 
   beforeEach(() => {
     localStorage.clear();
-    useFacilitySettingsStore.getState().resetDefaults();
+    clearFacilitySettingsCache();
+    seedFacilitySettings();
     createAdminBooking.mockResolvedValue({
       id: "b-walkin",
       plan: "court",

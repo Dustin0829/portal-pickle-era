@@ -1,24 +1,32 @@
 import { PAYMENT } from "@/lib/booking/booking";
 import {
-  resolvePaymentMethods,
   type FacilityPaymentMethod,
   type PaymentSettings,
 } from "@/lib/booking/paymentMethods";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import { facilitySettingsQueryKey } from "@/api/features/facility-settings/use-facility-settings";
+import type { FacilitySettingsDto } from "@/api/features/facility-settings/facility-settings.schema";
+import {
+  fallbackFacilitySettings,
+  paymentMethodsFromSettings,
+} from "@/lib/facility/facilitySettingsView";
+import { queryClient } from "@/providers/QueryProvider";
+import { useFacilitySettings } from "@/api/features/facility-settings/use-facility-settings";
+
+function cachedOrFallback(): FacilitySettingsDto {
+  return (
+    queryClient.getQueryData<FacilitySettingsDto>(facilitySettingsQueryKey) ??
+    fallbackFacilitySettings()
+  );
+}
 
 /** Active cash channels for booking / wallet top-up. */
 export function readPaymentMethods(): FacilityPaymentMethod[] {
-  const state = useFacilitySettingsStore.getState();
-  return resolvePaymentMethods({
-    paymentMethods: state.paymentMethods,
-    payment: state.payment,
-  });
+  return paymentMethodsFromSettings(cachedOrFallback());
 }
 
 export function usePaymentMethods(): FacilityPaymentMethod[] {
-  const paymentMethods = useFacilitySettingsStore((s) => s.paymentMethods);
-  const payment = useFacilitySettingsStore((s) => s.payment);
-  return resolvePaymentMethods({ paymentMethods, payment });
+  const { data } = useFacilitySettings();
+  return paymentMethodsFromSettings(data ?? fallbackFacilitySettings());
 }
 
 /** @deprecated Prefer usePaymentMethods — returns first method. */

@@ -13,7 +13,8 @@ describe("resolvePaymentMethods", () => {
           label: "Maya",
           name: "Pickle Era",
           number: "09171234567",
-          qrImageDataUrl: "data:image/png;base64,abc",
+          qrImageKey: "uploads/qr.png",
+          qrImageUrl: "https://cdn.example.com/qr.png",
         },
       ],
       payment: {
@@ -29,7 +30,8 @@ describe("resolvePaymentMethods", () => {
       label: "Maya",
       name: "Pickle Era",
       number: "09171234567",
-      qrImageDataUrl: "data:image/png;base64,abc",
+      qrImageKey: "uploads/qr.png",
+      qrImageUrl: "https://cdn.example.com/qr.png",
     });
   });
 
@@ -49,7 +51,8 @@ describe("resolvePaymentMethods", () => {
         label: "BDO",
         name: "Facility Acct",
         number: "1234 5678 9012",
-        qrImageDataUrl: null,
+        qrImageKey: null,
+        qrImageUrl: null,
       },
     ]);
   });

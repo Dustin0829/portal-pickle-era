@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import type { BookablePlan, TimeSlot } from "@/lib/booking/booking";
@@ -6,10 +6,20 @@ import {
   previewCoveredHours,
   slotFromOpenPlayHour,
 } from "@/lib/booking/openPlaySlots";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import {
+  useFacilitySettings,
+  usePatchFacilitySettings,
+} from "@/api/features/facility-settings/use-facility-settings";
+import {
+  fallbackFacilitySettings,
+  openPlaySlotsFromSettings,
+  plansFromSettings,
+} from "@/lib/facility/facilitySettingsView";
 import { FoodMenuSettingsSection } from "@/pages/admin/settings/FoodMenuSettingsSection";
 import { PaymentMethodsSettingsSection } from "@/pages/admin/settings/PaymentMethodsSettingsSection";
+import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { cn } from "@/lib/utils";
+import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 
 const PLAN_ORDER: BookablePlan[] = ["court", "open-play"];
 const START_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
@@ -33,77 +43,119 @@ const TABS: { id: SettingsTab; label: string }[] = [
 ];
 
 export function AdminSettingsPage() {
-  const {
-    plans,
-    openPlaySlots,
-    preSignup,
-    setPlanPrice,
-    setOpenPlaySlots,
-    setPreSignup,
-    resetDefaults,
-  } = useFacilitySettingsStore();
+  const { data, isPending, isError, refetch } = useFacilitySettings();
+  const { mutateAsync: patchSettings, isPending: isSaving } =
+    usePatchFacilitySettings();
+  const settings = data ?? fallbackFacilitySettings();
+  const plans = plansFromSettings(settings);
+  const openPlaySlots = openPlaySlotsFromSettings(settings);
+  const preSignup = settings.preSignup;
+
   const [tab, setTab] = useState<SettingsTab>("prices");
-  const [priceDraft, setPriceDraft] = useState<PriceDraft>(() =>
-    pricesFromPlans(plans),
-  );
-  const [slotsDraft, setSlotsDraft] = useState<TimeSlot[]>(() =>
-    openPlaySlots.map((slot) => ({ ...slot })),
-  );
+  const [priceDraft, setPriceDraft] = useState<PriceDraft | null>(null);
+  const [slotsDraft, setSlotsDraft] = useState<TimeSlot[] | null>(null);
   const [pricesSaved, setPricesSaved] = useState(false);
   const [slotsSaved, setSlotsSaved] = useState(false);
-  const [savingPrices, setSavingPrices] = useState(false);
-  const [savingSlots, setSavingSlots] = useState(false);
+  const [formError, setFormError] = useState("");
 
-  useEffect(() => {
-    setPriceDraft(pricesFromPlans(plans));
-  }, [plans]);
+  const displayPrices = priceDraft ?? pricesFromPlans(plans);
+  const displaySlots = slotsDraft ?? openPlaySlots.map((slot) => ({ ...slot }));
 
-  useEffect(() => {
-    setSlotsDraft(openPlaySlots.map((slot) => ({ ...slot })));
-  }, [openPlaySlots]);
-
-  function onSavePrices(event: FormEvent) {
+  async function onSavePrices(event: FormEvent) {
     event.preventDefault();
-    setSavingPrices(true);
+    setFormError("");
     setPricesSaved(false);
-    for (const plan of PLAN_ORDER) {
-      setPlanPrice(plan, Math.max(0, Number(priceDraft[plan]) || 0));
-    }
-    window.setTimeout(() => {
-      setSavingPrices(false);
+    try {
+      await patchSettings({
+        planPrices: {
+          court: Math.max(1, Number(displayPrices.court) || 1),
+          openPlay: Math.max(1, Number(displayPrices["open-play"]) || 1),
+        },
+      });
+      setPriceDraft(null);
       setPricesSaved(true);
-    }, 200);
+    } catch (error) {
+      setFormError(getUserFacingApiErrorMessage(error));
+    }
   }
 
-  function onSaveSlots(event: FormEvent) {
+  async function onSaveSlots(event: FormEvent) {
     event.preventDefault();
-    setSavingSlots(true);
+    setFormError("");
     setSlotsSaved(false);
-    const next = [...slotsDraft]
+    const next = [...displaySlots]
       .map((slot) => slotFromOpenPlayHour(slot.hour, slot.durationHours ?? 2))
       .sort((a, b) => a.hour - b.hour);
-    setOpenPlaySlots(next);
-    window.setTimeout(() => {
-      setSavingSlots(false);
+    if (next.length === 0) {
+      setFormError("Add at least one Open Play session.");
+      return;
+    }
+    try {
+      await patchSettings({
+        openPlaySessions: next.map((slot) => ({
+          slotId: slot.id,
+          hour: slot.hour,
+          durationHours: slot.durationHours ?? 2,
+        })),
+      });
+      setSlotsDraft(null);
       setSlotsSaved(true);
-    }, 200);
+    } catch (error) {
+      setFormError(getUserFacingApiErrorMessage(error));
+    }
   }
 
-  function onResetDefaults() {
-    resetDefaults();
-    const state = useFacilitySettingsStore.getState();
-    setPriceDraft(pricesFromPlans(state.plans));
-    setSlotsDraft(state.openPlaySlots.map((slot) => ({ ...slot })));
-    setPricesSaved(false);
-    setSlotsSaved(false);
+  async function onTogglePreSignup() {
+    setFormError("");
+    try {
+      await patchSettings({ preSignup: !preSignup });
+    } catch (error) {
+      setFormError(getUserFacingApiErrorMessage(error));
+    }
+  }
+
+  async function onResetDefaults() {
+    setFormError("");
+    const defaults = fallbackFacilitySettings();
+    try {
+      await patchSettings({
+        planPrices: defaults.planPrices,
+        openPlaySessions: defaults.openPlaySessions,
+        paymentMethods: defaults.paymentMethods.map((m) => ({
+          id: m.id,
+          label: m.label,
+          name: m.name,
+          number: m.number,
+          qrImageKey: m.qrImageKey,
+        })),
+        preSignup: false,
+      });
+      setPricesSaved(false);
+      setSlotsSaved(false);
+      setPriceDraft(null);
+      setSlotsDraft(null);
+    } catch (error) {
+      setFormError(getUserFacingApiErrorMessage(error));
+    }
   }
 
   function addSlot() {
     setSlotsSaved(false);
-    const used = new Set(slotsDraft.map((slot) => slot.hour));
-    const hour = START_HOURS.find((value) => !used.has(value)) ?? 7;
-    setSlotsDraft((prev) =>
-      [...prev, slotFromOpenPlayHour(hour)].sort((a, b) => a.hour - b.hour),
+    setSlotsDraft((prev) => {
+      const current = prev ?? openPlaySlots.map((slot) => ({ ...slot }));
+      const used = new Set(current.map((slot) => slot.hour));
+      const hour = START_HOURS.find((value) => !used.has(value)) ?? 7;
+      return [...current, slotFromOpenPlayHour(hour)].sort(
+        (a, b) => a.hour - b.hour,
+      );
+    });
+  }
+
+  if (isPending && !data) {
+    return (
+      <AppPageShell width="wide">
+        <PortalListSkeleton rows={4} />
+      </AppPageShell>
     );
   }
 
@@ -117,13 +169,32 @@ export function AdminSettingsPage() {
           <p className="mt-1 text-sm text-zinc-500">
             Plan prices, Open Play sessions, payment display, and food menu.
           </p>
+          {isError ? (
+            <p className="mt-2 text-sm text-maroon" role="alert">
+              Could not load settings.{" "}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => void refetch()}
+              >
+                Retry
+              </button>
+              . Showing defaults until the API responds.
+            </p>
+          ) : null}
+          {formError ? (
+            <p className="mt-2 text-sm text-maroon" role="alert">
+              {formError}
+            </p>
+          ) : null}
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={onResetDefaults}
+          onClick={() => void onResetDefaults()}
           className="shrink-0"
+          disabled={isSaving}
         >
           Reset defaults
         </Button>
@@ -168,8 +239,7 @@ export function AdminSettingsPage() {
                 </h2>
                 <p className="mt-1.5 text-sm text-zinc-500">
                   Marketing Book CTAs open the booking modal. This toggle is
-                  unused for CTAs and kept only for local settings
-                  compatibility.
+                  unused for CTAs and kept for settings parity.
                 </p>
               </div>
               <button
@@ -177,7 +247,8 @@ export function AdminSettingsPage() {
                 role="switch"
                 aria-checked={preSignup}
                 aria-label="Pre-signup mode"
-                onClick={() => setPreSignup(!preSignup)}
+                onClick={() => void onTogglePreSignup()}
+                disabled={isSaving}
                 className={
                   preSignup
                     ? "relative h-8 w-14 shrink-0 rounded-full bg-yellow transition"
@@ -201,7 +272,7 @@ export function AdminSettingsPage() {
             </h2>
             <form
               className="mt-3 flex flex-col gap-2.5"
-              onSubmit={onSavePrices}
+              onSubmit={(event) => void onSavePrices(event)}
             >
               <ul className="flex flex-col gap-2.5">
                 {PLAN_ORDER.map((plan) => (
@@ -225,15 +296,15 @@ export function AdminSettingsPage() {
                       <input
                         id={`price-${plan}`}
                         type="number"
-                        min={0}
+                        min={1}
                         step={1}
-                        value={priceDraft[plan]}
+                        value={displayPrices[plan]}
                         onChange={(event) => {
                           setPricesSaved(false);
-                          setPriceDraft((prev) => ({
-                            ...prev,
+                          setPriceDraft({
+                            ...displayPrices,
                             [plan]: Number(event.target.value) || 0,
-                          }));
+                          });
                         }}
                         className="h-9 w-28 border border-zinc-200 bg-white pl-7 pr-3 text-sm text-zinc-900 outline-none focus:border-yellow"
                       />
@@ -242,12 +313,12 @@ export function AdminSettingsPage() {
                 ))}
               </ul>
               <div className="mt-1 flex flex-wrap items-center gap-3">
-                <Button type="submit" className="w-fit" disabled={savingPrices}>
-                  {savingPrices ? "Saving…" : "Save"}
+                <Button type="submit" className="w-fit" disabled={isSaving}>
+                  {isSaving ? "Saving…" : "Save"}
                 </Button>
                 {pricesSaved ? (
                   <p className="text-xs text-zinc-500" role="status">
-                    Saved locally.
+                    Saved.
                   </p>
                 ) : null}
               </div>
@@ -267,12 +338,14 @@ export function AdminSettingsPage() {
           </h2>
           <p className="mt-1.5 text-sm text-zinc-500">
             Set session start and duration. Covered court hours are blocked
-            facility-wide. Saved sessions appear on Open Play booking (this
-            browser).
+            facility-wide. Saved sessions apply to all devices.
           </p>
-          <form className="mt-3 flex flex-col gap-2.5" onSubmit={onSaveSlots}>
+          <form
+            className="mt-3 flex flex-col gap-2.5"
+            onSubmit={(event) => void onSaveSlots(event)}
+          >
             <ul className="flex flex-col gap-2">
-              {slotsDraft.map((slot, index) => (
+              {displaySlots.map((slot, index) => (
                 <li
                   key={`${slot.id}-${index}`}
                   className="flex flex-col gap-2 border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between"
@@ -295,8 +368,8 @@ export function AdminSettingsPage() {
                       onChange={(event) => {
                         setSlotsSaved(false);
                         const hour = Number(event.target.value);
-                        setSlotsDraft((prev) =>
-                          prev.map((item, i) =>
+                        setSlotsDraft(
+                          displaySlots.map((item, i) =>
                             i === index
                               ? slotFromOpenPlayHour(
                                   hour,
@@ -323,8 +396,8 @@ export function AdminSettingsPage() {
                       onChange={(event) => {
                         setSlotsSaved(false);
                         const durationHours = Number(event.target.value);
-                        setSlotsDraft((prev) =>
-                          prev.map((item, i) =>
+                        setSlotsDraft(
+                          displaySlots.map((item, i) =>
                             i === index
                               ? slotFromOpenPlayHour(item.hour, durationHours)
                               : item,
@@ -343,11 +416,11 @@ export function AdminSettingsPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={slotsDraft.length <= 1}
+                      disabled={displaySlots.length <= 1}
                       onClick={() => {
                         setSlotsSaved(false);
-                        setSlotsDraft((prev) =>
-                          prev.filter((_, i) => i !== index),
+                        setSlotsDraft(
+                          displaySlots.filter((_, i) => i !== index),
                         );
                       }}
                     >
@@ -363,16 +436,16 @@ export function AdminSettingsPage() {
                 variant="outline"
                 size="sm"
                 onClick={addSlot}
-                disabled={slotsDraft.length >= START_HOURS.length}
+                disabled={displaySlots.length >= START_HOURS.length}
               >
                 Add session
               </Button>
-              <Button type="submit" className="w-fit" disabled={savingSlots}>
-                {savingSlots ? "Saving…" : "Save"}
+              <Button type="submit" className="w-fit" disabled={isSaving}>
+                {isSaving ? "Saving…" : "Save"}
               </Button>
               {slotsSaved ? (
                 <p className="text-xs text-zinc-500" role="status">
-                  Saved locally.
+                  Saved.
                 </p>
               ) : null}
             </div>

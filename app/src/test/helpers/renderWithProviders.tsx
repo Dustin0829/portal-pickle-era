@@ -5,17 +5,30 @@ import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { BookingModalProvider } from "@/providers/BookingModalProvider";
 import { JoinClubModalProvider } from "@/providers/JoinClubModalProvider";
+import { facilitySettingsQueryKey } from "@/api/features/facility-settings/use-facility-settings";
+import type { FacilitySettingsDto } from "@/api/features/facility-settings/facility-settings.schema";
 
 export function renderWithProviders(
   ui: React.ReactElement,
-  options?: { route?: string; renderOptions?: Omit<RenderOptions, "wrapper"> },
+  options?: {
+    route?: string;
+    facilitySettings?: FacilitySettingsDto;
+    renderOptions?: Omit<RenderOptions, "wrapper">;
+  },
 ) {
   const qc = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, gcTime: 0, staleTime: 0 },
+      queries: {
+        retry: false,
+        gcTime: options?.facilitySettings ? Infinity : 0,
+        staleTime: options?.facilitySettings ? Infinity : 0,
+      },
       mutations: { retry: false },
     },
   });
+  if (options?.facilitySettings) {
+    qc.setQueryData(facilitySettingsQueryKey, options.facilitySettings);
+  }
   const route = options?.route ?? "/";
 
   function Wrapper({ children }: { children: React.ReactNode }) {

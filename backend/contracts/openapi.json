@@ -1031,6 +1031,131 @@
           "createdAt",
           "updatedAt"
         ]
+      },
+      "FacilitySettings": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "planPrices": {
+            "type": "object",
+            "properties": {
+              "court": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 100000
+              },
+              "openPlay": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 100000
+              },
+              "clinic": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 100000
+              }
+            },
+            "required": [
+              "court",
+              "openPlay",
+              "clinic"
+            ],
+            "additionalProperties": false
+          },
+          "openPlaySessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slotId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 16
+                },
+                "hour": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 23
+                },
+                "durationHours": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true,
+                  "maximum": 12
+                }
+              },
+              "required": [
+                "slotId",
+                "hour",
+                "durationHours"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "paymentMethods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "qrImageKey": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "qrImageUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sortOrder": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "name",
+                "number",
+                "qrImageKey",
+                "qrImageUrl",
+                "sortOrder"
+              ]
+            },
+            "minItems": 1
+          },
+          "preSignup": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "planPrices",
+          "openPlaySessions",
+          "paymentMethods",
+          "preSignup",
+          "updatedAt"
+        ]
       }
     },
     "parameters": {}
@@ -11371,6 +11496,686 @@
                         "notes",
                         "lines",
                         "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/facility-settings": {
+      "get": {
+        "operationId": "getFacilitySettings",
+        "tags": [
+          "FacilitySettings"
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared facility settings (prices, Open Play sessions, payment methods)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "planPrices": {
+                          "type": "object",
+                          "properties": {
+                            "court": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "openPlay": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "clinic": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "court",
+                            "openPlay",
+                            "clinic"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "openPlaySessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "slotId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 16
+                              },
+                              "hour": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "durationHours": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 12
+                              }
+                            },
+                            "required": [
+                              "slotId",
+                              "hour",
+                              "durationHours"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1
+                        },
+                        "paymentMethods": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "qrImageKey": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "qrImageUrl": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "sortOrder": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "name",
+                              "number",
+                              "qrImageKey",
+                              "qrImageUrl",
+                              "sortOrder"
+                            ]
+                          },
+                          "minItems": 1
+                        },
+                        "preSignup": {
+                          "type": "boolean"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "planPrices",
+                        "openPlaySessions",
+                        "paymentMethods",
+                        "preSignup",
+                        "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/facility-settings": {
+      "patch": {
+        "operationId": "patchAdminFacilitySettings",
+        "tags": [
+          "FacilitySettings"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "planPrices": {
+                    "type": "object",
+                    "properties": {
+                      "court": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 100000
+                      },
+                      "openPlay": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 100000
+                      },
+                      "clinic": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 100000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "openPlaySessions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "slotId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 16
+                        },
+                        "hour": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 23
+                        },
+                        "durationHours": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 12
+                        }
+                      },
+                      "required": [
+                        "slotId",
+                        "hour",
+                        "durationHours"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 24
+                  },
+                  "paymentMethods": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "number": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "qrImageKey": {
+                          "type": "string",
+                          "nullable": true,
+                          "maxLength": 512
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "name",
+                        "number"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "preSignup": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated facility settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "planPrices": {
+                          "type": "object",
+                          "properties": {
+                            "court": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "openPlay": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "clinic": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "court",
+                            "openPlay",
+                            "clinic"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "openPlaySessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "slotId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 16
+                              },
+                              "hour": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 23
+                              },
+                              "durationHours": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 12
+                              }
+                            },
+                            "required": [
+                              "slotId",
+                              "hour",
+                              "durationHours"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1
+                        },
+                        "paymentMethods": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "qrImageKey": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "qrImageUrl": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "sortOrder": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "name",
+                              "number",
+                              "qrImageKey",
+                              "qrImageUrl",
+                              "sortOrder"
+                            ]
+                          },
+                          "minItems": 1
+                        },
+                        "preSignup": {
+                          "type": "boolean"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "planPrices",
+                        "openPlaySessions",
+                        "paymentMethods",
+                        "preSignup",
                         "updatedAt"
                       ]
                     }

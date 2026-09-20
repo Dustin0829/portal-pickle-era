@@ -126,6 +126,40 @@ async function main() {
       ],
     });
   }
+
+  const settingsId = "default";
+  const existingSettings = await prisma.facilitySettings.findUnique({
+    where: { id: settingsId },
+    select: { id: true },
+  });
+  if (!existingSettings) {
+    await prisma.facilitySettings.create({
+      data: {
+        id: settingsId,
+        courtPricePesos: 300,
+        openPlayPricePesos: 250,
+        clinicPricePesos: 500,
+        openPlaySessions: [
+          { slotId: "07:00", hour: 7, durationHours: 2 },
+          { slotId: "16:00", hour: 16, durationHours: 2 },
+          { slotId: "18:00", hour: 18, durationHours: 2 },
+        ],
+        preSignup: false,
+        paymentMethods: {
+          create: [
+            {
+              id: randomUUID(),
+              label: "GCash",
+              name: "Pickle Era",
+              number: "0917 850 0107",
+              qrImageKey: null,
+              sortOrder: 0,
+            },
+          ],
+        },
+      },
+    });
+  }
 }
 
 main()

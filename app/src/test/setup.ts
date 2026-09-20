@@ -1,6 +1,18 @@
 import "@testing-library/jest-dom/vitest";
 import "../bones/registry";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
+import { queryClient } from "@/providers/QueryProvider";
+import { fallbackFacilitySettings } from "@/lib/facility/facilitySettingsView";
+
+vi.mock("@/api/features/facility-settings/facility-settings.service", () => ({
+  getFacilitySettings: vi.fn(async () => fallbackFacilitySettings()),
+  patchFacilitySettings: vi.fn(async () => fallbackFacilitySettings()),
+}));
+
+afterEach(async () => {
+  await queryClient.cancelQueries();
+  queryClient.clear();
+});
 
 // Base UI / Radix primitives expect pointer capture in jsdom.
 if (!Element.prototype.hasPointerCapture) {
@@ -26,7 +38,7 @@ Object.defineProperty(window, "matchMedia", {
     addListener: vi.fn(),
     removeListener: vi.fn(),
     addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
+    removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
 });

@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { bookingTotal, getPlanUnitPrice } from "@/lib/booking/booking";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import { readPlanUnitPrice } from "@/lib/booking/planPrices";
+import {
+  clearFacilitySettingsCache,
+  seedFacilitySettings,
+} from "@/test/helpers/facilitySettings";
 
 describe("plan unit prices", () => {
   beforeEach(() => {
-    useFacilitySettingsStore.getState().resetDefaults();
+    clearFacilitySettingsCache();
+    seedFacilitySettings();
   });
 
   it("falls back to PLAN_META when override missing", () => {
@@ -15,14 +20,14 @@ describe("plan unit prices", () => {
   });
 
   it("uses facility settings price for booking totals", () => {
-    useFacilitySettingsStore.getState().setPlanPrice("court", 450);
-    const price = useFacilitySettingsStore.getState().plans.court.price;
+    seedFacilitySettings({
+      planPrices: { court: 450, openPlay: 250, clinic: 500 },
+    });
+    const price = readPlanUnitPrice("court");
     expect(bookingTotal("court", 2, price)).toBe(900);
   });
 
   it("defaults open-play facility price to ₱250", () => {
-    expect(useFacilitySettingsStore.getState().plans["open-play"].price).toBe(
-      250,
-    );
+    expect(readPlanUnitPrice("open-play")).toBe(250);
   });
 });

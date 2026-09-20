@@ -1,6 +1,13 @@
 import { formatHour, SLOTS, type TimeSlot } from "@/lib/booking/booking";
 import { expandOpenPlaySessionToHourIds } from "@/lib/booking/openPlayHours";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import { facilitySettingsQueryKey } from "@/api/features/facility-settings/use-facility-settings";
+import type { FacilitySettingsDto } from "@/api/features/facility-settings/facility-settings.schema";
+import {
+  fallbackFacilitySettings,
+  openPlaySlotsFromSettings,
+} from "@/lib/facility/facilitySettingsView";
+import { queryClient } from "@/providers/QueryProvider";
+import { useFacilitySettings } from "@/api/features/facility-settings/use-facility-settings";
 
 /** Build an open-play label from start hour + duration. */
 export function labelOpenPlayWindow(hour: number, durationHours = 2) {
@@ -42,17 +49,25 @@ function normalizeOpenPlaySlot(slot: TimeSlot): TimeSlot {
   };
 }
 
+function cachedOrFallback(): FacilitySettingsDto {
+  return (
+    queryClient.getQueryData<FacilitySettingsDto>(facilitySettingsQueryKey) ??
+    fallbackFacilitySettings()
+  );
+}
+
 export function getOpenPlaySlots(): TimeSlot[] {
-  const saved = useFacilitySettingsStore.getState().openPlaySlots;
-  if (saved?.length) {
-    return saved.map(normalizeOpenPlaySlot);
+  const slots = openPlaySlotsFromSettings(cachedOrFallback());
+  if (slots.length) {
+    return slots.map(normalizeOpenPlaySlot);
   }
   return SLOTS["open-play"].map((slot) => ({ ...slot }));
 }
 
 export function useOpenPlaySlots(): TimeSlot[] {
-  const slots = useFacilitySettingsStore((state) => state.openPlaySlots);
-  if (slots?.length) {
+  const { data } = useFacilitySettings();
+  const slots = openPlaySlotsFromSettings(data ?? fallbackFacilitySettings());
+  if (slots.length) {
     return slots.map(normalizeOpenPlaySlot);
   }
   return SLOTS["open-play"].map((slot) => ({ ...slot }));

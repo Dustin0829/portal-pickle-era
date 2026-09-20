@@ -1,9 +1,12 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WalletPage } from "@/pages/app/wallet/WalletPage";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
+import {
+  clearFacilitySettingsCache,
+  seedFacilitySettings,
+} from "@/test/helpers/facilitySettings";
 
 vi.mock("@/api/features/wallet/use-wallet", () => ({
   useMeWallet: () => ({
@@ -34,29 +37,65 @@ vi.mock("@/api/features/wallet/use-wallet", () => ({
   }),
 }));
 
+vi.mock("@/api/features/facility-settings/facility-settings.service", () => ({
+  getFacilitySettings: vi.fn(async () =>
+    seedFacilitySettings({
+      paymentMethods: [
+        {
+          id: "gcash",
+          label: "GCash",
+          name: "Pickle Era GCash",
+          number: "09170000001",
+          qrImageKey: null,
+          qrImageUrl: null,
+          sortOrder: 0,
+        },
+        {
+          id: "maya",
+          label: "Maya",
+          name: "Pickle Era Maya",
+          number: "09170000002",
+          qrImageKey: null,
+          qrImageUrl: null,
+          sortOrder: 1,
+        },
+      ],
+    }),
+  ),
+  patchFacilitySettings: vi.fn(),
+}));
+
 describe("WalletPage", () => {
   afterEach(() => {
     cleanup();
+    clearFacilitySettingsCache();
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
-    useFacilitySettingsStore.getState().setPaymentMethods([
-      {
-        id: "gcash",
-        label: "GCash",
-        name: "Pickle Era GCash",
-        number: "09170000001",
-        qrImageDataUrl: null,
-      },
-      {
-        id: "maya",
-        label: "Maya",
-        name: "Pickle Era Maya",
-        number: "09170000002",
-        qrImageDataUrl: null,
-      },
-    ]);
+    clearFacilitySettingsCache();
+    seedFacilitySettings({
+      paymentMethods: [
+        {
+          id: "gcash",
+          label: "GCash",
+          name: "Pickle Era GCash",
+          number: "09170000001",
+          qrImageKey: null,
+          qrImageUrl: null,
+          sortOrder: 0,
+        },
+        {
+          id: "maya",
+          label: "Maya",
+          name: "Pickle Era Maya",
+          number: "09170000002",
+          qrImageKey: null,
+          qrImageUrl: null,
+          sortOrder: 1,
+        },
+      ],
+    });
   });
 
   it("shows Wallet heading, balance, and recent top-up", () => {
@@ -74,9 +113,36 @@ describe("WalletPage", () => {
 
   it("selects a facility payment method before showing QR details", async () => {
     const user = userEvent.setup();
-    renderWithProviders(<WalletPage />, { route: "/app/wallet" });
+    const settings = seedFacilitySettings({
+      paymentMethods: [
+        {
+          id: "gcash",
+          label: "GCash",
+          name: "Pickle Era GCash",
+          number: "09170000001",
+          qrImageKey: null,
+          qrImageUrl: null,
+          sortOrder: 0,
+        },
+        {
+          id: "maya",
+          label: "Maya",
+          name: "Pickle Era Maya",
+          number: "09170000002",
+          qrImageKey: null,
+          qrImageUrl: null,
+          sortOrder: 1,
+        },
+      ],
+    });
+    renderWithProviders(<WalletPage />, {
+      route: "/app/wallet",
+      facilitySettings: settings,
+    });
 
-    expect(screen.getByText(/select a payment method/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/select a payment method/i)).toBeInTheDocument();
+    });
     expect(screen.queryByText("Pickle Era GCash")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^gcash$/i }));

@@ -11,14 +11,16 @@ const methods: FacilityPaymentMethod[] = [
     label: "GCash",
     name: "Pickle Era GCash",
     number: "09170000001",
-    qrImageDataUrl: "data:image/png;base64,gcash",
+    qrImageKey: null,
+    qrImageUrl: "data:image/png;base64,gcash",
   },
   {
     id: "maya",
     label: "Maya",
     name: "Pickle Era Maya",
     number: "09170000002",
-    qrImageDataUrl: "data:image/png;base64,maya",
+    qrImageKey: null,
+    qrImageUrl: "data:image/png;base64,maya",
   },
 ];
 

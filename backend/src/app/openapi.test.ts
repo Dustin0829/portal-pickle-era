@@ -10,6 +10,8 @@ test("OpenAPI document includes v1 template paths", () => {
   assert.ok(document.paths["/examples"]);
   assert.ok(document.paths["/examples/{id}"]);
   assert.ok(document.paths["/uploads/presign"]);
+  assert.ok(document.paths["/facility-settings"]);
+  assert.ok(document.paths["/admin/facility-settings"]);
   assert.ok(document.paths["/admin/activity-logs"]);
   assert.ok(document.paths["/admin/activity-logs/{id}"]);
 });
