@@ -19,4 +19,4 @@
 ## 3. Ship
 
 - [x] 3.1 `/opsx-verify` (web)
-- [ ] 3.2 `/opsx-pr` (branch `feat/portal-tab-padding-align`)
+- [x] 3.2 `/opsx-pr` (branch `feat/portal-tab-padding-align`)
