@@ -156,7 +156,7 @@ export function AdminPlayersPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <AppPageShell width="full" className="relative z-10 max-w-5xl">
+      <AppPageShell width="wide" className="relative z-10">
         <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">

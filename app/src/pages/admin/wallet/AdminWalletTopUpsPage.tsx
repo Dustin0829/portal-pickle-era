@@ -85,7 +85,7 @@ export function AdminWalletTopUpsPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <AppPageShell width="full" className="relative z-10 max-w-6xl">
+      <AppPageShell width="wide" className="relative z-10">
         <header className="mb-6 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
             Top-ups <span className="text-amber-600">inbox</span>

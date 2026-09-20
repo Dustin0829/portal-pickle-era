@@ -31,7 +31,7 @@ import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { useMeWallet } from "@/api/features/wallet/use-wallet";
 import { useAuth } from "@/providers/AuthProvider";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
-import { PaymentMethodCarousel } from "@/components/booking/PaymentMethodCarousel";
+import { PaymentMethodPicker } from "@/components/booking/PaymentMethodCarousel";
 import { UnifiedBookingSchedule } from "@/components/booking/UnifiedBookingSchedule";
 import { usePaymentMethods } from "@/lib/wallet/paymentSettings";
 import { cn } from "@/lib/utils";
@@ -527,7 +527,7 @@ export function BookingModal({
               ) : null}
 
               {needsReceipt ? (
-                <PaymentMethodCarousel
+                <PaymentMethodPicker
                   methods={paymentMethods}
                   variant="dark"
                   amountHint={`Send ₱${remainingCashPesos}, then upload your receipt.`}

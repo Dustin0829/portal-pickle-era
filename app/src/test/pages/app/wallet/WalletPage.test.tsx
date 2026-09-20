@@ -72,18 +72,16 @@ describe("WalletPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("cycles facility payment methods on top-up", async () => {
+  it("selects a facility payment method before showing QR details", async () => {
     const user = userEvent.setup();
     renderWithProviders(<WalletPage />, { route: "/app/wallet" });
 
+    expect(screen.getByText(/select a payment method/i)).toBeInTheDocument();
+    expect(screen.queryByText("Pickle Era GCash")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^gcash$/i }));
+
     expect(screen.getByText("Pickle Era GCash")).toBeInTheDocument();
     expect(screen.getByText("09170000001")).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /next payment method/i }),
-    );
-
-    expect(screen.getByText("Pickle Era Maya")).toBeInTheDocument();
-    expect(screen.getByText("09170000002")).toBeInTheDocument();
   });
 });

@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
+import {
+  appContentPaddingClass,
+  appContentWidthClass,
+} from "@/components/layout/layout.constants";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalCalendarSkeleton } from "@/components/portal/portal-skeletons";
 import { useOccupancy } from "@/api/features/bookings/use-bookings";
 import { occupancyToBookingRequest } from "@/lib/booking/mapBooking";
+import { cn } from "@/lib/utils";
 import { useBookingModal } from "@/providers/BookingModalProvider";
 
 function todayIso() {
@@ -34,7 +39,13 @@ export function CalendarPage() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-4 py-8 sm:px-6 sm:py-10">
+      <div
+        className={cn(
+          "relative z-10 mx-auto flex h-full min-h-0 w-full flex-col py-8 sm:py-10",
+          appContentPaddingClass,
+          appContentWidthClass.wide,
+        )}
+      >
         <header className="mb-3 flex max-w-xl shrink-0 flex-col gap-1">
           <h1 className="display text-[32px] text-zinc-900 sm:text-[40px]">
             Court <span className="text-yellow">calendar</span>
