@@ -25,4 +25,4 @@
 ## 4. Ship
 
 - [x] 4.1 `/opsx-verify` (api + web)
-- [ ] 4.2 `/opsx-pr` (branch `feat/facility-settings-api`)
+- [x] 4.2 `/opsx-pr` (branch `feat/facility-settings-api`)
