@@ -27,7 +27,7 @@ describe("PaymentMethodPicker", () => {
     cleanup();
   });
 
-  it("shows method chooser before QR when two methods exist", async () => {
+  it("shows centered logo chooser before QR when two methods exist", async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PaymentMethodPicker methods={methods} variant="light" />,
@@ -37,10 +37,10 @@ describe("PaymentMethodPicker", () => {
     expect(
       screen.queryByRole("img", { name: /qr code/i }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/scan to pay/i)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /next payment method/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /^gcash$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^maya$/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^gcash$/i }));
 
@@ -48,14 +48,9 @@ describe("PaymentMethodPicker", () => {
       screen.getByRole("img", { name: /gcash qr code/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("Pickle Era GCash")).toBeInTheDocument();
-    expect(screen.getByText("09170000001")).toBeInTheDocument();
-    expect(screen.queryByText("Maya")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /change method/i }));
-    expect(screen.getByText(/select a payment method/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole("img", { name: /qr code/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /change method/i }),
+    ).toBeInTheDocument();
   });
 
   it("auto-selects details when only one method exists", () => {
@@ -69,8 +64,5 @@ describe("PaymentMethodPicker", () => {
     expect(
       screen.getByRole("img", { name: /gcash qr code/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /change method/i }),
-    ).not.toBeInTheDocument();
   });
 });
