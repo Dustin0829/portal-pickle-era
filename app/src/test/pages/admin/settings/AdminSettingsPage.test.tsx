@@ -29,4 +29,12 @@ describe("AdminSettingsPage tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: /open play sessions/i }));
     expect(screen.getByText(/set session start/i)).toBeInTheDocument();
   });
+
+  it("uses compact underline tab density", () => {
+    renderWithProviders(<AdminSettingsPage />);
+    const tab = screen.getByRole("tab", { name: /^prices$/i });
+    expect(tab.className).toContain("px-3");
+    expect(tab.className).toContain("py-2");
+    expect(tab.className).toContain("tracking-[0.14em]");
+  });
 });

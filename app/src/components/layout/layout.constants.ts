@@ -8,7 +8,9 @@ export const appContentWidthClass = {
   profile: "max-w-2xl",
   /** Compact flows (auth card, narrow panels). */
   narrow: "max-w-lg",
-  /** Full content width — marketing sections, wide dashboards; no max-width cap. */
+  /** Admin Dashboard content column — list/inbox/settings/calendar shells. */
+  wide: "max-w-5xl",
+  /** Full content width — marketing sections; no max-width cap. */
   full: "max-w-none",
 } as const;
 

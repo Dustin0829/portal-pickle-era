@@ -108,7 +108,7 @@ export function AdminSettingsPage() {
   }
 
   return (
-    <AppPageShell width="full" className="max-w-4xl">
+    <AppPageShell width="wide">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="display text-[36px] text-zinc-900 sm:text-[44px]">
@@ -132,7 +132,7 @@ export function AdminSettingsPage() {
       <div
         role="tablist"
         aria-label="Settings sections"
-        className="mb-4 flex flex-wrap gap-1 border-b border-zinc-200"
+        className="mb-4 flex flex-wrap gap-1.5 border-b border-zinc-200"
       >
         {TABS.map((item) => (
           <button
@@ -143,7 +143,7 @@ export function AdminSettingsPage() {
             id={`settings-tab-${item.id}`}
             onClick={() => setTab(item.id)}
             className={cn(
-              "px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] transition",
+              "px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition",
               tab === item.id
                 ? "border-b-2 border-yellow text-zinc-900"
                 : "text-zinc-500 hover:text-zinc-800",

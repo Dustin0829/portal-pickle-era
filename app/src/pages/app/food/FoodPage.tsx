@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Minus, Plus, UtensilsCrossed } from "lucide-react";
+import { Minus, Plus, Trash2, UtensilsCrossed } from "lucide-react";
 import {
   useCreateMyFoodOrder,
   useMyFoodMenu,
@@ -100,7 +100,7 @@ export function FoodPage() {
 
   return (
     <div className="min-h-full">
-      <AppPageShell width="full" className="max-w-6xl">
+      <AppPageShell width="wide">
         <header className="mb-5 flex flex-col gap-2">
           <h1 className="display text-[36px] text-zinc-900 sm:text-[44px]">
             Food
@@ -149,7 +149,7 @@ export function FoodPage() {
                       key={item.id}
                       className="flex h-full flex-col overflow-hidden border border-zinc-200 bg-white"
                     >
-                      <div className="aspect-[4/3] shrink-0 bg-zinc-100">
+                      <div className="aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
                         {item.imageUrl ? (
                           <img
                             src={item.imageUrl}
@@ -224,7 +224,10 @@ export function FoodPage() {
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
                 <ul className="space-y-3 px-4 py-3">
                   {lineItems.map((line) => (
-                    <li key={line.menuItemId} className="flex gap-2">
+                    <li
+                      key={line.menuItemId}
+                      className="flex items-start gap-2"
+                    >
                       <div className="size-10 shrink-0 overflow-hidden bg-zinc-100">
                         {line.imageUrl ? (
                           <img
@@ -246,6 +249,14 @@ export function FoodPage() {
                           {formatCentsAsPesos(line.lineTotal)}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${line.name} from order`}
+                        onClick={() => setQty(line.menuItemId, 0)}
+                        className="grid size-8 shrink-0 place-items-center text-zinc-400 transition hover:text-zinc-900"
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
                     </li>
                   ))}
                 </ul>

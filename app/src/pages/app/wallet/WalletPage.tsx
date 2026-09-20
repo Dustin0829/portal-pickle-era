@@ -9,7 +9,7 @@ import {
   useMeWallet,
 } from "@/api/features/wallet/use-wallet";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
-import { PaymentMethodCarousel } from "@/components/booking/PaymentMethodCarousel";
+import { PaymentMethodPicker } from "@/components/booking/PaymentMethodCarousel";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { useZodForm } from "@/lib/forms/useZodForm";
@@ -28,7 +28,7 @@ export function WalletPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden">
-      <AppPageShell width="full" className="relative z-10 max-w-3xl">
+      <AppPageShell width="wide" className="relative z-10">
         <header className="mb-8 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
             Wallet
@@ -184,7 +184,7 @@ function WalletTopUpForm() {
       </p>
 
       <div className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-4">
-        <PaymentMethodCarousel
+        <PaymentMethodPicker
           methods={paymentMethods}
           amountHint={amountHint}
           variant="light"

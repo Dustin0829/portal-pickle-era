@@ -16,7 +16,7 @@ vi.mock("@/api/features/food/use-food", () => ({
         id: "m1",
         name: "Iced Tea",
         priceCents: 5000,
-        imageUrl: null,
+        imageUrl: "https://example.com/iced-tea.jpg",
         available: true,
       },
     ],
@@ -51,6 +51,27 @@ describe("FoodPage POS layout", () => {
     fireEvent.click(screen.getByRole("button", { name: /\+ add/i }));
     expect(screen.getByText(/1× iced tea/i)).toBeInTheDocument();
     expect(place).not.toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /remove iced tea from order/i }),
+    );
+    expect(screen.queryByText(/1× iced tea/i)).not.toBeInTheDocument();
+    expect(place).toBeDisabled();
+  });
+
+  it("keeps menu and cart images in equal object-cover boxes", () => {
+    renderWithProviders(<FoodPage />);
+    fireEvent.click(screen.getByRole("button", { name: /\+ add/i }));
+
+    const boxes = document.querySelectorAll(".aspect-\\[4\\/3\\], .size-10");
+    expect(boxes.length).toBeGreaterThanOrEqual(2);
+    for (const box of boxes) {
+      expect(box.className).toContain("overflow-hidden");
+      const img = box.querySelector("img");
+      if (img) {
+        expect(img.className).toContain("object-cover");
+      }
+    }
   });
 
   it("shows active placed orders with Preparing / Ready labels", () => {

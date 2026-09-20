@@ -102,7 +102,7 @@ export function ProfilePage() {
 
   return (
     <div className="min-h-full">
-      <AppPageShell width="full" className="max-w-3xl">
+      <AppPageShell>
         <header className="mb-6 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
             Profile

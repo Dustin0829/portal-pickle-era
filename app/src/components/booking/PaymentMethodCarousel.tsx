@@ -1,9 +1,9 @@
-import { Check, ChevronLeft, ChevronRight, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FacilityPaymentMethod } from "@/lib/booking/paymentMethods";
 import { cn } from "@/lib/utils";
 
-type PaymentMethodCarouselProps = {
+type PaymentMethodPickerProps = {
   methods: FacilityPaymentMethod[];
   /** Optional amount line, e.g. remaining cash due. */
   amountHint?: string | null;
@@ -12,20 +12,20 @@ type PaymentMethodCarouselProps = {
   className?: string;
 };
 
-export function PaymentMethodCarousel({
+export function PaymentMethodPicker({
   methods,
   amountHint,
   variant = "light",
   className,
-}: PaymentMethodCarouselProps) {
-  const list = methods.length > 0 ? methods : [];
-  const [index, setIndex] = useState(0);
+}: PaymentMethodPickerProps) {
+  const list = methods;
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    list.length === 1 ? (list[0]?.id ?? null) : null,
+  );
   const [copied, setCopied] = useState(false);
-  const safeIndex =
-    list.length === 0 ? 0 : ((index % list.length) + list.length) % list.length;
-  const active = list[safeIndex] ?? null;
-  const canCycle = list.length > 1;
+  const active = list.find((method) => method.id === selectedId) ?? null;
   const dark = variant === "dark";
+  const canChange = list.length > 1;
 
   async function copyNumber() {
     if (!active) return;
@@ -38,12 +38,7 @@ export function PaymentMethodCarousel({
     }
   }
 
-  function go(delta: number) {
-    if (!canCycle) return;
-    setIndex((current) => current + delta);
-  }
-
-  if (!active) {
+  if (list.length === 0) {
     return (
       <p className={cn("text-sm", dark ? "text-white/60" : "text-zinc-500")}>
         No payment methods configured.
@@ -51,54 +46,62 @@ export function PaymentMethodCarousel({
     );
   }
 
-  return (
-    <div className={cn("relative", className)}>
-      {canCycle ? (
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => go(-1)}
-            className={cn(
-              "inline-flex h-9 items-center gap-1 px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-              dark
-                ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                : "border border-zinc-200 text-zinc-700 hover:border-yellow",
-            )}
-            aria-label="Previous payment method"
-          >
-            <ChevronLeft size={14} aria-hidden />
-            Previous
-          </button>
-          <p
-            className={cn(
-              "text-[10px] font-semibold uppercase tracking-[0.14em]",
-              dark ? "text-white/45" : "text-zinc-400",
-            )}
-          >
-            {safeIndex + 1} / {list.length}
-          </p>
-          <button
-            type="button"
-            onClick={() => go(1)}
-            className={cn(
-              "inline-flex h-9 items-center gap-1 px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-              dark
-                ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                : "border border-zinc-200 text-zinc-700 hover:border-yellow",
-            )}
-            aria-label="Next payment method"
-          >
-            Next
-            <ChevronRight size={14} aria-hidden />
-          </button>
+  if (!active) {
+    return (
+      <div className={cn("space-y-3", className)}>
+        <p
+          className={cn(
+            "text-[11px] font-bold uppercase tracking-[0.14em]",
+            dark ? "text-white/70" : "text-zinc-500",
+          )}
+        >
+          Select a payment method
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {list.map((method) => (
+            <button
+              key={method.id}
+              type="button"
+              onClick={() => {
+                setCopied(false);
+                setSelectedId(method.id);
+              }}
+              className={cn(
+                "h-10 px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition",
+                dark
+                  ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
+                  : "border border-zinc-200 text-zinc-800 hover:border-yellow",
+              )}
+            >
+              {method.label}
+            </button>
+          ))}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("relative space-y-3", className)}>
+      {canChange ? (
+        <button
+          type="button"
+          onClick={() => {
+            setCopied(false);
+            setSelectedId(null);
+          }}
+          className={cn(
+            "text-[10px] font-bold uppercase tracking-[0.14em] transition",
+            dark
+              ? "text-white/60 hover:text-yellow"
+              : "text-zinc-500 hover:text-zinc-900",
+          )}
+        >
+          Change method
+        </button>
       ) : null}
 
-      <div
-        className={cn(
-          "grid items-start gap-4 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-8",
-        )}
-      >
+      <div className="grid items-start gap-4 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-8">
         <div
           className={cn(
             "mx-auto w-full max-w-[168px] p-3 sm:mx-0",
@@ -127,11 +130,7 @@ export function PaymentMethodCarousel({
         </div>
 
         <div className="min-w-0 text-center sm:text-left">
-          <p
-            className={cn(
-              "text-[11px] font-bold uppercase tracking-[0.16em] text-yellow",
-            )}
-          >
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-yellow">
             {active.label}
           </p>
           <p
@@ -175,6 +174,9 @@ export function PaymentMethodCarousel({
     </div>
   );
 }
+
+/** @deprecated Use PaymentMethodPicker — select then details. */
+export const PaymentMethodCarousel = PaymentMethodPicker;
 
 function GeneratedPaymentQr({ value }: { value: string }) {
   const cells = useMemo(() => {
