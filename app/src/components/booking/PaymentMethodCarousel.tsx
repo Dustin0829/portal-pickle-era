@@ -153,9 +153,9 @@ export function PaymentMethodPicker({
               : "border border-zinc-200 bg-white",
           )}
         >
-          {active.qrImageDataUrl ? (
+          {active.qrImageUrl ? (
             <img
-              src={active.qrImageDataUrl}
+              src={active.qrImageUrl}
               alt={`${active.label} QR code`}
               className="aspect-square w-full object-contain"
             />

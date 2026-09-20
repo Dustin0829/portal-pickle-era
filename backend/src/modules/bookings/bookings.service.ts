@@ -47,6 +47,10 @@ import {
 } from "./bookings.schema.js";
 
 import { coveredHoursForOpenPlaySlotIds, hourSetsOverlap } from "./open-play-hours.js";
+import {
+  getOpenPlaySessions,
+  getPlanPricePesos,
+} from "../facility-settings/facility-settings.service.js";
 
 const bookingSortFields = ["createdAt", "date"] as const;
 
@@ -151,7 +155,10 @@ export async function createPublicBooking(body: CreatePublicBookingBody, authUse
   const plan = planFromApi(body.plan);
   const hourCount =
     plan === "open_play" ? unionSlotIds(courtSlots).length : totalCourtHours(courtSlots);
-  const totalCents = bookingTotalCents(plan, hourCount, body.unitPricePesos);
+  const unitPricePesos =
+    body.unitPricePesos ??
+    (await getPlanPricePesos(plan).catch(() => DEFAULT_PLAN_PRICE_PESOS[plan]));
+  const totalCents = bookingTotalCents(plan, hourCount, unitPricePesos);
   let walletAppliedCents = 0;
   if (authUser && body.walletAppliedCents !== undefined) {
     const wallet = await prisma.wallet.upsert({
@@ -460,6 +467,7 @@ async function assertNoCrossPlanConflict(
 ) {
   if (input.plan === "open_play") return;
 
+  const sessions = await getOpenPlaySessions().catch(() => undefined);
   const openPlayRows = await tx.booking.findMany({
     where: {
       date: input.date,
@@ -469,7 +477,7 @@ async function assertNoCrossPlanConflict(
     select: { slotIds: true },
   });
   for (const row of openPlayRows) {
-    const covered = coveredHoursForOpenPlaySlotIds(row.slotIds);
+    const covered = coveredHoursForOpenPlaySlotIds(row.slotIds, sessions);
     if (hourSetsOverlap(covered, input.slotIds)) {
       throw new ConflictError(
         "One or more hours overlap an Open Play session already booked for that date",

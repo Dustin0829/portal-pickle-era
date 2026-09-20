@@ -254,3 +254,34 @@ model FoodOrderLine {
   @@index([orderId])
   @@map("food_order_lines")
 }
+
+/** Singleton facility config (id = "default"). */
+model FacilitySettings {
+  id                 String                  @id
+  courtPricePesos    Int                     @map("court_price_pesos")
+  openPlayPricePesos Int                     @map("open_play_price_pesos")
+  clinicPricePesos   Int                     @map("clinic_price_pesos")
+  openPlaySessions   Json                    @map("open_play_sessions")
+  preSignup          Boolean                 @default(false) @map("pre_signup")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  paymentMethods     FacilityPaymentMethod[]
+
+  @@map("facility_settings")
+}
+
+model FacilityPaymentMethod {
+  id         String           @id @default(cuid())
+  settingsId String           @map("settings_id")
+  settings   FacilitySettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+  label      String
+  name       String
+  number     String
+  qrImageKey String?          @map("qr_image_key")
+  sortOrder  Int              @map("sort_order")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  @@index([settingsId, sortOrder])
+  @@map("facility_payment_methods")
+}

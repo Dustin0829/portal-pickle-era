@@ -5,6 +5,12 @@ export const DEFAULT_OPEN_PLAY_SESSIONS = [
   { slotId: "18:00", hour: 18, durationHours: 2 },
 ] as const;
 
+export type OpenPlaySessionLike = {
+  slotId: string;
+  hour: number;
+  durationHours: number;
+};
+
 export function hourIdFromHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
@@ -30,8 +36,11 @@ function parseHourFromSlotId(slotId: string): number | null {
   return hour;
 }
 
-function resolveSession(slotId: string): { hour: number; durationHours: number } {
-  const known = DEFAULT_OPEN_PLAY_SESSIONS.find((s) => s.slotId === slotId);
+function resolveSession(
+  slotId: string,
+  sessions: readonly OpenPlaySessionLike[],
+): { hour: number; durationHours: number } {
+  const known = sessions.find((s) => s.slotId === slotId);
   if (known) {
     return { hour: known.hour, durationHours: known.durationHours };
   }
@@ -43,10 +52,13 @@ function resolveSession(slotId: string): { hour: number; durationHours: number }
 }
 
 /** Covered court hours for one or more Open Play session slot ids. */
-export function coveredHoursForOpenPlaySlotIds(slotIds: string[]): string[] {
+export function coveredHoursForOpenPlaySlotIds(
+  slotIds: string[],
+  sessions: readonly OpenPlaySessionLike[] = DEFAULT_OPEN_PLAY_SESSIONS,
+): string[] {
   const set = new Set<string>();
   for (const slotId of slotIds) {
-    const session = resolveSession(slotId);
+    const session = resolveSession(slotId, sessions);
     if (session.durationHours <= 0) continue;
     for (const hourId of expandOpenPlaySessionToHourIds(session)) {
       set.add(hourId);

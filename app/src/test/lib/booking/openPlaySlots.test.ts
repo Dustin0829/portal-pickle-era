@@ -4,27 +4,49 @@ import {
   getOpenPlaySlots,
   slotFromOpenPlayHour,
 } from "@/lib/booking/openPlaySlots";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import {
+  clearFacilitySettingsCache,
+  seedFacilitySettings,
+} from "@/test/helpers/facilitySettings";
 
 describe("openPlaySlots", () => {
   beforeEach(() => {
-    useFacilitySettingsStore.getState().resetDefaults();
-    localStorage.clear();
+    clearFacilitySettingsCache();
+    seedFacilitySettings();
   });
 
   it("defaults to three 2-hour sessions", () => {
-    expect(getOpenPlaySlots()).toEqual(SLOTS["open-play"]);
-    expect(SLOTS["open-play"]).toEqual([
-      { id: "07:00", label: "7:00–9:00 AM", hour: 7, durationHours: 2 },
-      { id: "16:00", label: "4:00–6:00 PM", hour: 16, durationHours: 2 },
-      { id: "18:00", label: "6:00–8:00 PM", hour: 18, durationHours: 2 },
+    expect(getOpenPlaySlots()).toEqual([
+      {
+        id: "07:00",
+        label: "7:00 AM – 9:00 AM",
+        hour: 7,
+        durationHours: 2,
+      },
+      {
+        id: "16:00",
+        label: "4:00 PM – 6:00 PM",
+        hour: 16,
+        durationHours: 2,
+      },
+      {
+        id: "18:00",
+        label: "6:00 PM – 8:00 PM",
+        hour: 18,
+        durationHours: 2,
+      },
     ]);
+    expect(SLOTS["open-play"]).toHaveLength(3);
     expect(OPEN_PLAY_CAPACITY).toBe(30);
   });
 
   it("uses saved facility settings after Save", () => {
-    const next = [slotFromOpenPlayHour(9), slotFromOpenPlayHour(15)];
-    useFacilitySettingsStore.getState().setOpenPlaySlots(next);
+    seedFacilitySettings({
+      openPlaySessions: [
+        { slotId: "09:00", hour: 9, durationHours: 2 },
+        { slotId: "15:00", hour: 15, durationHours: 2 },
+      ],
+    });
     expect(getOpenPlaySlots()).toEqual([
       {
         id: "09:00",

@@ -1,28 +1,48 @@
 import { cleanup, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Pricing } from "@/pages/home/Pricing";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
+import {
+  clearFacilitySettingsCache,
+  seedFacilitySettings,
+} from "@/test/helpers/facilitySettings";
+
+vi.mock("@/api/features/facility-settings/facility-settings.service", () => ({
+  getFacilitySettings: vi.fn(async () =>
+    seedFacilitySettings({
+      planPrices: { court: 420, openPlay: 175, clinic: 500 },
+    }),
+  ),
+  patchFacilitySettings: vi.fn(),
+}));
 
 describe("Pricing saved prices", () => {
   afterEach(() => {
     cleanup();
+    clearFacilitySettingsCache();
   });
 
   beforeEach(() => {
-    useFacilitySettingsStore.getState().resetDefaults();
-    useFacilitySettingsStore.getState().setPlanPrice("court", 420);
-    useFacilitySettingsStore.getState().setPlanPrice("open-play", 175);
+    clearFacilitySettingsCache();
+    seedFacilitySettings({
+      planPrices: { court: 420, openPlay: 175, clinic: 500 },
+    });
   });
 
   it("shows saved facility plan prices", () => {
-    renderWithProviders(<Pricing />);
+    const settings = seedFacilitySettings({
+      planPrices: { court: 420, openPlay: 175, clinic: 500 },
+    });
+    renderWithProviders(<Pricing />, { facilitySettings: settings });
     expect(screen.getByText("420")).toBeInTheDocument();
     expect(screen.getByText("175")).toBeInTheDocument();
   });
 
   it("has no clinic book card or CTA", () => {
-    renderWithProviders(<Pricing />);
+    const settings = seedFacilitySettings({
+      planPrices: { court: 420, openPlay: 175, clinic: 500 },
+    });
+    renderWithProviders(<Pricing />, { facilitySettings: settings });
     expect(screen.queryByText(/clinics & coaching/i)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /view clinics/i }),

@@ -2,27 +2,35 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   cryptoRandomId,
-  readQrImageAsDataUrl,
   resolvePaymentMethods,
   type FacilityPaymentMethod,
 } from "@/lib/booking/paymentMethods";
-import { useFacilitySettingsStore } from "@/lib/stores/facilitySettingsStore";
+import {
+  useFacilitySettings,
+  usePatchFacilitySettings,
+} from "@/api/features/facility-settings/use-facility-settings";
+import {
+  fallbackFacilitySettings,
+  paymentMethodsFromSettings,
+} from "@/lib/facility/facilitySettingsView";
+import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
+import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 
 export function PaymentMethodsSettingsSection() {
-  const paymentMethods = useFacilitySettingsStore((s) => s.paymentMethods);
-  const payment = useFacilitySettingsStore((s) => s.payment);
-  const setPaymentMethods = useFacilitySettingsStore(
-    (s) => s.setPaymentMethods,
+  const { data } = useFacilitySettings();
+  const { mutateAsync: patchSettings, isPending: isSaving } =
+    usePatchFacilitySettings();
+  const methods = paymentMethodsFromSettings(
+    data ?? fallbackFacilitySettings(),
   );
-  const [draft, setDraft] = useState<FacilityPaymentMethod[]>(() =>
-    resolvePaymentMethods({ paymentMethods, payment }).map((m) => ({ ...m })),
-  );
+  const [draft, setDraft] = useState<FacilityPaymentMethod[] | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const display = draft ?? resolvePaymentMethods({ paymentMethods: methods });
 
-  function onSave(event: FormEvent) {
+  async function onSave(event: FormEvent) {
     event.preventDefault();
-    const cleaned = draft
+    const cleaned = display
       .map((m) => ({
         ...m,
         label: m.label.trim(),
@@ -35,47 +43,71 @@ export function PaymentMethodsSettingsSection() {
       return;
     }
     setError("");
-    setPaymentMethods(cleaned);
-    setDraft(cleaned.map((m) => ({ ...m })));
-    setSaved(true);
+    setSaved(false);
+    try {
+      await patchSettings({
+        paymentMethods: cleaned.map((m) => ({
+          id: m.id,
+          label: m.label,
+          name: m.name,
+          number: m.number,
+          qrImageKey: m.qrImageKey,
+        })),
+      });
+      setDraft(null);
+      setSaved(true);
+    } catch (err) {
+      setError(getUserFacingApiErrorMessage(err));
+    }
   }
 
   function addMethod() {
     setSaved(false);
-    setDraft((prev) => [
-      ...prev,
+    setDraft([
+      ...display,
       {
         id: cryptoRandomId(),
         label: "",
         name: "",
         number: "",
-        qrImageDataUrl: null,
+        qrImageKey: null,
+        qrImageUrl: null,
       },
     ]);
   }
 
   function updateMethod(id: string, patch: Partial<FacilityPaymentMethod>) {
     setSaved(false);
-    setDraft((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    setDraft(display.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }
 
   function removeMethod(id: string) {
     setSaved(false);
-    setDraft((prev) => prev.filter((m) => m.id !== id));
+    setDraft(display.filter((m) => m.id !== id));
   }
 
   async function onQrChange(id: string, file: File | null) {
     setSaved(false);
     setError("");
     if (!file) {
-      updateMethod(id, { qrImageDataUrl: null });
+      updateMethod(id, { qrImageKey: null, qrImageUrl: null });
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("QR must be a JPEG, PNG, or WebP image.");
       return;
     }
     try {
-      const dataUrl = await readQrImageAsDataUrl(file);
-      updateMethod(id, { qrImageDataUrl: dataUrl });
+      const upload = await uploadReceiptFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      updateMethod(id, {
+        qrImageKey: upload.receiptKey,
+        qrImageUrl: previewUrl,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read QR image.");
+      setError(
+        err instanceof Error ? err.message : "Could not upload QR image.",
+      );
     }
   }
 
@@ -99,8 +131,11 @@ export function PaymentMethodsSettingsSection() {
         </Button>
       </div>
 
-      <form className="mt-4 flex flex-col gap-4" onSubmit={onSave}>
-        {draft.map((method, index) => (
+      <form
+        className="mt-4 flex flex-col gap-4"
+        onSubmit={(event) => void onSave(event)}
+      >
+        {display.map((method, index) => (
           <div
             key={method.id}
             className="border border-zinc-200 bg-zinc-50 p-3 sm:p-4"
@@ -163,10 +198,10 @@ export function PaymentMethodsSettingsSection() {
                   className="text-sm text-zinc-700 file:mr-3 file:border-0 file:bg-yellow file:px-3 file:py-1.5 file:text-[10px] file:font-bold file:uppercase file:tracking-[0.12em]"
                 />
               </label>
-              {method.qrImageDataUrl ? (
+              {method.qrImageUrl ? (
                 <div className="sm:col-span-2">
                   <img
-                    src={method.qrImageDataUrl}
+                    src={method.qrImageUrl}
                     alt={`${method.label || "Payment"} QR preview`}
                     className="h-28 w-28 border border-zinc-200 bg-white object-contain p-1"
                   />
@@ -174,7 +209,10 @@ export function PaymentMethodsSettingsSection() {
                     type="button"
                     className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500 hover:text-zinc-900"
                     onClick={() =>
-                      updateMethod(method.id, { qrImageDataUrl: null })
+                      updateMethod(method.id, {
+                        qrImageKey: null,
+                        qrImageUrl: null,
+                      })
                     }
                   >
                     Clear QR
@@ -192,12 +230,12 @@ export function PaymentMethodsSettingsSection() {
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" className="w-fit">
-            Save payment methods
+          <Button type="submit" className="w-fit" disabled={isSaving}>
+            {isSaving ? "Saving…" : "Save payment methods"}
           </Button>
           {saved ? (
             <p className="text-xs text-zinc-500" role="status">
-              Saved locally.
+              Saved.
             </p>
           ) : null}
         </div>
