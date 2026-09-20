@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { paymentMethodLogoSrc } from "@/lib/booking/paymentMethodLogo";
 import type { FacilityPaymentMethod } from "@/lib/booking/paymentMethods";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,8 @@ type PaymentMethodPickerProps = {
   /** Visual variant for dark booking modal vs light wallet card. */
   variant?: "dark" | "light";
   className?: string;
+  /** Fires when selection changes (null = chooser). */
+  onActiveChange?: (method: FacilityPaymentMethod | null) => void;
 };
 
 export function PaymentMethodPicker({
@@ -17,6 +20,7 @@ export function PaymentMethodPicker({
   amountHint,
   variant = "light",
   className,
+  onActiveChange,
 }: PaymentMethodPickerProps) {
   const list = methods;
   const [selectedId, setSelectedId] = useState<string | null>(() =>
@@ -26,6 +30,23 @@ export function PaymentMethodPicker({
   const active = list.find((method) => method.id === selectedId) ?? null;
   const dark = variant === "dark";
   const canChange = list.length > 1;
+
+  function selectMethod(id: string | null) {
+    setCopied(false);
+    setSelectedId(id);
+    const next = id ? (list.find((method) => method.id === id) ?? null) : null;
+    onActiveChange?.(next);
+  }
+
+  useEffect(() => {
+    onActiveChange?.(
+      list.length === 1
+        ? (list[0] ?? null)
+        : (list.find((method) => method.id === selectedId) ?? null),
+    );
+    // Parent sync on mount only (incl. single-method auto-select).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount notify
+  }, []);
 
   async function copyNumber() {
     if (!active) return;
@@ -48,34 +69,50 @@ export function PaymentMethodPicker({
 
   if (!active) {
     return (
-      <div className={cn("space-y-3", className)}>
+      <div
+        className={cn(
+          "flex min-h-[14rem] flex-col items-center justify-center gap-4",
+          className,
+        )}
+      >
         <p
           className={cn(
-            "text-[11px] font-bold uppercase tracking-[0.14em]",
+            "text-center text-[11px] font-bold uppercase tracking-[0.14em]",
             dark ? "text-white/70" : "text-zinc-500",
           )}
         >
           Select a payment method
         </p>
-        <div className="flex flex-wrap gap-2">
-          {list.map((method) => (
-            <button
-              key={method.id}
-              type="button"
-              onClick={() => {
-                setCopied(false);
-                setSelectedId(method.id);
-              }}
-              className={cn(
-                "h-10 px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition",
-                dark
-                  ? "border border-white/20 text-white hover:border-yellow hover:text-yellow"
-                  : "border border-zinc-200 text-zinc-800 hover:border-yellow",
-              )}
-            >
-              {method.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {list.map((method) => {
+            const logo = paymentMethodLogoSrc(method.label);
+            return (
+              <button
+                key={method.id}
+                type="button"
+                onClick={() => selectMethod(method.id)}
+                className={cn(
+                  "flex h-16 w-[7.5rem] flex-col items-center justify-center gap-1 rounded-xl border bg-white px-3 transition hover:border-yellow",
+                  dark
+                    ? "border-white/15 hover:shadow-[0_0_0_1px_rgba(245,237,90,0.5)]"
+                    : "border-zinc-200",
+                )}
+                aria-label={method.label}
+              >
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt=""
+                    className="max-h-8 max-w-[5.5rem] object-contain"
+                  />
+                ) : (
+                  <span className="text-center text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-800">
+                    {method.label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -84,21 +121,27 @@ export function PaymentMethodPicker({
   return (
     <div className={cn("relative space-y-3", className)}>
       {canChange ? (
-        <button
-          type="button"
-          onClick={() => {
-            setCopied(false);
-            setSelectedId(null);
-          }}
-          className={cn(
-            "text-[10px] font-bold uppercase tracking-[0.14em] transition",
-            dark
-              ? "text-white/60 hover:text-yellow"
-              : "text-zinc-500 hover:text-zinc-900",
-          )}
-        >
-          Change method
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => selectMethod(null)}
+            className={cn(
+              "inline-flex h-9 items-center border px-3 text-[10px] font-bold uppercase tracking-[0.14em] transition",
+              dark
+                ? "border-white/20 text-white/80 hover:border-yellow hover:text-yellow"
+                : "border-zinc-200 text-zinc-600 hover:border-yellow hover:text-zinc-900",
+            )}
+          >
+            Change method
+          </button>
+          <p
+            className={cn(
+              "text-[11px] font-bold uppercase tracking-[0.14em] text-yellow",
+            )}
+          >
+            {active.label}
+          </p>
+        </div>
       ) : null}
 
       <div className="grid items-start gap-4 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-8">

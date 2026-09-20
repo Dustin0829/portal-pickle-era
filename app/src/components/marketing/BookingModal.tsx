@@ -103,6 +103,9 @@ export function BookingModal({
   const [submitting, setSubmitting] = useState(false);
   const [payMethod, setPayMethod] = useState<PayMethod>("cash");
   const paymentMethods = usePaymentMethods();
+  const [cashMethodSelected, setCashMethodSelected] = useState(
+    () => paymentMethods.length <= 1,
+  );
   const [slotStatusByKey, setSlotStatusByKey] = useState<
     Map<string, "pending" | "approved">
   >(() => new Map());
@@ -141,6 +144,7 @@ export function BookingModal({
     ? walletPay.remainingCashCents / 100
     : total;
   const needsReceipt = !walletPay || walletPay.remainingCashCents > 0;
+  const showPayDetails = !needsReceipt || cashMethodSelected;
   const canUseCredits = creditsPayAvailable && balanceCents > 0;
   const displayLabels = isOpenPlay
     ? openPlaySlots
@@ -530,7 +534,14 @@ export function BookingModal({
                 <PaymentMethodPicker
                   methods={paymentMethods}
                   variant="dark"
-                  amountHint={`Send ₱${remainingCashPesos}, then upload your receipt.`}
+                  amountHint={
+                    showPayDetails
+                      ? `Send ₱${remainingCashPesos}, then upload your receipt.`
+                      : null
+                  }
+                  onActiveChange={(method) =>
+                    setCashMethodSelected(Boolean(method))
+                  }
                 />
               ) : (
                 <p className="text-sm text-white/70">
@@ -539,70 +550,86 @@ export function BookingModal({
                 </p>
               )}
 
-              <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Your name"
-                  className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow"
-                />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Your email"
-                  className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow"
-                />
-                {needsReceipt ? (
-                  <>
+              {showPayDetails ? (
+                <>
+                  <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
                     <input
                       type="text"
                       required
-                      value={referenceId}
-                      onChange={(event) => setReferenceId(event.target.value)}
-                      placeholder="Reference ID"
-                      className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow sm:col-span-2"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="Your name"
+                      className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow"
                     />
-                    <label className="flex h-12 cursor-pointer items-center gap-3 border border-white/10 bg-transparent px-4 text-sm text-white/70 transition hover:border-yellow sm:col-span-2">
-                      <Upload size={16} />
-                      <span className="truncate">
-                        {receiptName || "Upload receipt"}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        required
-                        className="sr-only"
-                        onChange={onReceipt}
-                      />
-                    </label>
-                  </>
-                ) : null}
-              </div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="Your email"
+                      className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow"
+                    />
+                    {needsReceipt ? (
+                      <>
+                        <input
+                          type="text"
+                          required
+                          value={referenceId}
+                          onChange={(event) =>
+                            setReferenceId(event.target.value)
+                          }
+                          placeholder="Reference ID"
+                          className="h-12 border border-white/10 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-yellow sm:col-span-2"
+                        />
+                        <label className="flex h-12 cursor-pointer items-center gap-3 border border-white/10 bg-transparent px-4 text-sm text-white/70 transition hover:border-yellow sm:col-span-2">
+                          <Upload size={16} />
+                          <span className="truncate">
+                            {receiptName || "Upload receipt"}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            required
+                            className="sr-only"
+                            onChange={onReceipt}
+                          />
+                        </label>
+                      </>
+                    ) : null}
+                  </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => setStep("schedule")}
-                  className="pay-action w-full border border-white/20 text-[12px] font-bold uppercase tracking-[0.16em] text-white transition hover:border-yellow hover:text-yellow sm:flex-1"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="pay-action w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:opacity-60 sm:flex-1"
-                >
-                  {submitting
-                    ? "Submitting…"
-                    : needsReceipt
-                      ? `Submit proof · ₱${remainingCashPesos}`
-                      : "Submit booking"}
-                </button>
-              </div>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setStep("schedule")}
+                      className="pay-action w-full border border-white/20 text-[12px] font-bold uppercase tracking-[0.16em] text-white transition hover:border-yellow hover:text-yellow sm:flex-1"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="pay-action w-full bg-yellow text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-white disabled:opacity-60 sm:flex-1"
+                    >
+                      {submitting
+                        ? "Submitting…"
+                        : needsReceipt
+                          ? `Submit proof · ₱${remainingCashPesos}`
+                          : "Submit booking"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setStep("schedule")}
+                    className="pay-action w-full border border-white/20 text-[12px] font-bold uppercase tracking-[0.16em] text-white transition hover:border-yellow hover:text-yellow sm:w-auto sm:min-w-[8rem]"
+                  >
+                    Back
+                  </button>
+                </div>
+              )}
               {submitError ? (
                 <p className="mt-3 text-sm text-red-400" role="alert">
                   {submitError}
