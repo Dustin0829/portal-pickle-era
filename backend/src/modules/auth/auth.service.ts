@@ -3,7 +3,12 @@ import { APIError } from "better-auth";
 import { fromNodeHeaders } from "better-auth/node";
 import { prisma } from "../../app/prisma.js";
 import { ConflictError, UnauthorizedError, ValidationError } from "../../lib/errors.js";
-import { resolvePublicAppUrl } from "../../lib/resend/client.js";
+import {
+  resolvePublicAppUrl,
+  sendPasswordChangedEmail,
+  sendWelcomeEmail,
+} from "../../lib/resend/client.js";
+import { logger } from "../../app/logger.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
 import { auth } from "./auth.js";
 import { isUserRole, type AuthUser } from "./auth.constants.js";
@@ -116,6 +121,17 @@ export async function signupWithBetterAuth(
     select: userPublicSelect,
   });
 
+  const welcomeResult = await sendWelcomeEmail({
+    to: userRow.email,
+    name: userRow.name,
+  });
+  if (!welcomeResult.sent) {
+    logger.info("welcome_email_skipped_or_failed", {
+      userId: userRow.id,
+      reason: welcomeResult.reason,
+    });
+  }
+
   return { user: await toUserDtoWithImage(userRow), headers };
 }
 
@@ -193,6 +209,8 @@ export async function changePasswordWithBetterAuth(
   body: ChangePasswordBody,
   req: Request,
 ): Promise<{ ok: true }> {
+  const sessionUser = await getSessionUser(req);
+
   await callWithHeaders(() =>
     auth.api.changePassword({
       body: {
@@ -203,6 +221,22 @@ export async function changePasswordWithBetterAuth(
       returnHeaders: true,
     }),
   );
+
+  if (sessionUser?.email) {
+    const changedAtUtc = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    const changedResult = await sendPasswordChangedEmail({
+      to: sessionUser.email,
+      name: sessionUser.name,
+      changedAtUtc,
+    });
+    if (!changedResult.sent) {
+      logger.info("password_changed_email_skipped_or_failed", {
+        userId: sessionUser.id,
+        reason: changedResult.reason,
+      });
+    }
+  }
+
   return { ok: true };
 }
 

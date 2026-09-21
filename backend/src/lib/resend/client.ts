@@ -235,6 +235,169 @@ export function buildPlayerInviteEmail(input: { to: string; tempPassword: string
   };
 }
 
+export function buildBookingApprovedEmail(input: {
+  name: string;
+  date: string;
+  referenceId?: string;
+}): { subject: string; html: string; text: string } {
+  const displayName = input.name.trim() || "there";
+  const refLine = input.referenceId?.trim() ? `Reference: ${input.referenceId.trim()}` : null;
+  const portalUrl = resolvePublicAppUrl();
+  const subject = "Your booking is approved — Pickle Era";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    "Your booking has been approved. You’re all set.",
+    "",
+    `Date: ${input.date}`,
+    ...(refLine ? [refLine] : []),
+    "",
+    `Portal: ${portalUrl}`,
+    "",
+    "— Pickle Era",
+  ].join("\n");
+
+  const bodyHtml = `
+    <p style="margin:0 0 12px;">Hi ${escapeHtml(displayName)},</p>
+    <p style="margin:0 0 12px;">Your booking has been approved. You’re all set.</p>
+    <ul style="margin:0 0 12px;padding-left:20px;">
+      <li><strong>Date:</strong> ${escapeHtml(input.date)}</li>
+      ${
+        refLine
+          ? `<li><strong>Reference:</strong> ${escapeHtml(input.referenceId!.trim())}</li>`
+          : ""
+      }
+    </ul>
+  `.trim();
+
+  return {
+    subject,
+    text,
+    html: renderBrandedEmail({
+      bodyHtml,
+      cta: { href: portalUrl, label: "Open portal" },
+    }),
+  };
+}
+
+export function buildBookingRejectedEmail(input: {
+  name: string;
+  date: string;
+  referenceId?: string;
+}): { subject: string; html: string; text: string } {
+  const displayName = input.name.trim() || "there";
+  const refLine = input.referenceId?.trim() ? `Reference: ${input.referenceId.trim()}` : null;
+  const portalUrl = resolvePublicAppUrl();
+  const subject = "Booking update — Pickle Era";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    "Unfortunately we couldn’t approve your booking this time.",
+    "",
+    `Date: ${input.date}`,
+    ...(refLine ? [refLine] : []),
+    "",
+    "You can book another session anytime on our site.",
+    "",
+    "— Pickle Era",
+  ].join("\n");
+
+  const bodyHtml = `
+    <p style="margin:0 0 12px;">Hi ${escapeHtml(displayName)},</p>
+    <p style="margin:0 0 12px;">Unfortunately we couldn’t approve your booking this time.</p>
+    <ul style="margin:0 0 12px;padding-left:20px;">
+      <li><strong>Date:</strong> ${escapeHtml(input.date)}</li>
+      ${
+        refLine
+          ? `<li><strong>Reference:</strong> ${escapeHtml(input.referenceId!.trim())}</li>`
+          : ""
+      }
+    </ul>
+    <p style="margin:0;">You can book another session anytime on our site.</p>
+  `.trim();
+
+  return {
+    subject,
+    text,
+    html: renderBrandedEmail({
+      bodyHtml,
+      cta: { href: portalUrl, label: "View site" },
+    }),
+  };
+}
+
+export function buildWelcomeEmail(input: { name: string }): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const displayName = input.name.trim() || "there";
+  const portalUrl = resolvePublicAppUrl();
+  const loginUrl = `${portalUrl}/login`;
+  const subject = "Welcome to Pickle Era";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    "Welcome to Pickle Era — your new era starts here.",
+    "",
+    `Sign in anytime: ${loginUrl}`,
+    "",
+    "— Pickle Era",
+  ].join("\n");
+
+  const bodyHtml = `
+    <p style="margin:0 0 12px;">Hi ${escapeHtml(displayName)},</p>
+    <p style="margin:0;">Welcome to Pickle Era — your new era starts here.</p>
+  `.trim();
+
+  return {
+    subject,
+    text,
+    html: renderBrandedEmail({
+      bodyHtml,
+      cta: { href: loginUrl, label: "Log in" },
+    }),
+  };
+}
+
+export function buildPasswordChangedEmail(input: { name: string; changedAtUtc: string }): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const displayName = input.name.trim() || "there";
+  const portalUrl = resolvePublicAppUrl();
+  const forgotUrl = `${portalUrl}/forgot-password`;
+  const subject = "Your Pickle Era password was changed";
+  const text = [
+    `Hi ${displayName},`,
+    "",
+    "Your Pickle Era password was changed.",
+    "",
+    `When (UTC): ${input.changedAtUtc}`,
+    "",
+    `If this wasn’t you, reset your password here: ${forgotUrl}`,
+    "",
+    "— Pickle Era",
+  ].join("\n");
+
+  const bodyHtml = `
+    <p style="margin:0 0 12px;">Hi ${escapeHtml(displayName)},</p>
+    <p style="margin:0 0 12px;">Your Pickle Era password was changed.</p>
+    <p style="margin:0 0 12px;"><strong>When (UTC):</strong> ${escapeHtml(input.changedAtUtc)}</p>
+    <p style="margin:0;">If this wasn’t you, <a href="${escapeHtml(forgotUrl)}" style="color:${BRAND_YELLOW};">reset your password here</a>.</p>
+  `.trim();
+
+  return {
+    subject,
+    text,
+    html: renderBrandedEmail({
+      bodyHtml,
+      cta: { href: forgotUrl, label: "Forgot password" },
+    }),
+  };
+}
+
 export function buildPasswordResetEmail(input: { token: string }): {
   subject: string;
   html: string;
@@ -293,6 +456,43 @@ export async function sendPasswordResetEmail(input: {
   token: string;
 }): Promise<SendEmailResult> {
   const { subject, html, text } = buildPasswordResetEmail(input);
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
+export async function sendBookingApprovedEmail(input: {
+  to: string;
+  name: string;
+  date: string;
+  referenceId?: string;
+}): Promise<SendEmailResult> {
+  const { subject, html, text } = buildBookingApprovedEmail(input);
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
+export async function sendBookingRejectedEmail(input: {
+  to: string;
+  name: string;
+  date: string;
+  referenceId?: string;
+}): Promise<SendEmailResult> {
+  const { subject, html, text } = buildBookingRejectedEmail(input);
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
+export async function sendWelcomeEmail(input: {
+  to: string;
+  name: string;
+}): Promise<SendEmailResult> {
+  const { subject, html, text } = buildWelcomeEmail(input);
+  return sendEmail({ to: input.to, subject, html, text });
+}
+
+export async function sendPasswordChangedEmail(input: {
+  to: string;
+  name: string;
+  changedAtUtc: string;
+}): Promise<SendEmailResult> {
+  const { subject, html, text } = buildPasswordChangedEmail(input);
   return sendEmail({ to: input.to, subject, html, text });
 }
 

@@ -269,6 +269,15 @@ test("planInviteCredentialsEmail: existing user skips invite (second approve no 
   );
 });
 
+test("invite planner skip does not gate approved status email (service always attempts approved)", () => {
+  // Documented contract: patchBookingStatus sends approved email for every successful approve;
+  // invite credentials remain gated by planInviteCredentialsEmail alone.
+  assert.equal(
+    planInviteCredentialsEmail({ createdNewUser: false, resendConfigured: true }),
+    "skip_existing_user",
+  );
+});
+
 test("planInviteCredentialsEmail: missing env skips send", () => {
   assert.equal(
     planInviteCredentialsEmail({ createdNewUser: true, resendConfigured: false }),

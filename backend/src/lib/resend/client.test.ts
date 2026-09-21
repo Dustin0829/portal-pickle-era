@@ -1,17 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildBookingApprovedEmail,
   buildBookingPaymentReceivedEmail,
+  buildBookingRejectedEmail,
+  buildPasswordChangedEmail,
   buildPasswordResetEmail,
   buildPlayerInviteEmail,
+  buildWelcomeEmail,
   isResendConfigured,
   renderBrandedEmail,
   resolveLogoUrl,
   resolvePublicAppUrl,
+  sendBookingApprovedEmail,
   sendBookingPaymentReceivedEmail,
+  sendBookingRejectedEmail,
   sendEmail,
+  sendPasswordChangedEmail,
   sendPasswordResetEmail,
   sendPlayerInviteEmail,
+  sendWelcomeEmail,
 } from "./client.js";
 
 test("isResendConfigured is false when env unset (local default)", () => {
@@ -67,6 +75,68 @@ test("payment-received / invite / reset HTML are branded", () => {
   assert.match(reset.html, /Reset password/);
   assert.match(reset.html, /reset-password\?token=/);
   assert.ok(reset.html.includes(encodeURIComponent("tok+/=xyz")));
+});
+
+test("approved / rejected / welcome / password-changed HTML are branded", () => {
+  const approved = buildBookingApprovedEmail({
+    name: "Ada",
+    date: "2026-10-05",
+    referenceId: "GCASH-1",
+  });
+  assert.match(approved.subject, /approved/i);
+  assert.match(approved.html, /\/logo\.png/);
+  assert.match(approved.html, /Open portal/);
+  assert.match(approved.html, /2026-10-05/);
+  assert.doesNotMatch(approved.html, /Temporary password/i);
+
+  const rejected = buildBookingRejectedEmail({
+    name: "Ada",
+    date: "2026-10-05",
+  });
+  assert.match(rejected.html, /\/logo\.png/);
+  assert.match(rejected.html, /View site/);
+  assert.match(rejected.html, /couldn’t approve|could not approve/i);
+
+  const welcome = buildWelcomeEmail({ name: "Ada" });
+  assert.match(welcome.subject, /Welcome/i);
+  assert.match(welcome.html, /your new era starts here/i);
+  assert.match(welcome.html, /Log in/);
+  assert.doesNotMatch(welcome.html, /Temporary password/i);
+
+  const changed = buildPasswordChangedEmail({
+    name: "Ada",
+    changedAtUtc: "2026-09-22T01:00:00Z",
+  });
+  assert.match(changed.html, /password was changed/i);
+  assert.match(changed.html, /2026-09-22T01:00:00Z/);
+  assert.match(changed.html, /forgot-password/);
+  assert.match(changed.html, /wasn’t you|was not you/i);
+});
+
+test("new status/welcome/password senders skip without throwing when Resend env unset", async () => {
+  for (const result of await Promise.all([
+    sendBookingApprovedEmail({
+      to: "player@example.com",
+      name: "Ada",
+      date: "2026-10-05",
+    }),
+    sendBookingRejectedEmail({
+      to: "player@example.com",
+      name: "Ada",
+      date: "2026-10-05",
+    }),
+    sendWelcomeEmail({ to: "player@example.com", name: "Ada" }),
+    sendPasswordChangedEmail({
+      to: "player@example.com",
+      name: "Ada",
+      changedAtUtc: "2026-09-22T01:00:00Z",
+    }),
+  ])) {
+    assert.equal(result.sent, false);
+    if (!result.sent) {
+      assert.equal(result.reason, "not_configured");
+    }
+  }
 });
 
 test("sendEmail skips without throwing when Resend env unset", async () => {
