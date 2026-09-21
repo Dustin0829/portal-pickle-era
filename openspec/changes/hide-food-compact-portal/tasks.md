@@ -46,6 +46,6 @@ Branch: `feat/hide-food-compact-portal`
 
 ## 5. Ship
 
-- [ ] 5.1 Run `pnpm verify` in `app` and `@merge-readiness-check` (`app/.cursor/skills/merge-readiness-check/SKILL.md`)
-- [ ] 5.2 `/opsx-verify`
-- [ ] 5.3 `/opsx-pr` (one PR from the repository root)
+- [x] 5.1 Run `pnpm verify` in `app` and `@merge-readiness-check` (`app/.cursor/skills/merge-readiness-check/SKILL.md`)
+- [x] 5.2 `/opsx-verify`
+- [x] 5.3 `/opsx-pr` (one PR from the repository root)
