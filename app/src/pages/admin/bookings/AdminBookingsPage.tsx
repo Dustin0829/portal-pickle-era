@@ -32,13 +32,15 @@ import {
   bookingTotal,
   courtsShortLabel,
   dateKey,
-  formatHour,
   formatLongDate,
   type BookingRequest,
   type BookingStatus,
 } from "@/lib/booking/booking";
+import { bookingPaymentSplit } from "@/lib/booking/bookingPaymentSplit";
+import { bookingTimeRange } from "@/lib/booking/bookingTimeRange";
 import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
+import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -56,12 +58,6 @@ function recentStart(preset: RecentPreset): string | null {
 
 function createdDay(iso: string) {
   return iso.slice(0, 10);
-}
-
-function formatSlotTime(slotId: string) {
-  const hour = Number(slotId.slice(0, 2));
-  if (Number.isNaN(hour)) return slotId;
-  return formatHour(hour);
 }
 
 export function AdminBookingsPage() {
@@ -312,12 +308,7 @@ function AdminBookingRow({
 }) {
   const courtLabel = courtsShortLabel(booking.courtId, booking.courtSlots);
   const scheduleDate = formatLongDate(booking.date);
-  const timeRange =
-    booking.slotIds.length === 0
-      ? "Time TBD"
-      : booking.slotIds.length === 1
-        ? formatSlotTime(booking.slotIds[0]!)
-        : `${formatSlotTime(booking.slotIds[0]!)} – ${formatSlotTime(booking.slotIds[booking.slotIds.length - 1]!)}`;
+  const timeRange = bookingTimeRange(booking);
 
   return (
     <li className="border-b border-zinc-100 last:border-b-0">
@@ -414,12 +405,11 @@ function AdminBookingDetailSheet({
     hours,
     readPlanUnitPrice(booking.plan),
   );
-  const timeRange =
-    booking.slotIds.length === 0
-      ? "Time TBD"
-      : booking.slotIds.length === 1
-        ? formatSlotTime(booking.slotIds[0]!)
-        : `${formatSlotTime(booking.slotIds[0]!)} – ${formatSlotTime(booking.slotIds[booking.slotIds.length - 1]!)}`;
+  const payment = bookingPaymentSplit({
+    totalPesos: total,
+    walletAppliedCents: booking.walletAppliedCents,
+  });
+  const timeRange = bookingTimeRange(booking);
   const [signedReceiptUrl, setSignedReceiptUrl] = useState<
     string | undefined
   >();
@@ -555,17 +545,34 @@ function AdminBookingDetailSheet({
                 <InfoRow label="Type" value={meta.title} />
                 <InfoRow label="Court" value={courtLabel || "Not specified"} />
                 <InfoRow label="Date" value={formatLongDate(booking.date)} />
-                <InfoRow
-                  label="Schedule"
-                  value={`${timeRange} · ${hours} ${hours === 1 ? "hour" : "hours"}`}
-                />
+                <InfoRow label="Schedule" value={timeRange} />
               </InfoCard>
 
               <InfoCard
                 title="Payment information"
                 icon={<CreditCard size={16} aria-hidden />}
               >
-                <InfoRow label="Amount" value={`₱${total}`} />
+                {payment.isSplit ? (
+                  <>
+                    <InfoRow
+                      label="Total"
+                      value={formatCentsAsPesos(payment.totalCents)}
+                    />
+                    <InfoRow
+                      label="Wallet credits"
+                      value={formatCentsAsPesos(payment.walletAppliedCents)}
+                    />
+                    <InfoRow
+                      label="Other payment"
+                      value={formatCentsAsPesos(payment.remainingCashCents)}
+                    />
+                  </>
+                ) : (
+                  <InfoRow
+                    label="Amount"
+                    value={formatCentsAsPesos(payment.totalCents)}
+                  />
+                )}
                 <InfoRow label="Payment channel" value="GCash" />
                 <InfoRow
                   label="Reference ID"

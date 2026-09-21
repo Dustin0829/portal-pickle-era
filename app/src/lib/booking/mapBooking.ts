@@ -21,6 +21,7 @@ export function bookingDtoToRequest(dto: BookingDto): BookingRequest {
     receiptDataUrl: undefined,
     receiptMimeType: dto.receiptMimeType ?? undefined,
     receiptKey: dto.receiptKey,
+    walletAppliedCents: dto.walletAppliedCents ?? 0,
     status: dto.status,
     createdAt: dto.createdAt,
   };
@@ -40,6 +41,7 @@ export function occupancyToBookingRequest(
     email: "",
     referenceId: "",
     receiptName: "",
+    walletAppliedCents: 0,
     status: item.status,
     createdAt: "",
   };

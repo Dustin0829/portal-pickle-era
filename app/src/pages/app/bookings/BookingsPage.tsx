@@ -18,12 +18,14 @@ import {
   bookingCourtHours,
   bookingTotal,
   courtsShortLabel,
-  formatHour,
   formatLongDate,
   type BookingRequest,
 } from "@/lib/booking/booking";
+import { bookingPaymentSplit } from "@/lib/booking/bookingPaymentSplit";
+import { bookingTimeRange } from "@/lib/booking/bookingTimeRange";
 import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
+import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { useBookingModal } from "@/providers/BookingModalProvider";
@@ -55,29 +57,8 @@ function displayBucket(booking: BookingRequest): Exclude<BookingFilter, "all"> {
   return "approved";
 }
 
-function formatSlotTime(slotId: string) {
-  const hour = Number(slotId.slice(0, 2));
-  if (Number.isNaN(hour)) return slotId;
-  return formatHour(hour);
-}
-
 function bookingHours(booking: BookingRequest) {
   return bookingCourtHours(booking);
-}
-
-function bookingTimeRange(booking: BookingRequest) {
-  if (booking.slotIds.length === 0) return "Time TBD";
-  if (booking.plan !== "court") {
-    return booking.slotIds.map(formatSlotTime).join(", ");
-  }
-  const hours = booking.slotIds
-    .map((id) => Number(id.slice(0, 2)))
-    .filter((hour) => !Number.isNaN(hour))
-    .sort((a, b) => a - b);
-  if (hours.length === 0) return booking.slotIds.join(", ");
-  const start = hours[0];
-  const end = hours[hours.length - 1] + 1;
-  return `${formatHour(start)} – ${formatHour(end)}`;
 }
 
 function BookingFilterSelect({
@@ -419,6 +400,10 @@ function BookingDetailSheet({
     hours,
     readPlanUnitPrice(booking.plan),
   );
+  const payment = bookingPaymentSplit({
+    totalPesos: total,
+    walletAppliedCents: booking.walletAppliedCents,
+  });
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -484,7 +469,7 @@ function BookingDetailSheet({
               <DetailRow
                 icon={<Clock3 size={16} />}
                 label="Schedule"
-                value={`${bookingTimeRange(booking)} · ${hours} ${hours === 1 ? "hour" : "hours"}`}
+                value={bookingTimeRange(booking)}
               />
               <DetailRow
                 icon={<FileText size={16} />}
@@ -493,11 +478,44 @@ function BookingDetailSheet({
               />
             </dl>
 
-            <div className="mt-auto flex items-baseline justify-between border-t border-zinc-200 pt-4">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                Estimated total
-              </span>
-              <span className="display text-[28px] text-yellow">₱{total}</span>
+            <div className="mt-auto border-t border-zinc-200 pt-4">
+              {payment.isSplit ? (
+                <dl className="flex flex-col gap-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                      Total
+                    </dt>
+                    <dd className="text-sm font-semibold text-zinc-900">
+                      {formatCentsAsPesos(payment.totalCents)}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                      Wallet credits
+                    </dt>
+                    <dd className="text-sm font-semibold text-zinc-900">
+                      {formatCentsAsPesos(payment.walletAppliedCents)}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                      Other payment
+                    </dt>
+                    <dd className="display text-[28px] text-yellow">
+                      {formatCentsAsPesos(payment.remainingCashCents)}
+                    </dd>
+                  </div>
+                </dl>
+              ) : (
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                    Estimated total
+                  </span>
+                  <span className="display text-[28px] text-yellow">
+                    {formatCentsAsPesos(payment.totalCents)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
