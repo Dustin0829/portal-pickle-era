@@ -11,6 +11,7 @@ import {
 import { ProtectedRoute } from "@/components/guards/ProtectedRoute";
 import { PortalChrome } from "@/components/portal/PortalChrome";
 import { PortalRouteFallback } from "@/components/portal/PortalRouteFallback";
+import { FOOD_ENABLED } from "@/lib/featureFlags";
 
 const items = [
   { to: "/app", label: "Overview", end: true, icon: Home },
@@ -19,7 +20,7 @@ const items = [
   { to: "/app/food", label: "Food", icon: UtensilsCrossed },
   { to: "/app/wallet", label: "Wallet", icon: Wallet },
   { to: "/app/profile", label: "Profile", icon: UserRound },
-];
+].filter((item) => FOOD_ENABLED || item.to !== "/app/food");
 
 export function StudentPortalLayout() {
   return (

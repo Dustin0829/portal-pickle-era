@@ -99,10 +99,14 @@ export function usePatchAdminFoodMenuItem() {
   });
 }
 
-export function useAdminFoodOrders(query: ListAdminFoodOrdersQuery = {}) {
+export function useAdminFoodOrders(
+  query: ListAdminFoodOrdersQuery = {},
+  enabled = true,
+) {
   return useQuery({
     queryKey: [...adminFoodOrdersQueryKey, query] as const,
     queryFn: ({ signal }) => listAdminFoodOrders(query, signal),
+    enabled,
   });
 }
 

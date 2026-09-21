@@ -19,6 +19,7 @@ import { AdminSettingsPage } from "@/pages/admin/settings/AdminSettingsPage";
 import { AdminWalletTopUpsPage } from "@/pages/admin/wallet/AdminWalletTopUpsPage";
 import { AdminFoodOrdersPage } from "@/pages/admin/food/AdminFoodOrdersPage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FOOD_ENABLED } from "@/lib/featureFlags";
 
 const LoginPage = lazy(() =>
   import("@/pages/login/LoginPage").then((m) => ({ default: m.LoginPage })),
@@ -109,7 +110,12 @@ export default function App() {
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="wallet" element={<WalletPage />} />
-            <Route path="food" element={<FoodPage />} />
+            <Route
+              path="food"
+              element={
+                FOOD_ENABLED ? <FoodPage /> : <Navigate to="/app" replace />
+              }
+            />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
 
@@ -117,7 +123,16 @@ export default function App() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="bookings" element={<AdminBookingsPage />} />
             <Route path="top-ups" element={<AdminWalletTopUpsPage />} />
-            <Route path="food" element={<AdminFoodOrdersPage />} />
+            <Route
+              path="food"
+              element={
+                FOOD_ENABLED ? (
+                  <AdminFoodOrdersPage />
+                ) : (
+                  <Navigate to="/admin" replace />
+                )
+              }
+            />
             <Route path="calendar" element={<AdminCalendarPage />} />
             <Route path="players" element={<AdminPlayersPage />} />
             <Route

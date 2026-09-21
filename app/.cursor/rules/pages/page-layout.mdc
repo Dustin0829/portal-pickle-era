@@ -28,9 +28,9 @@ Ship for **320px–375px** first. Horizontal overflow on phones is a release blo
 
 | Component | Purpose |
 | --------- | ------- |
-| **`AppPageShell`** | Shared page padding, vertical zone rhythm (`gap-8`), optional max-width |
+| **`AppPageShell`** | Shared page padding, vertical zone rhythm (`gap-5`), optional max-width |
 | **`PageHeader`** | Title + description (`gap-1`) + optional action slot |
-| **`PageSection`** | Major page zones; optional `border-t pt-8` for phase changes |
+| **`PageSection`** | Major page zones; optional `border-t pt-6` for phase changes |
 
 ```tsx
 <AppPageShell width="default">
@@ -49,7 +49,7 @@ When a route needs full width:
 </AppPageShell>
 ```
 
-**Do not** hand-roll `py-8` + `max-w-*` on every app page.
+**Do not** hand-roll `py-5` + `max-w-*` on every app page.
 
 ### Width presets (`AppPageShell`)
 
@@ -66,8 +66,8 @@ When app chrome and page body share a column, use the **same** `appContentWidthC
 
 | Level | Gap | Use |
 | ----- | --- | --- |
-| Page zones | `gap-8` | Between header, alerts, main workspace |
-| Section interior | `gap-4`–`gap-6` | Tabs → toolbar → card |
+| Page zones | `gap-5` | Between header, alerts, main workspace |
+| Section interior | `gap-3`–`gap-4` | Tabs → toolbar → card |
 | Status / alerts stack | `gap-3` | Multiple alerts |
 | Title block | `gap-1` | `PageHeader` title + description |
 | Dense lists | `gap-2` | Rows, metadata lines |
@@ -76,7 +76,7 @@ When app chrome and page body share a column, use the **same** `appContentWidthC
 
 - **`RootLayout` `<main>`** — `pb-10`; skip link + `#main` (`accessibility.mdc`).
 - **Chrome vs body** — same max-width when both constrained.
-- **Padding** — `px-4 sm:px-6`, `py-8 sm:py-10` via `AppPageShell`.
+- **Padding** — `px-4 sm:px-6`, `py-5 sm:py-6` via `AppPageShell`.
 
 ## Visual hierarchy
 
@@ -141,7 +141,7 @@ Main actions (Save, Generate, Submit): **`w-full sm:w-auto`**. Use `PageFooterAc
 - [ ] App routes use `AppPageShell` + `PageHeader` or documented full-bleed layout.
 - [ ] Width preset matches route intent; landing pages not forced into `max-w-3xl`.
 - [ ] Chrome and body columns align when both constrained.
-- [ ] Major phases separated (`gap-8`, `border-t pt-8`).
+- [ ] Major phases separated (`gap-5`, `border-t pt-6`).
 - [ ] No horizontal scroll at 320px on changed routes.
 - [ ] App nav collapses or adapts below `md`.
 - [ ] Primary mobile CTAs full-width; custom icon buttons meet 44×44 (or shadcn `Button size="icon"`).

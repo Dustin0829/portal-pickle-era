@@ -20,13 +20,13 @@ export function AppPageShell({
   return (
     <div
       className={cn(
-        "mx-auto w-full py-8 sm:py-10",
+        "mx-auto w-full py-5 sm:py-6",
         appContentPaddingClass,
         appContentWidthClass[width],
         className,
       )}
     >
-      <div className="flex flex-col gap-8">{children}</div>
+      <div className="flex flex-col gap-5">{children}</div>
     </div>
   );
 }
