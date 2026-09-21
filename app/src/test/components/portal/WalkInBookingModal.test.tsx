@@ -60,31 +60,9 @@ describe("WalkInBookingModal", () => {
     listOccupancy.mockResolvedValue([]);
   });
 
-  it("hides player fields until a slot and court are selected", async () => {
-    renderWithProviders(
-      <WalkInBookingModal onClose={vi.fn()} onCreated={vi.fn()} />,
-    );
+  it("stays on schedule until Confirm — player fields stay hidden", async () => {
+    const user = userEvent.setup();
 
-    await waitFor(() => {
-      expect(listOccupancy).toHaveBeenCalled();
-    });
-
-    expect(screen.queryByPlaceholderText("Full name")).not.toBeInTheDocument();
-    expect(
-      screen.queryByPlaceholderText("player@email.com"),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/reference/i)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /select an open play session or court hours to continue/i,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /create booking/i }),
-    ).toBeDisabled();
-  });
-
-  it("shows player fields when calendar defaults already pick a slot", async () => {
     renderWithProviders(
       <WalkInBookingModal
         initial={{
@@ -99,13 +77,41 @@ describe("WalkInBookingModal", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Full name")).toBeInTheDocument();
+      expect(listOccupancy).toHaveBeenCalled();
     });
+
+    expect(screen.queryByPlaceholderText("Full name")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /create booking/i }),
+    ).not.toBeInTheDocument();
+
+    const confirm = screen.getByRole("button", { name: /^confirm$/i });
+    expect(confirm).toBeEnabled();
+
+    await user.click(confirm);
+
+    expect(screen.getByPlaceholderText("Full name")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("player@email.com")).toBeInTheDocument();
     expect(screen.getByDisplayValue("WALK-IN")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create booking/i }),
+    ).toBeInTheDocument();
   });
 
-  it("saves an approved booking using calendar defaults", async () => {
+  it("hides player fields and disables Confirm when nothing is selected", async () => {
+    renderWithProviders(
+      <WalkInBookingModal onClose={vi.fn()} onCreated={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(listOccupancy).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByPlaceholderText("Full name")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^confirm$/i })).toBeDisabled();
+  });
+
+  it("saves an approved booking after Confirm then Create", async () => {
     const user = userEvent.setup();
     const onCreated = vi.fn();
     const onClose = vi.fn();
@@ -123,6 +129,7 @@ describe("WalkInBookingModal", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
     await user.type(screen.getByPlaceholderText("Full name"), "Kai Mendoza");
     await user.click(screen.getByRole("button", { name: /create booking/i }));
 
