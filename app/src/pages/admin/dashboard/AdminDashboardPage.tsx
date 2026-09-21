@@ -23,6 +23,7 @@ import {
 } from "@/lib/booking/booking";
 import { readPlanUnitPrice } from "@/lib/booking/planPrices";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
+import { FOOD_ENABLED } from "@/lib/featureFlags";
 import { foodOrderStatusLabel } from "@/lib/food/foodOrderStatus";
 import { cn } from "@/lib/utils";
 
@@ -98,11 +99,14 @@ export function AdminDashboardPage() {
     order: "desc",
   });
   const waitlistQuery = useAdminWaitlistList("");
-  const foodOrdersQuery = useAdminFoodOrders({
-    page: 1,
-    limit: 40,
-    order: "desc",
-  });
+  const foodOrdersQuery = useAdminFoodOrders(
+    {
+      page: 1,
+      limit: 40,
+      order: "desc",
+    },
+    FOOD_ENABLED,
+  );
 
   const bookings = useMemo(
     () => (bookingsQuery.data?.items ?? []).map(bookingDtoToRequest),
@@ -205,28 +209,32 @@ export function AdminDashboardPage() {
   const statsPending =
     (bookingsQuery.isPending && !bookingsQuery.data) ||
     (waitlistQuery.isPending && !waitlistQuery.data);
+  // While food is paused its query never resolves, so bookings decide these states.
+  const foodPending =
+    FOOD_ENABLED && foodOrdersQuery.isPending && !foodOrdersQuery.data;
   const activityPending =
     bookingsQuery.isPending &&
     !bookingsQuery.data &&
-    foodOrdersQuery.isPending &&
-    !foodOrdersQuery.data;
+    (foodPending || !FOOD_ENABLED);
   const bookingsError =
     bookingsQuery.isError && !bookingsQuery.data
       ? "Could not load bookings."
       : null;
   const foodError =
-    foodOrdersQuery.isError && !foodOrdersQuery.data
+    FOOD_ENABLED && foodOrdersQuery.isError && !foodOrdersQuery.data
       ? "Could not load food orders."
       : null;
   const activityError =
-    bookingsError && foodError ? "Could not load recent activity." : null;
+    bookingsError && (foodError || !FOOD_ENABLED)
+      ? "Could not load recent activity."
+      : null;
 
   return (
     <div className="relative min-h-full overflow-hidden">
       <AppPageShell width="wide" className="relative z-10">
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
+        <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-1">
+            <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
               Admin <span className="text-yellow">dashboard</span>
             </h1>
             <p className="text-sm text-zinc-500">
@@ -242,9 +250,9 @@ export function AdminDashboardPage() {
         </header>
 
         {statsPending ? (
-          <PortalStatSkeleton className="mt-6" />
+          <PortalStatSkeleton />
         ) : (
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <StatCard
               label="Total sales"
               value={formatMoney(totalSales)}
@@ -272,7 +280,7 @@ export function AdminDashboardPage() {
           </div>
         )}
 
-        <section className="mt-8 flex flex-col gap-4">
+        <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-900">
               Recent activity
@@ -315,7 +323,7 @@ export function AdminDashboardPage() {
                       <Link
                         to={item.href}
                         className={cn(
-                          "flex items-start justify-between gap-3 px-4 py-3.5 transition hover:bg-zinc-50/80",
+                          "flex items-start justify-between gap-3 px-4 py-3 transition hover:bg-zinc-50/80",
                           item.tone === "yellow" &&
                             "border-l-[3px] border-l-yellow",
                           item.tone === "green" &&
@@ -327,7 +335,7 @@ export function AdminDashboardPage() {
                     ) : (
                       <div
                         className={cn(
-                          "flex items-start justify-between gap-3 px-4 py-3.5",
+                          "flex items-start justify-between gap-3 px-4 py-3",
                           item.tone === "yellow" &&
                             "border-l-[3px] border-l-yellow",
                           item.tone === "green" &&
@@ -399,22 +407,22 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="rounded-2xl border border-zinc-200/80 bg-white p-4 transition hover:border-yellow/40 sm:p-5"
+      className="rounded-2xl border border-zinc-200/80 bg-white p-3.5 transition hover:border-yellow/40"
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
           {label}
         </p>
         <span
-          className={cn("grid size-9 place-items-center rounded-xl", iconClass)}
+          className={cn("grid size-8 place-items-center rounded-xl", iconClass)}
         >
           {icon}
         </span>
       </div>
-      <p className="mt-3 display text-[28px] text-zinc-900 sm:text-[32px]">
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">
         {value}
       </p>
-      <p className="mt-1 text-xs text-zinc-500">{hint}</p>
+      <p className="mt-0.5 text-[11px] text-zinc-500">{hint}</p>
     </Link>
   );
 }

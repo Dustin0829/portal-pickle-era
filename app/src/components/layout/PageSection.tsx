@@ -16,7 +16,7 @@ export function PageSection({
     <section
       className={cn(
         "flex flex-col gap-4",
-        bordered && "border-t border-border pt-8",
+        bordered && "border-t border-border pt-6",
         className,
       )}
     >

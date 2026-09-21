@@ -201,9 +201,7 @@ describe("portal smoke", () => {
         screen.getByRole("heading", { name: /hi, test/i }),
       ).toBeInTheDocument();
     });
-    expect(
-      screen.getByText(/no recent bookings or food orders yet/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no recent bookings yet/i)).toBeInTheDocument();
   });
 
   it("renders admin bookings inbox empty state", async () => {

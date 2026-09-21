@@ -18,6 +18,7 @@ import {
 } from "@/components/portal/portal-skeletons";
 import { PLAN_META, type BookingRequest } from "@/lib/booking/booking";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
+import { FOOD_ENABLED } from "@/lib/featureFlags";
 import { foodOrderStatusLabel } from "@/lib/food/foodOrderStatus";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
@@ -32,7 +33,7 @@ export function OverviewPage() {
   const { user } = useAuth();
   const { openBookingModal } = useBookingModal();
   const bookingsQuery = useMyBookings(Boolean(user));
-  const foodQuery = useMyFoodOrders(Boolean(user));
+  const foodQuery = useMyFoodOrders(Boolean(user) && FOOD_ENABLED);
   const bookings = useMemo(
     () => (bookingsQuery.data ?? []).map(bookingDtoToRequest),
     [bookingsQuery.data],
@@ -57,18 +58,19 @@ export function OverviewPage() {
   }, [bookings, foodQuery.data]);
 
   const bookingsLoading = bookingsQuery.isPending && !bookingsQuery.data;
-  const foodLoading = foodQuery.isPending && !foodQuery.data;
-  const loading = bookingsLoading && foodLoading;
+  const foodLoading = FOOD_ENABLED && foodQuery.isPending && !foodQuery.data;
+  // While food is paused its query never resolves, so bookings decide these states.
+  const loading = bookingsLoading && (foodLoading || !FOOD_ENABLED);
   const bookingsFailed = bookingsQuery.isError && !bookingsQuery.data;
-  const foodFailed = foodQuery.isError && !foodQuery.data;
-  const bothFailed = bookingsFailed && foodFailed;
+  const foodFailed = FOOD_ENABLED && foodQuery.isError && !foodQuery.data;
+  const bothFailed = bookingsFailed && (foodFailed || !FOOD_ENABLED);
 
   return (
     <div className="relative min-h-full overflow-hidden">
       <AppPageShell width="wide" className="relative z-10">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 flex-col gap-2">
-            <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
               Hi, <span className="text-yellow">{firstName}</span>
             </h1>
             <p className="max-w-md text-sm text-zinc-500">
@@ -89,9 +91,9 @@ export function OverviewPage() {
         </header>
 
         {bookingsLoading ? (
-          <PortalStatSkeleton className="mt-8" />
+          <PortalStatSkeleton />
         ) : (
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <StatCard
               to="/app/bookings"
               label="Total requests"
@@ -116,7 +118,7 @@ export function OverviewPage() {
           </div>
         )}
 
-        <section className="mt-10 flex flex-col gap-4">
+        <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-900">
               Recent activity
@@ -194,29 +196,28 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white px-4 py-4 transition hover:border-yellow/40"
+      className="group rounded-2xl border border-zinc-200/80 bg-white p-3.5 transition hover:border-yellow/40"
     >
-      <span
-        className={cn(
-          "grid size-10 shrink-0 place-items-center rounded-xl",
-          iconClass,
-        )}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+      <span className="flex items-start justify-between gap-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
           {label}
         </span>
-        <span className="mt-1 block text-2xl font-semibold tracking-tight text-zinc-900">
-          {value}
+        <span
+          className={cn("grid size-8 place-items-center rounded-xl", iconClass)}
+        >
+          {icon}
         </span>
       </span>
-      <ChevronRight
-        size={18}
-        className="shrink-0 text-zinc-300 transition group-hover:text-yellow"
-        aria-hidden
-      />
+      <span className="mt-2 flex items-center gap-1">
+        <span className="text-2xl font-semibold tracking-tight text-zinc-900">
+          {value}
+        </span>
+        <ChevronRight
+          size={16}
+          className="shrink-0 text-zinc-300 transition group-hover:text-yellow"
+          aria-hidden
+        />
+      </span>
     </Link>
   );
 }
@@ -233,19 +234,19 @@ function RecentRequestRow({ booking }: { booking: BookingRequest }) {
 
   return (
     <li className="flex items-stretch gap-0 border-b border-zinc-100 last:border-b-0">
-      <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-4 text-center sm:w-20">
+      <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-3 text-center sm:w-20">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">
           {month}
         </span>
         <span className="text-xl font-semibold text-zinc-900">{day}</span>
         <span className="text-[10px] font-medium text-zinc-400">{year}</span>
       </div>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 px-4 py-4">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-zinc-900">
             {title}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
@@ -291,19 +292,19 @@ function RecentFoodRow({ order }: { order: FoodOrderDto }) {
 
   return (
     <li className="flex items-stretch gap-0 border-b border-zinc-100 last:border-b-0">
-      <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-4 text-center sm:w-20">
+      <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-r border-zinc-200 bg-zinc-50 px-2 py-3 text-center sm:w-20">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">
           {month}
         </span>
         <span className="text-xl font-semibold text-zinc-900">{day}</span>
         <span className="text-[10px] font-medium text-zinc-400">{year}</span>
       </div>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 px-4 py-4">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-zinc-900">
             Food order
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
@@ -336,8 +337,9 @@ function EmptyOverview({ onBook }: { onBook: () => void }) {
   return (
     <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8">
       <p className="text-sm text-zinc-500">
-        No recent bookings or food orders yet. Book a court or order from the
-        café.
+        {FOOD_ENABLED
+          ? "No recent bookings or food orders yet. Book a court or order from the café."
+          : "No recent bookings yet. Book a court to get started."}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
@@ -348,12 +350,14 @@ function EmptyOverview({ onBook }: { onBook: () => void }) {
           Start a booking
           <ArrowRight size={14} aria-hidden />
         </button>
-        <Link
-          to="/app/food"
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200 px-4 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-700 transition hover:border-yellow"
-        >
-          Order food
-        </Link>
+        {FOOD_ENABLED ? (
+          <Link
+            to="/app/food"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200 px-4 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-700 transition hover:border-yellow"
+          >
+            Order food
+          </Link>
+        ) : null}
       </div>
     </div>
   );

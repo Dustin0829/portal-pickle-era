@@ -1,6 +1,7 @@
 import { LogOut, Menu, X, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Link } from "react-router-dom";
+import { initialsFromName } from "@/lib/user/initials";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -41,13 +42,14 @@ export function PortalChrome({
   return (
     <div className="portal-shell flex h-svh overflow-hidden bg-black text-white">
       <aside
-        className="hidden h-full w-64 shrink-0 flex-col border-r border-white/10 bg-black md:flex"
+        className="hidden h-full w-56 shrink-0 flex-col border-r border-white/10 bg-black md:flex"
         aria-label={title}
       >
         <SidebarBrand homeTo={homeTo} title={title} />
         <SidebarNav items={items} onNavigate={() => setMobileOpen(false)} />
         <SidebarFooter
           userName={user?.name}
+          userEmail={user?.email}
           loggingOut={loggingOut}
           onLogout={handleLogout}
         />
@@ -76,6 +78,7 @@ export function PortalChrome({
             <SidebarNav items={items} onNavigate={() => setMobileOpen(false)} />
             <SidebarFooter
               userName={user?.name}
+              userEmail={user?.email}
               loggingOut={loggingOut}
               onLogout={() => {
                 setMobileOpen(false);
@@ -87,7 +90,7 @@ export function PortalChrome({
       ) : null}
 
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 md:hidden">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 md:hidden">
           <button
             type="button"
             className="grid size-10 place-items-center rounded-xl border border-white/20 text-white"
@@ -122,29 +125,17 @@ function SidebarBrand({
 }) {
   return (
     <div
-      className={cn("border-b border-white/10", compact ? "py-0" : "px-5 py-6")}
+      className={cn("border-b border-white/10", compact ? "py-0" : "px-4 py-4")}
     >
       <Link
         to={homeTo}
         className="inline-flex items-center"
         aria-label="Pickle Era"
       >
-        <img
-          src="/logo.png"
-          alt="Pickle Era"
-          className={cn("w-auto", compact ? "h-8" : "h-9")}
-        />
+        <img src="/logo.png" alt="Pickle Era" className="h-8 w-auto" />
       </Link>
-      <p
-        className={cn(
-          "font-display text-[11px] font-bold uppercase tracking-[0.22em] text-yellow",
-          compact ? "mt-2" : "mt-4",
-        )}
-      >
+      <p className="mt-2 font-display text-[10px] font-bold uppercase tracking-[0.22em] text-yellow">
         {title}
-      </p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-        A new era of pickleball
       </p>
     </div>
   );
@@ -158,7 +149,10 @@ function SidebarNav({
   onNavigate: () => void;
 }) {
   return (
-    <nav className="flex flex-1 flex-col gap-1.5 px-3 py-5" aria-label="Portal">
+    <nav
+      className="flex flex-1 flex-col gap-0.5 px-2.5 py-3"
+      aria-label="Portal"
+    >
       {items.map((item) => {
         const Icon = item.icon;
         return (
@@ -169,7 +163,8 @@ function SidebarNav({
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2.5 rounded-xl px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition",
+                // Touch drawer keeps a 44px row; the pointer sidebar runs tighter.
+                "flex min-h-11 items-center gap-2.5 rounded-full px-3 text-[13px] font-semibold transition md:min-h-0 md:py-2",
                 isActive
                   ? "bg-yellow text-black"
                   : "text-white/70 hover:bg-white/5 hover:text-white",
@@ -187,26 +182,46 @@ function SidebarNav({
 
 function SidebarFooter({
   userName,
+  userEmail,
   loggingOut,
   onLogout,
 }: {
   userName?: string;
+  userEmail?: string;
   loggingOut: boolean;
   onLogout: () => void | Promise<void>;
 }) {
   return (
-    <div className="mt-auto border-t border-white/10 px-4 py-4">
+    <div className="mt-auto flex items-center gap-2.5 border-t border-white/10 px-3 py-3">
       {userName ? (
-        <p className="truncate text-xs font-medium text-white/80">{userName}</p>
+        <>
+          <span
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-yellow text-[11px] font-bold text-black"
+            aria-hidden
+          >
+            {initialsFromName(userName, userEmail ?? "")}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-semibold text-white">
+              {userName}
+            </span>
+            {userEmail ? (
+              <span className="block truncate text-[11px] text-white/45">
+                {userEmail}
+              </span>
+            ) : null}
+          </span>
+        </>
       ) : null}
       <button
         type="button"
         disabled={loggingOut}
         onClick={() => void onLogout()}
-        className="mt-3 inline-flex items-center gap-2 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55 transition hover:text-yellow disabled:cursor-not-allowed disabled:opacity-50"
+        className="grid size-11 shrink-0 place-items-center rounded-full text-white/55 transition hover:bg-white/5 hover:text-yellow disabled:cursor-not-allowed disabled:opacity-50 md:size-9"
+        aria-label={loggingOut ? "Logging out" : "Log out"}
+        title="Log out"
       >
-        <LogOut size={12} aria-hidden />
-        {loggingOut ? "Logging out…" : "Log out"}
+        <LogOut size={16} aria-hidden />
       </button>
     </div>
   );

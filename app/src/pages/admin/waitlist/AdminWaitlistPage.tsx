@@ -6,18 +6,8 @@ import { ApiRequestError } from "@/api/client";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalTableSkeleton } from "@/components/portal/portal-skeletons";
+import { initialsFromName } from "@/lib/user/initials";
 import { cn } from "@/lib/utils";
-
-function initialsFromName(name: string, email: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
-  }
-  if (parts.length === 1 && parts[0]) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase() || "?";
-}
 
 function PlayerAvatar({ entry }: { entry: WaitlistEntry }) {
   const [failed, setFailed] = useState(false);

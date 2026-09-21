@@ -12,6 +12,7 @@ import { Outlet } from "react-router-dom";
 import { ProtectedRoute } from "@/components/guards/ProtectedRoute";
 import { PortalChrome } from "@/components/portal/PortalChrome";
 import { PortalRouteFallback } from "@/components/portal/PortalRouteFallback";
+import { FOOD_ENABLED } from "@/lib/featureFlags";
 
 const items = [
   { to: "/admin", label: "Dashboard", end: true, icon: LayoutDashboard },
@@ -21,7 +22,7 @@ const items = [
   { to: "/admin/calendar", label: "Calendar", icon: CalendarRange },
   { to: "/admin/players", label: "Players", icon: Users },
   { to: "/admin/settings", label: "Settings", icon: Settings },
-];
+].filter((item) => FOOD_ENABLED || item.to !== "/admin/food");
 
 export function AdminPortalLayout() {
   return (

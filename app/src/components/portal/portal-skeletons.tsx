@@ -23,11 +23,11 @@ export function PortalStatSkeleton({
       {Array.from({ length: count }, (_, index) => (
         <div
           key={index}
-          className="rounded-2xl border border-zinc-200/80 bg-white p-4 sm:p-5"
+          className="rounded-2xl border border-zinc-200/80 bg-white p-3.5"
         >
           <Skeleton className="h-3 w-20" />
-          <Skeleton className="mt-4 h-8 w-24" />
-          <Skeleton className="mt-2 h-3 w-28" />
+          <Skeleton className="mt-2 h-7 w-24" />
+          <Skeleton className="mt-1.5 h-3 w-28" />
         </div>
       ))}
     </div>
@@ -50,14 +50,13 @@ export function PortalListSkeleton({
       {Array.from({ length: rows }, (_, index) => (
         <li
           key={index}
-          className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-4"
+          className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-3"
         >
           <div className="flex items-center gap-3">
-            <Skeleton className="size-11 shrink-0 rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-4 w-3/4 max-w-xs" />
-              <Skeleton className="h-3 w-40" />
+            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-40 max-w-[60%]" />
+              <Skeleton className="h-3 w-52 max-w-[80%]" />
             </div>
             <Skeleton className="hidden h-8 w-20 shrink-0 rounded-full sm:block" />
           </div>
