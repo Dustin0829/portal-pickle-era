@@ -35,6 +35,8 @@ export type WalkInBookingDefaults = {
   slotIds?: string[];
 };
 
+type Step = "schedule" | "details";
+
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -50,6 +52,7 @@ export function WalkInBookingModal({
 }) {
   const bookableFloor = earliestBookableDateKey();
   const initialDate = initial?.date ?? dateKey(new Date());
+  const [step, setStep] = useState<Step>("schedule");
   const [date, setDate] = useState(() =>
     initialDate >= bookableFloor ? initialDate : bookableFloor,
   );
@@ -115,8 +118,12 @@ export function WalkInBookingModal({
     capacityLoading ||
     Boolean(occupancyError) ||
     Boolean(capacityError);
+  const canConfirm = Boolean(confirmed) && !scheduleBlocked;
   const canSubmit =
-    name.trim().length > 0 && Boolean(confirmed) && !scheduleBlocked;
+    step === "details" &&
+    name.trim().length > 0 &&
+    Boolean(confirmed) &&
+    !scheduleBlocked;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -194,10 +201,27 @@ export function WalkInBookingModal({
   function selectDate(next: string) {
     setDate(next);
     setSelection(EMPTY_UNIFIED_SELECTION);
+    setStep("schedule");
+    setError("");
+  }
+
+  function onSelectionChange(next: UnifiedBookingSelection) {
+    setSelection(next);
+    if (step === "details" && !toConfirmSelection(date, next)) {
+      setStep("schedule");
+      setError("");
+    }
+  }
+
+  function onConfirmSchedule() {
+    if (!canConfirm) return;
+    setError("");
+    setStep("details");
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (step !== "details") return;
     setError("");
     const payload = toConfirmSelection(date, selection);
     if (!canSubmit || !payload) {
@@ -273,107 +297,132 @@ export function WalkInBookingModal({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <UnifiedBookingSchedule
-            date={date}
-            month={month}
-            onMonthChange={setMonth}
-            onDateChange={selectDate}
-            bookableFloor={bookableFloor}
-            selection={selection}
-            onSelectionChange={setSelection}
-            prefer={initial?.plan}
-            openPlaySlots={openPlaySlots}
-            slotStatusByKey={slotStatusByKey}
-            hoursBlockedByOpenPlay={hoursBlockedByOpenPlay}
-            bookedCountBySlotId={bookedCountBySlotId}
-            occupancyLoading={occupancyLoading}
-            capacityLoading={capacityLoading}
-            occupancyError={occupancyError}
-            capacityError={capacityError}
-            compact
-            onBack={onClose}
-          />
+          {step === "schedule" ? (
+            <UnifiedBookingSchedule
+              date={date}
+              month={month}
+              onMonthChange={setMonth}
+              onDateChange={selectDate}
+              bookableFloor={bookableFloor}
+              selection={selection}
+              onSelectionChange={onSelectionChange}
+              prefer={initial?.plan}
+              openPlaySlots={openPlaySlots}
+              slotStatusByKey={slotStatusByKey}
+              hoursBlockedByOpenPlay={hoursBlockedByOpenPlay}
+              bookedCountBySlotId={bookedCountBySlotId}
+              occupancyLoading={occupancyLoading}
+              capacityLoading={capacityLoading}
+              occupancyError={occupancyError}
+              capacityError={capacityError}
+              compact
+              onBack={onClose}
+            />
+          ) : null}
 
-          <div className="space-y-4 border-t border-zinc-200 bg-white px-5 py-4">
-            {confirmed ? (
-              <>
-                <label className="block">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                    Player name
-                  </span>
-                  <input
-                    required
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Full name"
-                    className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
-                  />
-                </label>
+          {step === "details" && confirmed && plan ? (
+            <div className="space-y-4 bg-white px-5 py-4">
+              <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                <p className="font-semibold text-zinc-900">
+                  {PLAN_META[plan].title}
+                  {plan === "court" && selection.courtSlots.length
+                    ? ` · ${courtsShortLabel(selection.courtId, selection.courtSlots)}`
+                    : ""}
+                </p>
+                <p className="mt-0.5">
+                  {date} · ₱{total.toLocaleString("en-PH")} · marked approved on
+                  create
+                </p>
+              </div>
 
-                <label className="block">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                    Email (optional)
-                  </span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="player@email.com"
-                    className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
-                  />
-                </label>
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Player name
+                </span>
+                <input
+                  required
+                  autoFocus
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Full name"
+                  className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
+                />
+              </label>
 
-                <label className="block">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                    Reference
-                  </span>
-                  <input
-                    value={referenceId}
-                    onChange={(event) => setReferenceId(event.target.value)}
-                    className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-                  />
-                </label>
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Email (optional)
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="player@email.com"
+                  className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
+                />
+              </label>
 
-                {plan ? (
-                  <p className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-                    {`Total ${PLAN_META[plan].title}${
-                      plan === "court" && selection.courtSlots.length
-                        ? ` · ${courtsShortLabel(selection.courtId, selection.courtSlots)}`
-                        : ""
-                    }: ₱${total.toLocaleString("en-PH")} · marked approved on create`}
-                  </p>
-                ) : null}
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Reference
+                </span>
+                <input
+                  value={referenceId}
+                  onChange={(event) => setReferenceId(event.target.value)}
+                  className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                />
+              </label>
 
-                {error ? (
-                  <p className="text-sm text-maroon" role="alert">
-                    {error}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-                Select an Open Play session or court hours to continue.
-              </p>
-            )}
-          </div>
+              {error ? (
+                <p className="text-sm text-maroon" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex gap-2 border-t border-zinc-200 bg-white px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 flex-1 border border-zinc-200 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-600 transition hover:border-yellow hover:text-yellow"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!canSubmit || pending}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-yellow text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:opacity-50"
-          >
-            <Check size={14} aria-hidden />
-            {pending ? "Creating…" : "Create booking"}
-          </button>
+          {step === "schedule" ? (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-11 flex-1 border border-zinc-200 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-600 transition hover:border-yellow hover:text-yellow"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!canConfirm}
+                onClick={onConfirmSchedule}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-yellow text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Confirm
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("schedule");
+                  setError("");
+                }}
+                className="h-11 flex-1 border border-zinc-200 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-600 transition hover:border-yellow hover:text-yellow"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={!canSubmit || pending}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-yellow text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:opacity-50"
+              >
+                <Check size={14} aria-hidden />
+                {pending ? "Creating…" : "Create booking"}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>
