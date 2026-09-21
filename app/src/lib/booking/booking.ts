@@ -45,6 +45,8 @@ export type BookingRequest = {
   receiptMimeType?: string;
   /** Private object storage key when using S3/Railway Bucket. */
   receiptKey?: string | null;
+  /** Wallet credits applied at booking time (cents). Missing → treat as 0. */
+  walletAppliedCents?: number;
   status: BookingStatus;
   createdAt: string;
 };
