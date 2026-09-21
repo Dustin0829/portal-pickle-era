@@ -173,7 +173,7 @@ export function UnifiedBookingSchedule({
         >
           <ChevronLeft size={18} />
         </button>
-        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+        <div className="flex min-w-0 flex-1 gap-1">
           {stripDates.map((key) => {
             const d = parseDateKey(key);
             const selected = key === date;
@@ -185,7 +185,7 @@ export function UnifiedBookingSchedule({
                 disabled={disabled}
                 onClick={() => selectDate(key)}
                 className={cn(
-                  "flex min-w-[4.25rem] shrink-0 flex-col items-center rounded-md px-2 py-2 text-center transition",
+                  "flex min-w-0 flex-1 flex-col items-center rounded-md px-1 py-2 text-center transition sm:px-2",
                   selected
                     ? "bg-yellow text-black"
                     : "text-zinc-600 hover:bg-zinc-100",
