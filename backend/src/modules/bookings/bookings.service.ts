@@ -13,7 +13,9 @@ import {
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
 import {
   isResendConfigured,
+  sendBookingApprovedEmail,
   sendBookingPaymentReceivedEmail,
+  sendBookingRejectedEmail,
   sendPlayerInviteEmail,
 } from "../../lib/resend/client.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
@@ -342,6 +344,8 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
       status: true,
       email: true,
       name: true,
+      date: true,
+      referenceId: true,
       userId: true,
       walletAppliedCents: true,
     },
@@ -349,6 +353,14 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
   if (!existing) {
     throw new NotFoundError("Booking not found");
   }
+
+  const statusEmailTo = normalizeBookingEmail(existing.email);
+  const statusEmailBase = {
+    to: statusEmailTo,
+    name: existing.name,
+    date: existing.date,
+    ...(existing.referenceId?.trim() ? { referenceId: existing.referenceId.trim() } : {}),
+  };
 
   if (body.status === "rejected") {
     const row = await prisma.$transaction(async (tx) => {
@@ -386,6 +398,15 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
         select: bookingPublicSelect,
       });
     });
+
+    const rejectedResult = await sendBookingRejectedEmail(statusEmailBase);
+    if (!rejectedResult.sent) {
+      logger.info("booking_rejected_email_skipped_or_failed", {
+        bookingId: id,
+        reason: rejectedResult.reason,
+      });
+    }
+
     return toBookingDto(row);
   }
 
@@ -432,6 +453,15 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
   });
 
   const dto = toBookingDto(row);
+
+  const approvedResult = await sendBookingApprovedEmail(statusEmailBase);
+  if (!approvedResult.sent) {
+    logger.info("booking_approved_email_skipped_or_failed", {
+      bookingId: id,
+      reason: approvedResult.reason,
+    });
+  }
+
   const plan = planInviteCredentialsEmail({
     createdNewUser,
     resendConfigured: isResendConfigured(),
@@ -453,7 +483,7 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
   }
 
   const emailResult = await sendPlayerInviteEmail({
-    to: normalizeBookingEmail(existing.email),
+    to: statusEmailTo,
     tempPassword,
   });
 
