@@ -5,11 +5,14 @@ import { assertPendingTransitionApplied, toWalletTopUpDto } from "./wallet.mappe
 import {
   MAX_TOP_UP_AMOUNT_CENTS,
   createWalletTopUpBodySchema,
+  listMyWalletTransactionsQuerySchema,
   patchTopUpBodySchema,
   walletDtoSchema,
+  walletLedgerEntryDtoSchema,
   walletReceiptUrlResponseSchema,
 } from "./wallet.schema.js";
-import { getMyWallet } from "./wallet.service.js";
+import { getMyWallet, listMyWalletTransactions } from "./wallet.service.js";
+import { toWalletLedgerEntryDto } from "./wallet.mapper.js";
 
 test("create top-up schema: pending amount must be positive and within max", () => {
   assert.equal(
@@ -123,4 +126,59 @@ test("getMyWallet requires session", async () => {
     () => getMyWallet(undefined),
     (error: unknown) => error instanceof UnauthorizedError && error.statusCode === 401,
   );
+});
+
+test("listMyWalletTransactions requires session", async () => {
+  await assert.rejects(
+    () => listMyWalletTransactions(undefined, { page: 1, limit: 20, order: "desc" }),
+    (error: unknown) => error instanceof UnauthorizedError && error.statusCode === 401,
+  );
+});
+
+test("wallet ledger entry dto schema accepts signed amounts", () => {
+  assert.equal(
+    walletLedgerEntryDtoSchema.safeParse({
+      id: "le1",
+      amountCents: -50_000,
+      balanceAfterCents: 0,
+      type: "booking_debit",
+      referenceType: "booking",
+      referenceId: "b1",
+      createdAt: "2026-09-22T00:00:00.000Z",
+    }).success,
+    true,
+  );
+  assert.equal(
+    walletLedgerEntryDtoSchema.safeParse({
+      id: "le2",
+      amountCents: 12_000,
+      balanceAfterCents: 12_000,
+      type: "top_up",
+      referenceType: null,
+      referenceId: null,
+      createdAt: "2026-09-22T00:00:00.000Z",
+    }).success,
+    true,
+  );
+});
+
+test("list transactions query defaults page/limit", () => {
+  const parsed = listMyWalletTransactionsQuerySchema.parse({});
+  assert.equal(parsed.page, 1);
+  assert.equal(parsed.limit, 20);
+  assert.equal(parsed.order, "desc");
+});
+
+test("ledger mapper serializes createdAt ISO", () => {
+  const dto = toWalletLedgerEntryDto({
+    id: "le1",
+    amountCents: 50_000,
+    balanceAfterCents: 50_000,
+    type: "top_up",
+    referenceType: "wallet_top_up",
+    referenceId: "tu1",
+    createdAt: new Date("2026-09-22T12:00:00.000Z"),
+  });
+  assert.equal(dto.createdAt, "2026-09-22T12:00:00.000Z");
+  assert.equal(dto.type, "top_up");
 });

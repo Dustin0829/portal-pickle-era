@@ -1,13 +1,9 @@
 import { prisma } from "../../app/prisma.js";
-import {
-  ConflictError,
-  NotFoundError,
-  UnauthorizedError,
-  ValidationError,
-} from "../../lib/errors.js";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset } from "../../lib/pagination.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
 import type { AuthUser } from "../auth/auth.constants.js";
+import { applyWalletDelta } from "../wallet/wallet.service.js";
 import {
   foodMenuItemSelect,
   foodOrderSelect,
@@ -120,22 +116,7 @@ export async function createMyFoodOrder(authUser: AuthUser | undefined, body: Cr
   const totalCents = lineData.reduce((sum, l) => sum + l.unitPriceCents * l.quantity, 0);
 
   const order = await prisma.$transaction(async (tx) => {
-    if (body.payMode === "wallet") {
-      await tx.wallet.upsert({
-        where: { userId: authUser.id },
-        create: { userId: authUser.id, balanceCents: 0 },
-        update: {},
-      });
-      const updated = await tx.wallet.updateMany({
-        where: { userId: authUser.id, balanceCents: { gte: totalCents } },
-        data: { balanceCents: { decrement: totalCents } },
-      });
-      if (updated.count !== 1) {
-        throw new ConflictError("Insufficient wallet balance for this food order");
-      }
-    }
-
-    return tx.foodOrder.create({
+    const created = await tx.foodOrder.create({
       data: {
         userId: authUser.id,
         payMode: body.payMode,
@@ -146,6 +127,19 @@ export async function createMyFoodOrder(authUser: AuthUser | undefined, body: Cr
       },
       select: foodOrderSelect,
     });
+
+    if (body.payMode === "wallet") {
+      await applyWalletDelta(tx, {
+        userId: authUser.id,
+        amountCents: -totalCents,
+        type: "food_debit",
+        referenceType: "food_order",
+        referenceId: created.id,
+        insufficientFundsMessage: "Insufficient wallet balance for this food order",
+      });
+    }
+
+    return created;
   });
 
   return toFoodOrderDto(order);

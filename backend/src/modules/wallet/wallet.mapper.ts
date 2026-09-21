@@ -1,6 +1,32 @@
 import type { Prisma } from "../../generated/prisma/client.js";
 import { ConflictError } from "../../lib/errors.js";
-import type { AdminWalletTopUpDto, WalletTopUpDto } from "./wallet.schema.js";
+import type { AdminWalletTopUpDto, WalletLedgerEntryDto, WalletTopUpDto } from "./wallet.schema.js";
+
+export const walletLedgerEntrySelect = {
+  id: true,
+  amountCents: true,
+  balanceAfterCents: true,
+  type: true,
+  referenceType: true,
+  referenceId: true,
+  createdAt: true,
+} as const satisfies Prisma.WalletLedgerEntrySelect;
+
+export type WalletLedgerEntryRow = Prisma.WalletLedgerEntryGetPayload<{
+  select: typeof walletLedgerEntrySelect;
+}>;
+
+export function toWalletLedgerEntryDto(row: WalletLedgerEntryRow): WalletLedgerEntryDto {
+  return {
+    id: row.id,
+    amountCents: row.amountCents,
+    balanceAfterCents: row.balanceAfterCents,
+    type: row.type,
+    referenceType: row.referenceType,
+    referenceId: row.referenceId,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
 
 export const walletTopUpPublicSelect = {
   id: true,

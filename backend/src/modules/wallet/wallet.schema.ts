@@ -23,6 +23,27 @@ export const walletDtoSchema = z.object({
   topUps: z.array(walletTopUpDtoSchema),
 });
 
+export const walletLedgerTypeSchema = z.enum([
+  "top_up",
+  "booking_debit",
+  "booking_refund",
+  "food_debit",
+]);
+
+export const walletLedgerEntryDtoSchema = z.object({
+  id: z.string(),
+  amountCents: z.number().int(),
+  balanceAfterCents: z.number().int().nonnegative(),
+  type: walletLedgerTypeSchema,
+  referenceType: z.string().nullable(),
+  referenceId: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export const listMyWalletTransactionsQuerySchema = paginatedQuerySchema.extend({
+  sort: z.enum(["createdAt"]).optional(),
+});
+
 export const adminWalletTopUpDtoSchema = walletTopUpDtoSchema.extend({
   userName: z.string(),
   userEmail: z.string().email(),
@@ -61,8 +82,10 @@ export const walletReceiptUrlResponseSchema = z.object({
 
 export type WalletDto = z.infer<typeof walletDtoSchema>;
 export type WalletTopUpDto = z.infer<typeof walletTopUpDtoSchema>;
+export type WalletLedgerEntryDto = z.infer<typeof walletLedgerEntryDtoSchema>;
 export type AdminWalletTopUpDto = z.infer<typeof adminWalletTopUpDtoSchema>;
 export type CreateWalletTopUpBody = z.infer<typeof createWalletTopUpBodySchema>;
 export type ListAdminTopUpsQuery = z.infer<typeof listAdminTopUpsQuerySchema>;
+export type ListMyWalletTransactionsQuery = z.infer<typeof listMyWalletTransactionsQuerySchema>;
 export type PatchTopUpBody = z.infer<typeof patchTopUpBodySchema>;
 export type WalletReceiptUrlResponse = z.infer<typeof walletReceiptUrlResponseSchema>;

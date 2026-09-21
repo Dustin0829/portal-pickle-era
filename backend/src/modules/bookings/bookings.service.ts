@@ -46,6 +46,8 @@ import {
   type PatchBookingBody,
 } from "./bookings.schema.js";
 
+import { applyWalletDelta, findWalletLedgerByRef } from "../wallet/wallet.service.js";
+import { bookingApproveNeedsDebit, bookingRejectNeedsRefund } from "./bookings.wallet-hold.js";
 import { coveredHoursForOpenPlaySlotIds, hourSetsOverlap } from "./open-play-hours.js";
 import {
   getOpenPlaySessions,
@@ -349,10 +351,40 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
   }
 
   if (body.status === "rejected") {
-    const row = await prisma.booking.update({
-      where: { id },
-      data: { status: "rejected" },
-      select: bookingPublicSelect,
+    const row = await prisma.$transaction(async (tx) => {
+      const priorDebit = await findWalletLedgerByRef(tx, {
+        type: "booking_debit",
+        referenceType: "booking",
+        referenceId: id,
+      });
+      const priorRefund = await findWalletLedgerByRef(tx, {
+        type: "booking_refund",
+        referenceType: "booking",
+        referenceId: id,
+      });
+
+      if (
+        bookingRejectNeedsRefund({
+          hasPriorDebit: Boolean(priorDebit),
+          hasPriorRefund: Boolean(priorRefund),
+          walletAppliedCents: existing.walletAppliedCents,
+        }) &&
+        priorDebit
+      ) {
+        await applyWalletDelta(tx, {
+          userId: priorDebit.userId,
+          amountCents: existing.walletAppliedCents,
+          type: "booking_refund",
+          referenceType: "booking",
+          referenceId: id,
+        });
+      }
+
+      return tx.booking.update({
+        where: { id },
+        data: { status: "rejected" },
+        select: bookingPublicSelect,
+      });
     });
     return toBookingDto(row);
   }
@@ -368,8 +400,25 @@ export async function patchBookingStatus(id: string, body: PatchBookingBody) {
     createdNewUser = ensured.createdNewUser;
     tempPassword = ensured.tempPassword;
 
-    if (existing.walletAppliedCents > 0) {
-      await debitWalletForBooking(tx, ensured.user.id, existing.walletAppliedCents);
+    const priorDebit = await findWalletLedgerByRef(tx, {
+      type: "booking_debit",
+      referenceType: "booking",
+      referenceId: id,
+    });
+    if (
+      bookingApproveNeedsDebit({
+        hasPriorDebit: Boolean(priorDebit),
+        walletAppliedCents: existing.walletAppliedCents,
+      })
+    ) {
+      await applyWalletDelta(tx, {
+        userId: ensured.user.id,
+        amountCents: -existing.walletAppliedCents,
+        type: "booking_debit",
+        referenceType: "booking",
+        referenceId: id,
+        insufficientFundsMessage: "Insufficient wallet balance to apply credits to this booking",
+      });
     }
 
     return tx.booking.update({
@@ -486,26 +535,6 @@ async function assertNoCrossPlanConflict(
   }
 }
 
-async function debitWalletForBooking(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  amountCents: number,
-) {
-  if (amountCents <= 0) return;
-  await tx.wallet.upsert({
-    where: { userId },
-    create: { userId, balanceCents: 0 },
-    update: {},
-  });
-  const updated = await tx.wallet.updateMany({
-    where: { userId, balanceCents: { gte: amountCents } },
-    data: { balanceCents: { decrement: amountCents } },
-  });
-  if (updated.count !== 1) {
-    throw new ConflictError("Insufficient wallet balance to apply credits to this booking");
-  }
-}
-
 async function createBookingRow(input: {
   plan: ReturnType<typeof planFromApi>;
   date: string;
@@ -572,11 +601,7 @@ async function createBookingRow(input: {
       }
     }
 
-    if (input.status === "approved" && input.userId && input.walletAppliedCents > 0) {
-      await debitWalletForBooking(tx, input.userId, input.walletAppliedCents);
-    }
-
-    return tx.booking.create({
+    const booking = await tx.booking.create({
       data: {
         plan: input.plan,
         date: input.date,
@@ -595,5 +620,18 @@ async function createBookingRow(input: {
       },
       select: bookingPublicSelect,
     });
+
+    if (input.userId && input.walletAppliedCents > 0) {
+      await applyWalletDelta(tx, {
+        userId: input.userId,
+        amountCents: -input.walletAppliedCents,
+        type: "booking_debit",
+        referenceType: "booking",
+        referenceId: booking.id,
+        insufficientFundsMessage: "Insufficient wallet balance to apply credits to this booking",
+      });
+    }
+
+    return booking;
   });
 }

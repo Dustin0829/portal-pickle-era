@@ -6,12 +6,14 @@ import {
   createMyTopUpController,
   getMyWalletController,
   listAdminTopUpsController,
+  listMyWalletTransactionsController,
   patchTopUpController,
   topUpReceiptUrlController,
 } from "./wallet.controller.js";
 import {
   createWalletTopUpBodySchema,
   listAdminTopUpsQuerySchema,
+  listMyWalletTransactionsQuerySchema,
   patchTopUpBodySchema,
   topUpIdParamsSchema,
 } from "./wallet.schema.js";
@@ -21,6 +23,11 @@ export const walletAdminRouter = Router();
 
 walletMeRouter.use(loadSession, requireSession);
 walletMeRouter.get("/", asyncHandler(getMyWalletController));
+walletMeRouter.get(
+  "/transactions",
+  validateQuery(listMyWalletTransactionsQuerySchema),
+  asyncHandler(listMyWalletTransactionsController),
+);
 walletMeRouter.post(
   "/top-ups",
   validateBody(createWalletTopUpBodySchema),

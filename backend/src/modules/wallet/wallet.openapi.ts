@@ -9,9 +9,11 @@ import {
   adminWalletTopUpDtoSchema,
   createWalletTopUpBodySchema,
   listAdminTopUpsQuerySchema,
+  listMyWalletTransactionsQuerySchema,
   patchTopUpBodySchema,
   topUpIdParamsSchema,
   walletDtoSchema,
+  walletLedgerEntryDtoSchema,
   walletReceiptUrlResponseSchema,
   walletTopUpDtoSchema,
 } from "./wallet.schema.js";
@@ -19,6 +21,7 @@ import {
 export function registerWalletOpenApi(registry: OpenAPIRegistry) {
   registry.register("Wallet", walletDtoSchema);
   registry.register("WalletTopUp", walletTopUpDtoSchema);
+  registry.register("WalletLedgerEntry", walletLedgerEntryDtoSchema);
   registry.register("AdminWalletTopUp", adminWalletTopUpDtoSchema);
   registry.register("WalletReceiptUrl", walletReceiptUrlResponseSchema);
 
@@ -31,6 +34,27 @@ export function registerWalletOpenApi(registry: OpenAPIRegistry) {
       200: {
         description: "Current user wallet balance and recent top-ups",
         content: { "application/json": { schema: successResponseSchema(walletDtoSchema) } },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/me/wallet/transactions",
+    operationId: "getMeWalletTransactions",
+    tags: ["Wallet"],
+    request: { query: listMyWalletTransactionsQuerySchema },
+    responses: {
+      200: {
+        description: "Paginated wallet ledger entries for the current user",
+        content: {
+          "application/json": {
+            schema: paginatedSuccessResponseSchema(
+              paginatedItemsSchema(walletLedgerEntryDtoSchema),
+            ),
+          },
+        },
       },
       ...standardErrorResponses,
     },
