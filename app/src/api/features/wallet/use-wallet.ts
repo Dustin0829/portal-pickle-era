@@ -4,23 +4,37 @@ import {
   createMeWalletTopUp,
   getMeWallet,
   listAdminWalletTopUps,
+  listMeWalletTransactions,
   patchAdminWalletTopUp,
 } from "@/api/features/wallet/wallet.service";
 import type {
   CreateWalletTopUpBody,
   ListAdminWalletTopUpsQuery,
+  ListMeWalletTransactionsQuery,
   PatchAdminWalletTopUpBody,
 } from "@/api/features/wallet/wallet.schema";
 import { isApiValidationError } from "@/api/lib/apply-field-errors-to-form";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 
 export const meWalletQueryKey = ["me-wallet"] as const;
+export const meWalletTransactionsQueryKey = ["me-wallet-transactions"] as const;
 export const adminWalletTopUpsQueryKey = ["admin-wallet-top-ups"] as const;
 
 export function useMeWallet(enabled = true) {
   return useQuery({
     queryKey: meWalletQueryKey,
     queryFn: ({ signal }) => getMeWallet(signal),
+    enabled,
+  });
+}
+
+export function useMeWalletTransactions(
+  query: ListMeWalletTransactionsQuery = {},
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...meWalletTransactionsQueryKey, query] as const,
+    queryFn: ({ signal }) => listMeWalletTransactions(query, signal),
     enabled,
   });
 }
@@ -38,6 +52,9 @@ export function useCreateMeWalletTopUp() {
     mutationFn: (values: CreateWalletTopUpBody) => createMeWalletTopUp(values),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: meWalletQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: meWalletTransactionsQueryKey,
+      });
       toast.success("Top-up submitted for review");
     },
     onError: (error) => {

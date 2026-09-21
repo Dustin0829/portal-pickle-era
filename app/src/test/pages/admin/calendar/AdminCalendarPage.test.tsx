@@ -145,6 +145,7 @@ describe("AdminCalendarPage walk-in booking", () => {
       screen.getByRole("heading", { name: /walk-in booking/i }),
     ).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
     await user.type(screen.getByPlaceholderText("Full name"), "Walk-in Guest");
     await user.click(screen.getByRole("button", { name: /create booking/i }));
 

@@ -3,10 +3,13 @@ import { Upload, Wallet } from "lucide-react";
 import {
   createWalletTopUpFormSchema,
   type CreateWalletTopUpFormValues,
+  type WalletLedgerEntryDto,
+  type WalletLedgerType,
 } from "@/api/features/wallet/wallet.schema";
 import {
   useCreateMeWalletTopUp,
   useMeWallet,
+  useMeWalletTransactions,
 } from "@/api/features/wallet/use-wallet";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { PaymentMethodPicker } from "@/components/booking/PaymentMethodCarousel";
@@ -22,106 +25,242 @@ import { usePaymentMethods } from "@/lib/wallet/paymentSettings";
 import { getWalletPageStatus } from "@/lib/wallet/walletListStatus";
 import { cn } from "@/lib/utils";
 
+type WalletTab = "wallet" | "history";
+
+const LEDGER_TYPE_LABELS: Record<WalletLedgerType, string> = {
+  top_up: "Top-up credit",
+  booking_debit: "Booking credit hold",
+  booking_refund: "Booking credit refund",
+  food_debit: "Food order",
+};
+
 export function WalletPage() {
-  const { data, isPending, isError, refetch, error } = useMeWallet();
-  const status = getWalletPageStatus({ isPending, isError, data });
+  const [tab, setTab] = useState<WalletTab>("wallet");
 
   return (
     <div className="relative min-h-full overflow-hidden">
       <AppPageShell width="wide" className="relative z-10">
-        <header className="mb-8 flex flex-col gap-2">
+        <header className="mb-6 flex flex-col gap-2">
           <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
             Wallet
           </h1>
           <p className="text-sm text-zinc-500">
-            Check your balance and top up via facility payment methods for
-            future spend.
+            Check your balance, top up, and review wallet activity.
           </p>
         </header>
 
-        {status === "loading" ? (
-          <PortalListSkeleton rows={3} />
-        ) : status === "error" ? (
-          <div
-            className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
-            role="alert"
-          >
-            <p>Could not load your wallet.</p>
+        <div
+          role="tablist"
+          aria-label="Wallet sections"
+          className="mb-6 flex flex-wrap gap-1.5 border-b border-zinc-200"
+        >
+          {(
+            [
+              { id: "wallet" as const, label: "Wallet" },
+              { id: "history" as const, label: "Transaction history" },
+            ] as const
+          ).map((item) => (
             <button
+              key={item.id}
               type="button"
-              onClick={() => void refetch()}
-              className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-700 hover:text-zinc-900"
+              role="tab"
+              aria-selected={tab === item.id}
+              id={`wallet-tab-${item.id}`}
+              onClick={() => setTab(item.id)}
+              className={cn(
+                "px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition",
+                tab === item.id
+                  ? "border-b-2 border-yellow text-zinc-900"
+                  : "text-zinc-500 hover:text-zinc-800",
+              )}
             >
-              Try again
+              {item.label}
             </button>
-            {error ? (
-              <p className="mt-2 text-xs text-zinc-400">
-                {String(error.message)}
-              </p>
-            ) : null}
+          ))}
+        </div>
+
+        {tab === "wallet" ? (
+          <div role="tabpanel" aria-labelledby="wallet-tab-wallet">
+            <WalletTabPanel />
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
-            <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
-              <div className="flex items-center gap-3">
-                <span className="grid size-11 place-items-center rounded-full bg-amber-100 text-amber-800">
-                  <Wallet size={22} aria-hidden />
-                </span>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                    Balance
-                  </p>
-                  <p className="display mt-1 text-[36px] leading-none text-zinc-900">
-                    {formatCentsAsPesos(data?.balanceCents ?? 0)}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            <WalletTopUpForm />
-
-            <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
-              <h2 className="text-sm font-semibold text-zinc-900">
-                Recent top-ups
-              </h2>
-              {(data?.topUps.length ?? 0) === 0 ? (
-                <p className="mt-3 text-sm text-zinc-500">
-                  No top-ups yet. Submit one above after paying via a listed
-                  method.
-                </p>
-              ) : (
-                <ul className="mt-4 flex flex-col gap-2">
-                  {data!.topUps.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex items-center justify-between gap-3 border-t border-zinc-100 py-3 first:border-t-0 first:pt-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-900">
-                          {formatCentsAsPesos(item.amountCents)}
-                        </p>
-                        <p className="mt-0.5 text-xs text-zinc-500">
-                          {new Date(item.createdAt).toLocaleDateString(
-                            undefined,
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            },
-                          )}
-                          {item.receiptName ? ` · ${item.receiptName}` : ""}
-                        </p>
-                      </div>
-                      <TopUpStatusBadge status={item.status} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+          <div role="tabpanel" aria-labelledby="wallet-tab-history">
+            <HistoryTabPanel />
           </div>
         )}
       </AppPageShell>
     </div>
+  );
+}
+
+function WalletTabPanel() {
+  const { data, isPending, isError, refetch, error } = useMeWallet();
+  const status = getWalletPageStatus({ isPending, isError, data });
+
+  if (status === "loading") {
+    return <PortalListSkeleton rows={3} />;
+  }
+
+  if (status === "error") {
+    return (
+      <div
+        className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
+        role="alert"
+      >
+        <p>Could not load your wallet.</p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-700 hover:text-zinc-900"
+        >
+          Try again
+        </button>
+        {error ? (
+          <p className="mt-2 text-xs text-zinc-400">{String(error.message)}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 place-items-center rounded-full bg-amber-100 text-amber-800">
+            <Wallet size={22} aria-hidden />
+          </span>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              Balance
+            </p>
+            <p className="display mt-1 text-[36px] leading-none text-zinc-900">
+              {formatCentsAsPesos(data?.balanceCents ?? 0)}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <WalletTopUpForm />
+
+      <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
+        <h2 className="text-sm font-semibold text-zinc-900">Recent top-ups</h2>
+        {(data?.topUps.length ?? 0) === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">
+            No top-ups yet. Submit one above after paying via a listed method.
+          </p>
+        ) : (
+          <ul className="mt-4 flex flex-col gap-2">
+            {data!.topUps.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-3 border-t border-zinc-100 py-3 first:border-t-0 first:pt-0"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-zinc-900">
+                    {formatCentsAsPesos(item.amountCents)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    {new Date(item.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                    {item.receiptName ? ` · ${item.receiptName}` : ""}
+                  </p>
+                </div>
+                <TopUpStatusBadge status={item.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function HistoryTabPanel() {
+  const { data, isPending, isError, refetch, error } = useMeWalletTransactions({
+    limit: 50,
+    order: "desc",
+  });
+
+  if (isPending) {
+    return <PortalListSkeleton rows={4} />;
+  }
+
+  if (isError) {
+    return (
+      <div
+        className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500"
+        role="alert"
+      >
+        <p>Could not load transaction history.</p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-700 hover:text-zinc-900"
+        >
+          Try again
+        </button>
+        {error ? (
+          <p className="mt-2 text-xs text-zinc-400">{String(error.message)}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  const items = data?.items ?? [];
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-sm text-zinc-500">
+        <p>
+          No wallet activity yet. Approved top-ups and spends will show up here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6">
+      <h2 className="sr-only">Transaction history</h2>
+      <ul className="flex flex-col">
+        {items.map((item) => (
+          <HistoryRow key={item.id} item={item} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function HistoryRow({ item }: { item: WalletLedgerEntryDto }) {
+  const credit = item.amountCents > 0;
+  const signed = `${credit ? "+" : "−"}${formatCentsAsPesos(Math.abs(item.amountCents))}`;
+
+  return (
+    <li className="flex items-start justify-between gap-3 border-t border-zinc-100 py-3 first:border-t-0 first:pt-0">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-zinc-900">
+          {LEDGER_TYPE_LABELS[item.type]}
+        </p>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          {new Date(item.createdAt).toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+      <p
+        className={cn(
+          "shrink-0 text-sm font-semibold tabular-nums",
+          credit ? "text-green" : "text-zinc-900",
+        )}
+      >
+        {signed}
+      </p>
+    </li>
   );
 }
 

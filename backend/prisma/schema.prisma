@@ -64,9 +64,10 @@ model User {
   sessions      Session[]
   accounts      Account[]
   bookings      Booking[]
-  wallet        Wallet?
-  walletTopUps  WalletTopUp[]
-  foodOrders    FoodOrder[]
+  wallet              Wallet?
+  walletTopUps        WalletTopUp[]
+  walletLedgerEntries WalletLedgerEntry[]
+  foodOrders          FoodOrder[]
 
   @@unique([email])
   @@index([role])
@@ -172,6 +173,29 @@ model Wallet {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("wallets")
+}
+
+enum WalletLedgerType {
+  top_up
+  booking_debit
+  booking_refund
+  food_debit
+}
+
+model WalletLedgerEntry {
+  id                String           @id @default(cuid())
+  userId            String           @map("user_id")
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCents       Int              @map("amount_cents")
+  balanceAfterCents Int              @map("balance_after_cents")
+  type              WalletLedgerType
+  referenceType     String?          @map("reference_type")
+  referenceId       String?          @map("reference_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([referenceType, referenceId, type])
+  @@map("wallet_ledger_entries")
 }
 
 enum WalletTopUpStatus {

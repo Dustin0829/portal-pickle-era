@@ -3,12 +3,15 @@ import {
   adminWalletTopUpDtoSchema,
   createWalletTopUpBodySchema,
   listAdminWalletTopUpsQuerySchema,
+  listMeWalletTransactionsQuerySchema,
   meWalletDtoSchema,
   patchAdminWalletTopUpBodySchema,
+  walletLedgerEntryDtoSchema,
   walletReceiptUrlSchema,
   walletTopUpDtoSchema,
   type CreateWalletTopUpBody,
   type ListAdminWalletTopUpsQuery,
+  type ListMeWalletTransactionsQuery,
   type PatchAdminWalletTopUpBody,
 } from "@/api/features/wallet/wallet.schema";
 import { paginationMetaSchema } from "@/api/schema/primitives.schema";
@@ -17,6 +20,19 @@ import { z } from "zod";
 export async function getMeWallet(signal?: AbortSignal) {
   const { data } = await api.get("/me/wallet", { signal });
   return meWalletDtoSchema.parse(data);
+}
+
+export async function listMeWalletTransactions(
+  query: ListMeWalletTransactionsQuery = {},
+  signal?: AbortSignal,
+) {
+  const params = listMeWalletTransactionsQuerySchema.parse(query);
+  const response = await api.get("/me/wallet/transactions", { params, signal });
+  const payload = response.data as { items: unknown };
+  const items = z.array(walletLedgerEntryDtoSchema).parse(payload.items);
+  const metaRaw = (response as { meta?: unknown }).meta;
+  const meta = metaRaw ? paginationMetaSchema.parse(metaRaw) : undefined;
+  return { items, meta };
 }
 
 export async function createMeWalletTopUp(input: CreateWalletTopUpBody) {

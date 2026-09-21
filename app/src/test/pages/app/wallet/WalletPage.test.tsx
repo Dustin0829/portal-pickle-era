@@ -8,6 +8,18 @@ import {
   seedFacilitySettings,
 } from "@/test/helpers/facilitySettings";
 
+const historyState = vi.hoisted(() => ({
+  items: [] as Array<{
+    id: string;
+    amountCents: number;
+    balanceAfterCents: number;
+    type: "top_up" | "booking_debit" | "booking_refund" | "food_debit";
+    referenceType: string | null;
+    referenceId: string | null;
+    createdAt: string;
+  }>,
+}));
+
 vi.mock("@/api/features/wallet/use-wallet", () => ({
   useMeWallet: () => ({
     data: {
@@ -25,6 +37,14 @@ vi.mock("@/api/features/wallet/use-wallet", () => ({
         },
       ],
     },
+    isPending: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    isFetching: false,
+  }),
+  useMeWalletTransactions: () => ({
+    data: { items: historyState.items },
     isPending: false,
     isError: false,
     error: null,
@@ -69,11 +89,13 @@ describe("WalletPage", () => {
   afterEach(() => {
     cleanup();
     clearFacilitySettingsCache();
+    historyState.items = [];
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     clearFacilitySettingsCache();
+    historyState.items = [];
     seedFacilitySettings({
       paymentMethods: [
         {
@@ -98,17 +120,68 @@ describe("WalletPage", () => {
     });
   });
 
-  it("shows Wallet heading, balance, and recent top-up", () => {
+  it("defaults to Wallet tab with balance and top-up", () => {
     renderWithProviders(<WalletPage />, { route: "/app/wallet" });
 
     expect(
       screen.getByRole("heading", { name: /^wallet$/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^wallet$/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(screen.getAllByText(/₱250/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/^pending$/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /^top up$/i }),
     ).toBeInTheDocument();
+  });
+
+  it("switches to Transaction history empty state", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<WalletPage />, { route: "/app/wallet" });
+
+    await user.click(screen.getByRole("tab", { name: /transaction history/i }));
+
+    expect(
+      screen.getByRole("tab", { name: /transaction history/i }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText(/no wallet activity yet/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /^top up$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders credit and debit history rows", async () => {
+    historyState.items = [
+      {
+        id: "le-1",
+        amountCents: 50_000,
+        balanceAfterCents: 50_000,
+        type: "top_up",
+        referenceType: "wallet_top_up",
+        referenceId: "tu-1",
+        createdAt: "2026-09-21T10:00:00.000Z",
+      },
+      {
+        id: "le-2",
+        amountCents: -30_000,
+        balanceAfterCents: 20_000,
+        type: "booking_debit",
+        referenceType: "booking",
+        referenceId: "b-1",
+        createdAt: "2026-09-21T11:00:00.000Z",
+      },
+    ];
+    const user = userEvent.setup();
+    renderWithProviders(<WalletPage />, { route: "/app/wallet" });
+
+    await user.click(screen.getByRole("tab", { name: /transaction history/i }));
+
+    expect(screen.getByText(/top-up credit/i)).toBeInTheDocument();
+    expect(screen.getByText(/booking credit hold/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+₱500/)).toBeInTheDocument();
+    expect(screen.getByText(/−₱300/)).toBeInTheDocument();
   });
 
   it("selects a facility payment method before showing QR details", async () => {

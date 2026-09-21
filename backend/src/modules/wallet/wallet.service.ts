@@ -3,21 +3,28 @@ import { NotFoundError, UnauthorizedError } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
 import type { AuthUser } from "../auth/auth.constants.js";
+import { applyWalletDelta } from "./wallet.ledger.js";
 import {
   assertPendingTransitionApplied,
   toAdminWalletTopUpDto,
+  toWalletLedgerEntryDto,
   toWalletTopUpDto,
+  walletLedgerEntrySelect,
   walletTopUpAdminSelect,
   walletTopUpPublicSelect,
 } from "./wallet.mapper.js";
 import type {
   CreateWalletTopUpBody,
   ListAdminTopUpsQuery,
+  ListMyWalletTransactionsQuery,
   PatchTopUpBody,
   WalletDto,
 } from "./wallet.schema.js";
 
+export { applyWalletDelta, findWalletLedgerByRef } from "./wallet.ledger.js";
+
 const topUpSortFields = ["createdAt"] as const;
+const ledgerSortFields = ["createdAt"] as const;
 const RECENT_TOP_UPS_LIMIT = 20;
 
 export async function getMyWallet(authUser: AuthUser | undefined): Promise<WalletDto> {
@@ -42,6 +49,34 @@ export async function getMyWallet(authUser: AuthUser | undefined): Promise<Walle
   return {
     balanceCents: wallet.balanceCents,
     topUps: topUps.map(toWalletTopUpDto),
+  };
+}
+
+export async function listMyWalletTransactions(
+  authUser: AuthUser | undefined,
+  query: ListMyWalletTransactionsQuery,
+) {
+  if (!authUser) {
+    throw new UnauthorizedError();
+  }
+
+  const sortField = parseSortField(query.sort, ledgerSortFields, "createdAt");
+  const where = { userId: authUser.id };
+
+  const [rows, total] = await Promise.all([
+    prisma.walletLedgerEntry.findMany({
+      where,
+      select: walletLedgerEntrySelect,
+      orderBy: { [sortField]: query.order },
+      skip: pageToOffset(query.page, query.limit),
+      take: query.limit,
+    }),
+    prisma.walletLedgerEntry.count({ where }),
+  ]);
+
+  return {
+    items: rows.map(toWalletLedgerEntryDto),
+    meta: buildPaginationMeta(query.page, query.limit, total),
   };
 }
 
@@ -158,15 +193,12 @@ export async function approveTopUp(id: string) {
 
     assertPendingTransitionApplied(updated.count);
 
-    await tx.wallet.upsert({
-      where: { userId: existing.userId },
-      create: {
-        userId: existing.userId,
-        balanceCents: existing.amountCents,
-      },
-      update: {
-        balanceCents: { increment: existing.amountCents },
-      },
+    await applyWalletDelta(tx, {
+      userId: existing.userId,
+      amountCents: existing.amountCents,
+      type: "top_up",
+      referenceType: "wallet_top_up",
+      referenceId: existing.id,
     });
 
     const row = await tx.walletTopUp.findUniqueOrThrow({

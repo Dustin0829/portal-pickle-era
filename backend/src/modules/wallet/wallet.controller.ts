@@ -3,6 +3,7 @@ import { sendSuccess } from "../../lib/api-response.js";
 import type {
   CreateWalletTopUpBody,
   ListAdminTopUpsQuery,
+  ListMyWalletTransactionsQuery,
   PatchTopUpBody,
 } from "./wallet.schema.js";
 import {
@@ -10,12 +11,21 @@ import {
   getMyWallet,
   getTopUpReceiptUrl,
   listAdminTopUps,
+  listMyWalletTransactions,
   patchTopUpStatus,
 } from "./wallet.service.js";
 
 export async function getMyWalletController(req: Request, res: Response) {
   const wallet = await getMyWallet(req.authUser);
   return sendSuccess(res, wallet, "ok", 200);
+}
+
+export async function listMyWalletTransactionsController(req: Request, res: Response) {
+  const result = await listMyWalletTransactions(
+    req.authUser,
+    req.query as unknown as ListMyWalletTransactionsQuery,
+  );
+  return sendSuccess(res, { items: result.items }, "ok", 200, result.meta);
 }
 
 export async function createMyTopUpController(req: Request, res: Response) {
