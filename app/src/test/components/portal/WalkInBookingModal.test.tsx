@@ -60,6 +60,51 @@ describe("WalkInBookingModal", () => {
     listOccupancy.mockResolvedValue([]);
   });
 
+  it("hides player fields until a slot and court are selected", async () => {
+    renderWithProviders(
+      <WalkInBookingModal onClose={vi.fn()} onCreated={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(listOccupancy).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByPlaceholderText("Full name")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("player@email.com"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/reference/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /select an open play session or court hours to continue/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create booking/i }),
+    ).toBeDisabled();
+  });
+
+  it("shows player fields when calendar defaults already pick a slot", async () => {
+    renderWithProviders(
+      <WalkInBookingModal
+        initial={{
+          plan: "court",
+          date: "2026-10-05",
+          courtId: "in-1",
+          slotIds: ["08:00"],
+        }}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Full name")).toBeInTheDocument();
+    });
+    expect(screen.getByPlaceholderText("player@email.com")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("WALK-IN")).toBeInTheDocument();
+  });
+
   it("saves an approved booking using calendar defaults", async () => {
     const user = userEvent.setup();
     const onCreated = vi.fn();

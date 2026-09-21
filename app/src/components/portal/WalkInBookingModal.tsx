@@ -295,58 +295,66 @@ export function WalkInBookingModal({
           />
 
           <div className="space-y-4 border-t border-zinc-200 bg-white px-5 py-4">
-            <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                Player name
-              </span>
-              <input
-                required
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Full name"
-                className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
-              />
-            </label>
+            {confirmed ? (
+              <>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                    Player name
+                  </span>
+                  <input
+                    required
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Full name"
+                    className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
+                  />
+                </label>
 
-            <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                Email (optional)
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="player@email.com"
-                className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
-              />
-            </label>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                    Email (optional)
+                  </span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="player@email.com"
+                    className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-yellow"
+                  />
+                </label>
 
-            <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                Reference
-              </span>
-              <input
-                value={referenceId}
-                onChange={(event) => setReferenceId(event.target.value)}
-                className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-              />
-            </label>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                    Reference
+                  </span>
+                  <input
+                    value={referenceId}
+                    onChange={(event) => setReferenceId(event.target.value)}
+                    className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
+                  />
+                </label>
 
-            <p className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-              {plan
-                ? `Total ${PLAN_META[plan].title}${
-                    plan === "court" && selection.courtSlots.length
-                      ? ` · ${courtsShortLabel(selection.courtId, selection.courtSlots)}`
-                      : ""
-                  }: ₱${total.toLocaleString("en-PH")} · marked approved on create`
-                : "Select an Open Play session or court hours."}
-            </p>
+                {plan ? (
+                  <p className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                    {`Total ${PLAN_META[plan].title}${
+                      plan === "court" && selection.courtSlots.length
+                        ? ` · ${courtsShortLabel(selection.courtId, selection.courtSlots)}`
+                        : ""
+                    }: ₱${total.toLocaleString("en-PH")} · marked approved on create`}
+                  </p>
+                ) : null}
 
-            {error ? (
-              <p className="text-sm text-maroon" role="alert">
-                {error}
+                {error ? (
+                  <p className="text-sm text-maroon" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                Select an Open Play session or court hours to continue.
               </p>
-            ) : null}
+            )}
           </div>
         </div>
 
