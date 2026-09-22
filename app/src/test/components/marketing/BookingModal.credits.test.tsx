@@ -80,7 +80,7 @@ describe("BookingModal credits gate", () => {
     renderWithProviders(
       <BookingModal
         prefer="court"
-        allowCreditsPay
+        allowCreditsPay={true}
         preset={{
           date,
           courtId: "in-1",

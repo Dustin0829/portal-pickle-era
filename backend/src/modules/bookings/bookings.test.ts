@@ -29,6 +29,7 @@ import {
 import {
   aggregateOpenPlayCounts,
   assertOpenPlayHasSeat,
+  getMyBookingReceiptUrl,
   listMyBookings,
   usesOpenPlayCapacity,
 } from "./bookings.service.js";
@@ -252,6 +253,15 @@ test("aggregateOpenPlayCounts sums pending/approved seats per slot", () => {
 test("listMyBookings requires session", async () => {
   await assert.rejects(
     () => listMyBookings(undefined),
+    (error: unknown) => {
+      return error instanceof UnauthorizedError && error.statusCode === 401;
+    },
+  );
+});
+
+test("getMyBookingReceiptUrl requires session", async () => {
+  await assert.rejects(
+    () => getMyBookingReceiptUrl("bk_1", undefined),
     (error: unknown) => {
       return error instanceof UnauthorizedError && error.statusCode === 401;
     },

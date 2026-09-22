@@ -12,6 +12,7 @@ import {
   createMyTopUp,
   getAdminWalletProfile,
   getMyWallet,
+  getMyTopUpReceiptUrl,
   getTopUpReceiptUrl,
   listAdminTopUps,
   listMyWalletTransactions,
@@ -43,6 +44,11 @@ export async function listAdminTopUpsController(req: Request, res: Response) {
 
 export async function topUpReceiptUrlController(req: Request, res: Response) {
   const result = await getTopUpReceiptUrl(req.params.id as string);
+  return sendSuccess(res, result, "ok", 200);
+}
+
+export async function myTopUpReceiptUrlController(req: Request, res: Response) {
+  const result = await getMyTopUpReceiptUrl(req.params.id as string, req.authUser);
   return sendSuccess(res, result, "ok", 200);
 }
 

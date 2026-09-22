@@ -1,10 +1,10 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Banknote, Check, X } from "lucide-react";
 import {
-  createAdminBooking,
   listOccupancy,
   listOpenPlaySessions,
 } from "@/api/features/bookings/bookings.service";
+import { useCreateAdminBooking } from "@/api/features/bookings/use-bookings";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import {
@@ -57,6 +57,7 @@ export function WalkInBookingModal({
   const bookableFloor = earliestBookableDateKey();
   const initialDate = initial?.date ?? dateKey(new Date());
   const [step, setStep] = useState<Step>("schedule");
+  const { mutateAsync: createAdminBooking } = useCreateAdminBooking();
   const [date, setDate] = useState(() =>
     initialDate >= bookableFloor ? initialDate : bookableFloor,
   );

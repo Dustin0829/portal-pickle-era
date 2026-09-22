@@ -148,6 +148,26 @@ export async function getTopUpReceiptUrl(id: string) {
   return createPresignedDownload({ key: row.receiptKey });
 }
 
+/** Owner-scoped top-up receipt URL (`userId` must match session). */
+export async function getMyTopUpReceiptUrl(id: string, authUser: AuthUser | undefined) {
+  if (!authUser) {
+    throw new UnauthorizedError();
+  }
+
+  const row = await prisma.walletTopUp.findFirst({
+    where: { id, userId: authUser.id },
+    select: { id: true, receiptKey: true },
+  });
+  if (!row) {
+    throw new NotFoundError("Top-up not found");
+  }
+  if (!row.receiptKey) {
+    throw new NotFoundError("Receipt not found");
+  }
+
+  return createPresignedDownload({ key: row.receiptKey });
+}
+
 export async function patchTopUpStatus(id: string, body: PatchTopUpBody) {
   if (body.status === "rejected") {
     return rejectTopUp(id);

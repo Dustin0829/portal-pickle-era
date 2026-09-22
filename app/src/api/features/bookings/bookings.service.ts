@@ -110,3 +110,10 @@ export async function getAdminBookingReceiptUrl(
   });
   return bookingReceiptUrlSchema.parse(data);
 }
+
+export async function getMeBookingReceiptUrl(id: string, signal?: AbortSignal) {
+  const { data } = await api.get(`/me/bookings/${id}/receipt-url`, {
+    signal,
+  });
+  return bookingReceiptUrlSchema.parse(data);
+}

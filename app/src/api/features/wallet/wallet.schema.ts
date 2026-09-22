@@ -17,7 +17,7 @@ export const walletTopUpStatusSchema = z.enum([
 export const walletTopUpDtoSchema = z.object({
   id: z.string(),
   amountCents: z.number().int().nonnegative(),
-  receiptKey: z.string(),
+  receiptKey: z.string().nullable(),
   receiptName: z.string().nullable(),
   receiptMimeType: z.string().nullable(),
   status: walletTopUpStatusSchema,

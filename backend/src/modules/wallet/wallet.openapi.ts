@@ -86,6 +86,27 @@ export function registerWalletOpenApi(registry: OpenAPIRegistry) {
   });
 
   registry.registerPath({
+    method: "get",
+    path: "/me/wallet/top-ups/{id}/receipt-url",
+    operationId: "getMeWalletTopUpReceiptUrl",
+    tags: ["Wallet"],
+    request: {
+      params: topUpIdParamsSchema,
+    },
+    responses: {
+      200: {
+        description: "Short-lived presigned GET URL for the owner's top-up receipt",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(walletReceiptUrlResponseSchema),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
     method: "post",
     path: "/admin/wallet/manual-credits",
     operationId: "postAdminWalletManualCredit",

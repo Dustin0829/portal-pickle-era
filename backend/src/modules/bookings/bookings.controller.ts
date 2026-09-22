@@ -12,6 +12,7 @@ import {
   createAdminBooking,
   createPublicBooking,
   getBookingReceiptUrl,
+  getMyBookingReceiptUrl,
   listAdminBookings,
   listAdminUsers,
   listMyBookings,
@@ -57,6 +58,11 @@ export async function patchBookingController(req: Request, res: Response) {
 
 export async function bookingReceiptUrlController(req: Request, res: Response) {
   const result = await getBookingReceiptUrl(req.params.id as string);
+  return sendSuccess(res, result, "ok", 200);
+}
+
+export async function myBookingReceiptUrlController(req: Request, res: Response) {
+  const result = await getMyBookingReceiptUrl(req.params.id as string, req.authUser);
   return sendSuccess(res, result, "ok", 200);
 }
 
