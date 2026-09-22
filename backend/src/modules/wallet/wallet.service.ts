@@ -282,15 +282,30 @@ export async function createAdminManualCredit(
       throw new ValidationError("Only student players can receive manual credits");
     }
 
+    const paymentMethodLabel =
+      body.paymentChannel === "cash" ? null : (body.paymentMethodLabel?.trim() ?? null);
+    if (body.paymentChannel === "bank" && !paymentMethodLabel) {
+      throw new ValidationError("Select a bank or e-wallet method");
+    }
+
     const referenceId = randomUUID();
+    const methodToken =
+      body.paymentChannel === "cash"
+        ? "cash"
+        : `bank:${paymentMethodLabel!.replace(/\|/g, "/").slice(0, 60)}`;
     const { balanceAfterCents } = await applyWalletDelta(tx, {
       userId: body.userId,
       amountCents: body.amountCents,
       type: "top_up",
       referenceType: "admin_manual",
-      referenceId,
+      referenceId: `${methodToken}|${referenceId}`,
     });
 
-    return { balanceAfterCents, referenceId };
+    return {
+      balanceAfterCents,
+      referenceId,
+      paymentChannel: body.paymentChannel,
+      paymentMethodLabel,
+    };
   });
 }
