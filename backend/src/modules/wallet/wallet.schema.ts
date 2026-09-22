@@ -80,6 +80,45 @@ export const walletReceiptUrlResponseSchema = z.object({
   expiresAt: z.string().datetime(),
 });
 
+export const adminUserIdParamsSchema = z
+  .object({
+    userId: z.string().min(1),
+  })
+  .strict();
+
+export const adminWalletProfileBookingSchema = z.object({
+  id: z.string(),
+  plan: z.string(),
+  date: z.string(),
+  status: z.string(),
+  courtId: z.string(),
+  createdAt: z.string().datetime(),
+});
+
+export const adminWalletProfileDtoSchema = z.object({
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().email(),
+    createdAt: z.string().datetime(),
+  }),
+  balanceCents: z.number().int().nonnegative(),
+  bookingsCount: z.number().int().nonnegative(),
+  recentBookings: z.array(adminWalletProfileBookingSchema),
+});
+
+export const createAdminManualCreditBodySchema = z
+  .object({
+    userId: z.string().min(1),
+    amountCents: z.number().int().positive().max(MAX_TOP_UP_AMOUNT_CENTS),
+  })
+  .strict();
+
+export const adminManualCreditResponseSchema = z.object({
+  balanceAfterCents: z.number().int().nonnegative(),
+  referenceId: z.string(),
+});
+
 export type WalletDto = z.infer<typeof walletDtoSchema>;
 export type WalletTopUpDto = z.infer<typeof walletTopUpDtoSchema>;
 export type WalletLedgerEntryDto = z.infer<typeof walletLedgerEntryDtoSchema>;
@@ -89,3 +128,6 @@ export type ListAdminTopUpsQuery = z.infer<typeof listAdminTopUpsQuerySchema>;
 export type ListMyWalletTransactionsQuery = z.infer<typeof listMyWalletTransactionsQuerySchema>;
 export type PatchTopUpBody = z.infer<typeof patchTopUpBodySchema>;
 export type WalletReceiptUrlResponse = z.infer<typeof walletReceiptUrlResponseSchema>;
+export type AdminWalletProfileDto = z.infer<typeof adminWalletProfileDtoSchema>;
+export type CreateAdminManualCreditBody = z.infer<typeof createAdminManualCreditBodySchema>;
+export type AdminManualCreditResponse = z.infer<typeof adminManualCreditResponseSchema>;

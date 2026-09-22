@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "../../app/prisma.js";
-import { NotFoundError, UnauthorizedError } from "../../lib/errors.js";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../../lib/errors.js";
 import { buildPaginationMeta, pageToOffset, parseSortField } from "../../lib/pagination.js";
 import { createPresignedDownload } from "../../lib/storage/s3.js";
 import type { AuthUser } from "../auth/auth.constants.js";
@@ -14,6 +15,9 @@ import {
   walletTopUpPublicSelect,
 } from "./wallet.mapper.js";
 import type {
+  AdminManualCreditResponse,
+  AdminWalletProfileDto,
+  CreateAdminManualCreditBody,
   CreateWalletTopUpBody,
   ListAdminTopUpsQuery,
   ListMyWalletTransactionsQuery,
@@ -26,6 +30,7 @@ export { applyWalletDelta, findWalletLedgerByRef } from "./wallet.ledger.js";
 const topUpSortFields = ["createdAt"] as const;
 const ledgerSortFields = ["createdAt"] as const;
 const RECENT_TOP_UPS_LIMIT = 20;
+const RECENT_BOOKINGS_LIMIT = 5;
 
 export async function getMyWallet(authUser: AuthUser | undefined): Promise<WalletDto> {
   if (!authUser) {
@@ -206,5 +211,86 @@ export async function approveTopUp(id: string) {
       select: walletTopUpAdminSelect,
     });
     return toAdminWalletTopUpDto(row);
+  });
+}
+
+export async function getAdminWalletProfile(userId: string): Promise<AdminWalletProfileDto> {
+  const user = await prisma.user.findFirst({
+    where: { id: userId, role: "student" },
+    select: { id: true, name: true, email: true, createdAt: true },
+  });
+  if (!user) {
+    throw new NotFoundError("Player not found");
+  }
+
+  const wallet = await prisma.wallet.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, balanceCents: 0 },
+    update: {},
+    select: { balanceCents: true },
+  });
+
+  const [bookingsCount, recent] = await Promise.all([
+    prisma.booking.count({ where: { OR: [{ userId: user.id }, { email: user.email }] } }),
+    prisma.booking.findMany({
+      where: { OR: [{ userId: user.id }, { email: user.email }] },
+      orderBy: { createdAt: "desc" },
+      take: RECENT_BOOKINGS_LIMIT,
+      select: {
+        id: true,
+        plan: true,
+        date: true,
+        status: true,
+        courtId: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt.toISOString(),
+    },
+    balanceCents: wallet.balanceCents,
+    bookingsCount,
+    recentBookings: recent.map((row) => ({
+      id: row.id,
+      plan: row.plan,
+      date: row.date,
+      status: row.status,
+      courtId: row.courtId,
+      createdAt: row.createdAt.toISOString(),
+    })),
+  };
+}
+
+export async function createAdminManualCredit(
+  body: CreateAdminManualCreditBody,
+): Promise<AdminManualCreditResponse> {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: body.userId },
+      select: { id: true, role: true },
+    });
+    if (!user) {
+      throw new NotFoundError("Player not found");
+    }
+    if (user.role !== "student") {
+      throw new ValidationError("Only student players can receive manual credits");
+    }
+
+    const referenceId = randomUUID();
+    const { balanceAfterCents } = await applyWalletDelta(tx, {
+      userId: body.userId,
+      amountCents: body.amountCents,
+      type: "top_up",
+      referenceType: "admin_manual",
+      referenceId,
+    });
+
+    return { balanceAfterCents, referenceId };
   });
 }

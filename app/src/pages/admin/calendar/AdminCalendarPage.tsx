@@ -5,7 +5,6 @@ import {
 } from "@/components/layout/layout.constants";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { PortalCalendarSkeleton } from "@/components/portal/portal-skeletons";
-import { WalkInBookingModal } from "@/components/portal/WalkInBookingModal";
 import { useAdminBookings } from "@/api/features/bookings/use-bookings";
 import { bookingDtoToRequest } from "@/lib/booking/mapBooking";
 import { cn } from "@/lib/utils";
@@ -20,12 +19,7 @@ function todayIso() {
 
 export function AdminCalendarPage() {
   const [date, setDate] = useState(todayIso);
-  const [walkIn, setWalkIn] = useState<{
-    date: string;
-    courtId: string;
-    slotIds: string[];
-  } | null>(null);
-  const { data, isPending, isError, refetch } = useAdminBookings({
+  const { data, isPending, isError } = useAdminBookings({
     page: 1,
     limit: 100,
     sort: "date",
@@ -51,8 +45,8 @@ export function AdminCalendarPage() {
             Court <span className="text-yellow">calendar</span>
           </h1>
           <p className="text-xs text-zinc-500 sm:text-sm">
-            Tap a day to add walk-in bookings on open hours. Approve GCash
-            requests from the bookings inbox.
+            Tap a day to see that day&apos;s bookings. Walk-in create is on
+            Admin Bookings.
           </p>
         </header>
 
@@ -70,24 +64,10 @@ export function AdminCalendarPage() {
             date={date}
             onDateChange={setDate}
             bookings={bookings}
-            readOnly={false}
-            bookIntent="walk-in"
-            keepOpenOnBook
-            onBookSlot={setWalkIn}
+            bookingsOnly
           />
         )}
       </div>
-
-      {walkIn ? (
-        <WalkInBookingModal
-          initial={{ plan: "court", ...walkIn }}
-          onClose={() => setWalkIn(null)}
-          onCreated={() => {
-            setWalkIn(null);
-            void refetch();
-          }}
-        />
-      ) : null}
     </div>
   );
 }

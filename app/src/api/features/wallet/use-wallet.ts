@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  createAdminManualCredit,
   createMeWalletTopUp,
+  getAdminWalletProfile,
   getMeWallet,
   listAdminWalletTopUps,
   listMeWalletTransactions,
   patchAdminWalletTopUp,
 } from "@/api/features/wallet/wallet.service";
 import type {
+  CreateAdminManualCreditBody,
   CreateWalletTopUpBody,
   ListAdminWalletTopUpsQuery,
   ListMeWalletTransactionsQuery,
@@ -80,6 +83,32 @@ export function usePatchAdminWalletTopUp() {
       );
     },
     onError: (error) => {
+      toast.error(getUserFacingApiErrorMessage(error));
+    },
+  });
+}
+
+export function useAdminWalletProfile(userId: string | null) {
+  return useQuery({
+    queryKey: ["admin-wallet-profile", userId] as const,
+    queryFn: ({ signal }) => getAdminWalletProfile(userId!, signal),
+    enabled: Boolean(userId),
+  });
+}
+
+export function useCreateAdminManualCredit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (values: CreateAdminManualCreditBody) =>
+      createAdminManualCredit(values),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminWalletTopUpsQueryKey,
+      });
+      toast.success("Credits added to player wallet");
+    },
+    onError: (error) => {
+      if (isApiValidationError(error)) return;
       toast.error(getUserFacingApiErrorMessage(error));
     },
   });

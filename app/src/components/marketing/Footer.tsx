@@ -1,6 +1,11 @@
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 
+/** Official Pickle Era profiles (marketing footer). */
+export const PICKLE_ERA_INSTAGRAM_URL = "https://www.instagram.com/pickle.era/";
+export const PICKLE_ERA_FACEBOOK_URL =
+  "https://www.facebook.com/profile.php?id=61593869870368";
+
 const links = [
   { href: "#top", label: "Home" },
   { href: "#play", label: "Play" },
@@ -50,7 +55,7 @@ function SocialLink({
       href={href}
       className="grid h-11 w-11 place-items-center rounded-full border border-white/35 text-white transition hover:border-yellow hover:text-yellow"
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       aria-label={label}
     >
       {children}
@@ -152,10 +157,10 @@ export function Footer() {
             ))}
           </nav>
           <div className="mt-8 flex items-center gap-4">
-            <SocialLink href="https://instagram.com" label="Instagram">
+            <SocialLink href={PICKLE_ERA_INSTAGRAM_URL} label="Instagram">
               <InstagramIcon />
             </SocialLink>
-            <SocialLink href="https://facebook.com" label="Facebook">
+            <SocialLink href={PICKLE_ERA_FACEBOOK_URL} label="Facebook">
               <FacebookIcon />
             </SocialLink>
             <span className="h-8 w-px bg-white/25" />
@@ -192,17 +197,17 @@ export function Footer() {
             </p>
             <div className="flex flex-col gap-2 text-[12px] text-white/70">
               <a
-                href="https://instagram.com"
+                href={PICKLE_ERA_INSTAGRAM_URL}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="transition hover:text-yellow"
               >
                 Instagram
               </a>
               <a
-                href="https://facebook.com"
+                href={PICKLE_ERA_FACEBOOK_URL}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="transition hover:text-yellow"
               >
                 Facebook
@@ -223,10 +228,10 @@ export function Footer() {
             </p>
             <span className="ml-auto mt-2 block h-0.5 w-12 bg-yellow" />
             <div className="mt-5 flex justify-end gap-3">
-              <SocialLink href="https://instagram.com" label="Instagram">
+              <SocialLink href={PICKLE_ERA_INSTAGRAM_URL} label="Instagram">
                 <InstagramIcon />
               </SocialLink>
-              <SocialLink href="https://facebook.com" label="Facebook">
+              <SocialLink href={PICKLE_ERA_FACEBOOK_URL} label="Facebook">
                 <FacebookIcon />
               </SocialLink>
             </div>

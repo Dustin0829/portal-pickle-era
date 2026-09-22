@@ -48,10 +48,11 @@ export function useAdminBookings(query: ListBookingsQuery = {}) {
   });
 }
 
-export function useAdminUsers(query: ListUsersQuery = {}) {
+export function useAdminUsers(query: ListUsersQuery = {}, enabled = true) {
   return useQuery({
     queryKey: [...adminUsersQueryKey, query] as const,
     queryFn: ({ signal }) => listAdminUsers(query, signal),
+    enabled,
   });
 }
 

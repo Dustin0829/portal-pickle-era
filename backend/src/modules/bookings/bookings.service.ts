@@ -517,7 +517,17 @@ export async function getBookingReceiptUrl(id: string) {
 }
 
 export async function listAdminUsers(query: ListUsersQuery) {
-  const where = { role: query.role };
+  const where = {
+    role: query.role,
+    ...(query.search
+      ? {
+          OR: [
+            { email: { contains: query.search, mode: "insensitive" as const } },
+            { name: { contains: query.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
   const [rows, total] = await Promise.all([
     prisma.user.findMany({
       where,

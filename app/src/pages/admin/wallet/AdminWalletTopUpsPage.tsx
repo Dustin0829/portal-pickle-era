@@ -5,6 +5,7 @@ import {
   Eye,
   FileText,
   Mail,
+  Plus,
   Search,
   UserRound,
   Wallet,
@@ -17,6 +18,7 @@ import {
 import { getAdminWalletTopUpReceiptUrl } from "@/api/features/wallet/wallet.service";
 import type { AdminWalletTopUpDto } from "@/api/features/wallet/wallet.schema";
 import { AppPageShell } from "@/components/layout/AppPageShell";
+import { ManualTopUpModal } from "@/components/portal/ManualTopUpModal";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
@@ -28,6 +30,7 @@ export function AdminWalletTopUpsPage() {
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
 
   const { data, isPending, isError, refetch } = useAdminWalletTopUps({
     page: 1,
@@ -86,13 +89,23 @@ export function AdminWalletTopUpsPage() {
   return (
     <div className="relative min-h-full overflow-hidden">
       <AppPageShell width="wide" className="relative z-10">
-        <header className="mb-6 flex flex-col gap-2">
-          <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
-            Top-ups <span className="text-amber-600">inbox</span>
-          </h1>
-          <p className="text-sm text-zinc-500">
-            Review GCash wallet top-ups and credit player balances.
-          </p>
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
+              Top-ups <span className="text-amber-600">inbox</span>
+            </h1>
+            <p className="text-sm text-zinc-500">
+              Review GCash wallet top-ups or add credits at the desk.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setManualOpen(true)}
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-yellow px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-yellow/90"
+          >
+            <Plus size={14} aria-hidden />
+            Manual top-up
+          </button>
         </header>
 
         <div className="flex flex-col gap-3">
@@ -202,6 +215,15 @@ export function AdminWalletTopUpsPage() {
           }}
           onReject={() => {
             void setStatus(selected.id, "rejected");
+          }}
+        />
+      ) : null}
+
+      {manualOpen ? (
+        <ManualTopUpModal
+          onClose={() => {
+            setManualOpen(false);
+            void refetch();
           }}
         />
       ) : null}

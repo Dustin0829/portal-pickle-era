@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-import { Outlet } from "react-router-dom";
 import {
   CalendarDays,
   CalendarRange,
@@ -8,6 +6,8 @@ import {
   UtensilsCrossed,
   Wallet,
 } from "lucide-react";
+import { Suspense } from "react";
+import { Outlet } from "react-router-dom";
 import { ProtectedRoute } from "@/components/guards/ProtectedRoute";
 import { PortalChrome } from "@/components/portal/PortalChrome";
 import { PortalRouteFallback } from "@/components/portal/PortalRouteFallback";
@@ -24,12 +24,12 @@ const items = [
 
 export function StudentPortalLayout() {
   return (
-    <ProtectedRoute>
-      <PortalChrome title="Player portal" items={items} homeTo="/app">
+    <PortalChrome title="Player portal" items={items} homeTo="/app">
+      <ProtectedRoute>
         <Suspense fallback={<PortalRouteFallback />}>
           <Outlet />
         </Suspense>
-      </PortalChrome>
-    </ProtectedRoute>
+      </ProtectedRoute>
+    </PortalChrome>
   );
 }

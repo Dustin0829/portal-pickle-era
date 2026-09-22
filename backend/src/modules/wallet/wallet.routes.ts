@@ -3,7 +3,9 @@ import { asyncHandler } from "../../lib/api-response.js";
 import { validateBody, validateParams, validateQuery } from "../../middleware/validate.js";
 import { loadSession, requireSession } from "../auth/auth.middleware.js";
 import {
+  createAdminManualCreditController,
   createMyTopUpController,
+  getAdminWalletProfileController,
   getMyWalletController,
   listAdminTopUpsController,
   listMyWalletTransactionsController,
@@ -11,6 +13,8 @@ import {
   topUpReceiptUrlController,
 } from "./wallet.controller.js";
 import {
+  adminUserIdParamsSchema,
+  createAdminManualCreditBodySchema,
   createWalletTopUpBodySchema,
   listAdminTopUpsQuerySchema,
   listMyWalletTransactionsQuerySchema,
@@ -34,6 +38,16 @@ walletMeRouter.post(
   asyncHandler(createMyTopUpController),
 );
 
+walletAdminRouter.post(
+  "/manual-credits",
+  validateBody(createAdminManualCreditBodySchema),
+  asyncHandler(createAdminManualCreditController),
+);
+walletAdminRouter.get(
+  "/users/:userId/profile",
+  validateParams(adminUserIdParamsSchema),
+  asyncHandler(getAdminWalletProfileController),
+);
 walletAdminRouter.get(
   "/top-ups",
   validateQuery(listAdminTopUpsQuerySchema),

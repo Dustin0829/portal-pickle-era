@@ -117,6 +117,44 @@ describe("portal access gates", () => {
 
     expect(screen.getByLabelText(/checking session/i)).toBeInTheDocument();
     expect(screen.queryByText("Secret portal")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /log in/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps portal chrome mounted on /app while session is loading", () => {
+    vi.spyOn(AuthProvider, "useAuth").mockReturnValue({
+      user: null,
+      status: "loading",
+      login: vi.fn(),
+      signup: vi.fn(),
+      logout: vi.fn(),
+      refreshUser: vi.fn(),
+      resetPassword: vi.fn(),
+    });
+
+    renderWithProviders(<App />, { route: "/app/bookings" });
+
+    expect(screen.getByLabelText(/checking session/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/player portal/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /log in/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^email$/i)).not.toBeInTheDocument();
+  });
+
+  it("stays on /app/bookings after refresh when getMe succeeds", async () => {
+    seedSession("student");
+    renderWithProviders(<App />, { route: "/app/bookings" });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /my bookings/i }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("heading", { name: /log in/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("redirects signed-out visitors from /app to login", async () => {

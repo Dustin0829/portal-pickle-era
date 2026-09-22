@@ -1,6 +1,9 @@
 import api from "@/api/client";
 import {
+  adminManualCreditResponseSchema,
+  adminWalletProfileDtoSchema,
   adminWalletTopUpDtoSchema,
+  createAdminManualCreditBodySchema,
   createWalletTopUpBodySchema,
   listAdminWalletTopUpsQuerySchema,
   listMeWalletTransactionsQuerySchema,
@@ -9,6 +12,7 @@ import {
   walletLedgerEntryDtoSchema,
   walletReceiptUrlSchema,
   walletTopUpDtoSchema,
+  type CreateAdminManualCreditBody,
   type CreateWalletTopUpBody,
   type ListAdminWalletTopUpsQuery,
   type ListMeWalletTransactionsQuery,
@@ -71,4 +75,22 @@ export async function getAdminWalletTopUpReceiptUrl(
     signal,
   });
   return walletReceiptUrlSchema.parse(data);
+}
+
+export async function getAdminWalletProfile(
+  userId: string,
+  signal?: AbortSignal,
+) {
+  const { data } = await api.get(`/admin/wallet/users/${userId}/profile`, {
+    signal,
+  });
+  return adminWalletProfileDtoSchema.parse(data);
+}
+
+export async function createAdminManualCredit(
+  input: CreateAdminManualCreditBody,
+) {
+  const body = createAdminManualCreditBodySchema.parse(input);
+  const { data } = await api.post("/admin/wallet/manual-credits", body);
+  return adminManualCreditResponseSchema.parse(data);
 }

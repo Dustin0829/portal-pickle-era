@@ -97,6 +97,49 @@ export const listMeWalletTransactionsQuerySchema = paginatedQuerySchema.extend({
   order: z.enum(["asc", "desc"]).optional(),
 });
 
+export const adminWalletProfileBookingSchema = z.object({
+  id: z.string(),
+  plan: z.string(),
+  date: z.string(),
+  status: z.string(),
+  courtId: z.string(),
+  createdAt: z.string(),
+});
+
+export const adminWalletProfileDtoSchema = z.object({
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().email(),
+    createdAt: z.string(),
+  }),
+  balanceCents: z.number().int().nonnegative(),
+  bookingsCount: z.number().int().nonnegative(),
+  recentBookings: z.array(adminWalletProfileBookingSchema),
+});
+
+export const createAdminManualCreditBodySchema = z
+  .object({
+    userId: z.string().min(1),
+    amountCents: z.number().int().min(MIN_TOP_UP_CENTS).max(MAX_TOP_UP_CENTS),
+  })
+  .strict();
+
+export const createAdminManualCreditFormSchema = z
+  .object({
+    amountPesos: z.coerce
+      .number()
+      .finite("Enter an amount in pesos")
+      .min(1, "Amount must be at least ₱1")
+      .max(50_000, "Amount cannot exceed ₱50,000"),
+  })
+  .strict();
+
+export const adminManualCreditResponseSchema = z.object({
+  balanceAfterCents: z.number().int().nonnegative(),
+  referenceId: z.string(),
+});
+
 export type WalletTopUpStatus = z.infer<typeof walletTopUpStatusSchema>;
 export type WalletTopUpDto = z.infer<typeof walletTopUpDtoSchema>;
 export type MeWalletDto = z.infer<typeof meWalletDtoSchema>;
@@ -115,4 +158,14 @@ export type ListMeWalletTransactionsQuery = z.input<
 >;
 export type PatchAdminWalletTopUpBody = z.infer<
   typeof patchAdminWalletTopUpBodySchema
+>;
+export type AdminWalletProfileDto = z.infer<typeof adminWalletProfileDtoSchema>;
+export type CreateAdminManualCreditBody = z.infer<
+  typeof createAdminManualCreditBodySchema
+>;
+export type CreateAdminManualCreditFormValues = z.infer<
+  typeof createAdminManualCreditFormSchema
+>;
+export type AdminManualCreditResponse = z.infer<
+  typeof adminManualCreditResponseSchema
 >;
