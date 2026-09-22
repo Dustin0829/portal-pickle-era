@@ -9,6 +9,7 @@ import {
   getMyWalletController,
   listAdminTopUpsController,
   listMyWalletTransactionsController,
+  myTopUpReceiptUrlController,
   patchTopUpController,
   topUpReceiptUrlController,
 } from "./wallet.controller.js";
@@ -36,6 +37,11 @@ walletMeRouter.post(
   "/top-ups",
   validateBody(createWalletTopUpBodySchema),
   asyncHandler(createMyTopUpController),
+);
+walletMeRouter.get(
+  "/top-ups/:id/receipt-url",
+  validateParams(topUpIdParamsSchema),
+  asyncHandler(myTopUpReceiptUrlController),
 );
 
 walletAdminRouter.post(

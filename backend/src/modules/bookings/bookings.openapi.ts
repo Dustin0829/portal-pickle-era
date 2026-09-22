@@ -107,6 +107,27 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
 
   registry.registerPath({
     method: "get",
+    path: "/me/bookings/{id}/receipt-url",
+    operationId: "getMeBookingReceiptUrl",
+    tags: ["Bookings"],
+    request: {
+      params: bookingIdParamsSchema,
+    },
+    responses: {
+      200: {
+        description: "Short-lived presigned GET URL for the owner's booking receipt",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(bookingReceiptUrlResponseSchema),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
     path: "/admin/bookings",
     operationId: "getAdminBookings",
     tags: ["Bookings"],

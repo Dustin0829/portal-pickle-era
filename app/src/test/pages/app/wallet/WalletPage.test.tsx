@@ -20,22 +20,40 @@ const historyState = vi.hoisted(() => ({
   }>,
 }));
 
+const walletTopUpsState = vi.hoisted(() => ({
+  items: [
+    {
+      id: "tu-1",
+      amountCents: 25000,
+      receiptKey: "receipts/a.jpg" as string | null,
+      receiptName: "gcash.jpg" as string | null,
+      receiptMimeType: "image/jpeg" as string | null,
+      status: "pending" as const,
+      createdAt: "2026-09-01T12:00:00.000Z",
+      updatedAt: "2026-09-01T12:00:00.000Z",
+    },
+  ],
+}));
+
+const getMeWalletTopUpReceiptUrl = vi.fn();
+
+vi.mock("@/api/features/wallet/wallet.service", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/api/features/wallet/wallet.service")
+    >();
+  return {
+    ...actual,
+    getMeWalletTopUpReceiptUrl: (...args: unknown[]) =>
+      getMeWalletTopUpReceiptUrl(...args),
+  };
+});
+
 vi.mock("@/api/features/wallet/use-wallet", () => ({
   useMeWallet: () => ({
     data: {
       balanceCents: 25000,
-      topUps: [
-        {
-          id: "tu-1",
-          amountCents: 25000,
-          receiptKey: "receipts/a.jpg",
-          receiptName: "gcash.jpg",
-          receiptMimeType: "image/jpeg",
-          status: "pending",
-          createdAt: "2026-09-01T12:00:00.000Z",
-          updatedAt: "2026-09-01T12:00:00.000Z",
-        },
-      ],
+      topUps: walletTopUpsState.items,
     },
     isPending: false,
     isError: false,
@@ -90,10 +108,23 @@ describe("WalletPage", () => {
     cleanup();
     clearFacilitySettingsCache();
     historyState.items = [];
+    walletTopUpsState.items = [
+      {
+        id: "tu-1",
+        amountCents: 25000,
+        receiptKey: "receipts/a.jpg",
+        receiptName: "gcash.jpg",
+        receiptMimeType: "image/jpeg",
+        status: "pending",
+        createdAt: "2026-09-01T12:00:00.000Z",
+        updatedAt: "2026-09-01T12:00:00.000Z",
+      },
+    ];
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getMeWalletTopUpReceiptUrl.mockReset();
     clearFacilitySettingsCache();
     historyState.items = [];
     seedFacilitySettings({
@@ -222,5 +253,57 @@ describe("WalletPage", () => {
 
     expect(screen.getByText("Pickle Era GCash")).toBeInTheDocument();
     expect(screen.getByText("09170000001")).toBeInTheDocument();
+  });
+
+  it("previews top-up receipt image when receiptKey is present", async () => {
+    const user = userEvent.setup();
+    getMeWalletTopUpReceiptUrl.mockResolvedValue({
+      url: "https://cdn.example/topup.jpg",
+      expiresAt: "2026-09-01T13:00:00.000Z",
+    });
+
+    renderWithProviders(<WalletPage />, { route: "/app/wallet" });
+
+    await user.click(screen.getByRole("button", { name: /₱250/i }));
+
+    await waitFor(() => {
+      expect(getMeWalletTopUpReceiptUrl).toHaveBeenCalledWith(
+        "tu-1",
+        expect.any(AbortSignal),
+      );
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("img", { name: /payment receipt|gcash/i }),
+      ).toHaveAttribute("src", "https://cdn.example/topup.jpg");
+    });
+  });
+
+  it("shows filename-only copy when top-up has no receiptKey", async () => {
+    const user = userEvent.setup();
+    walletTopUpsState.items = [
+      {
+        id: "tu-legacy",
+        amountCents: 10000,
+        receiptKey: null,
+        receiptName: "old-name.jpg",
+        receiptMimeType: null,
+        status: "pending",
+        createdAt: "2026-09-01T12:00:00.000Z",
+        updatedAt: "2026-09-01T12:00:00.000Z",
+      },
+    ];
+
+    renderWithProviders(<WalletPage />, { route: "/app/wallet" });
+
+    await user.click(screen.getByRole("button", { name: /₱100/i }));
+
+    expect(getMeWalletTopUpReceiptUrl).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/old-name\.jpg/i).length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(
+      screen.getByText(/only the filename was saved/i),
+    ).toBeInTheDocument();
   });
 });

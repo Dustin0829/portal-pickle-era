@@ -1,8 +1,8 @@
 import {
-  createPublicBooking,
   listOccupancy,
   listOpenPlaySessions,
 } from "@/api/features/bookings/bookings.service";
+import { useCreatePublicBooking } from "@/api/features/bookings/use-bookings";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { useLenis } from "lenis/react";
 import { Upload, X } from "lucide-react";
@@ -65,6 +65,7 @@ export function BookingModal({
   const isAuthenticated = authStatus === "authenticated";
   const creditsPayAvailable = allowCreditsPay && isAuthenticated;
   const { data: wallet } = useMeWallet(creditsPayAvailable);
+  const { mutateAsync: createPublicBooking } = useCreatePublicBooking();
   const bookableFloor = earliestBookableDateKey();
   const initialDate =
     preset?.date && preset.date >= bookableFloor ? preset.date : bookableFloor;

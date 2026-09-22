@@ -516,6 +516,29 @@ export async function getBookingReceiptUrl(id: string) {
   return createPresignedDownload({ key: row.receiptKey });
 }
 
+/** Owner-scoped receipt URL (same ownership OR as listMyBookings). */
+export async function getMyBookingReceiptUrl(id: string, authUser: AuthUser | undefined) {
+  if (!authUser) {
+    throw new UnauthorizedError();
+  }
+
+  const row = await prisma.booking.findFirst({
+    where: {
+      id,
+      OR: [{ userId: authUser.id }, { email: normalizeBookingEmail(authUser.email) }],
+    },
+    select: { id: true, receiptKey: true },
+  });
+  if (!row) {
+    throw new NotFoundError("Booking not found");
+  }
+  if (!row.receiptKey) {
+    throw new NotFoundError("Receipt not found");
+  }
+
+  return createPresignedDownload({ key: row.receiptKey });
+}
+
 export async function listAdminUsers(query: ListUsersQuery) {
   const where = {
     role: query.role,

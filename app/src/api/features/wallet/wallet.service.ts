@@ -77,6 +77,16 @@ export async function getAdminWalletTopUpReceiptUrl(
   return walletReceiptUrlSchema.parse(data);
 }
 
+export async function getMeWalletTopUpReceiptUrl(
+  id: string,
+  signal?: AbortSignal,
+) {
+  const { data } = await api.get(`/me/wallet/top-ups/${id}/receipt-url`, {
+    signal,
+  });
+  return walletReceiptUrlSchema.parse(data);
+}
+
 export async function getAdminWalletProfile(
   userId: string,
   signal?: AbortSignal,

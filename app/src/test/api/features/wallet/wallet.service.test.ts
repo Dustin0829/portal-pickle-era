@@ -8,6 +8,7 @@ import api from "@/api/client";
 import {
   createMeWalletTopUp,
   getMeWallet,
+  getMeWalletTopUpReceiptUrl,
   listAdminWalletTopUps,
   patchAdminWalletTopUp,
 } from "@/api/features/wallet/wallet.service";
@@ -106,5 +107,22 @@ describe("wallet.service", () => {
       status: "approved",
     });
     expect(result.status).toBe("approved");
+  });
+
+  it("gets player top-up receipt URL from GET /me/wallet/top-ups/:id/receipt-url", async () => {
+    mockedApi.get.mockResolvedValueOnce({
+      data: {
+        url: "https://cdn.example/topup.jpg",
+        expiresAt: "2026-09-01T13:00:00.000Z",
+      },
+    });
+
+    const result = await getMeWalletTopUpReceiptUrl("tu-1");
+
+    expect(mockedApi.get).toHaveBeenCalledWith(
+      "/me/wallet/top-ups/tu-1/receipt-url",
+      { signal: undefined },
+    );
+    expect(result.url).toBe("https://cdn.example/topup.jpg");
   });
 });

@@ -12,7 +12,7 @@ import {
   walletLedgerEntryDtoSchema,
   walletReceiptUrlResponseSchema,
 } from "./wallet.schema.js";
-import { getMyWallet, listMyWalletTransactions } from "./wallet.service.js";
+import { getMyTopUpReceiptUrl, getMyWallet, listMyWalletTransactions } from "./wallet.service.js";
 import { toWalletLedgerEntryDto } from "./wallet.mapper.js";
 
 test("create top-up schema: pending amount must be positive and within max", () => {
@@ -183,6 +183,13 @@ test("getMyWallet requires session", async () => {
 test("listMyWalletTransactions requires session", async () => {
   await assert.rejects(
     () => listMyWalletTransactions(undefined, { page: 1, limit: 20, order: "desc" }),
+    (error: unknown) => error instanceof UnauthorizedError && error.statusCode === 401,
+  );
+});
+
+test("getMyTopUpReceiptUrl requires session", async () => {
+  await assert.rejects(
+    () => getMyTopUpReceiptUrl("tu_1", undefined),
     (error: unknown) => error instanceof UnauthorizedError && error.statusCode === 401,
   );
 });

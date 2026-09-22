@@ -8,6 +8,7 @@ import {
   bookingReceiptUrlController,
   listAdminBookingsController,
   listAdminUsersController,
+  myBookingReceiptUrlController,
   myBookingsController,
   occupancyController,
   openPlaySessionsController,
@@ -51,6 +52,11 @@ bookingsPublicRouter.get(
 
 bookingsMeRouter.use(loadSession, requireSession);
 bookingsMeRouter.get("/", asyncHandler(myBookingsController));
+bookingsMeRouter.get(
+  "/:id/receipt-url",
+  validateParams(bookingIdParamsSchema),
+  asyncHandler(myBookingReceiptUrlController),
+);
 
 bookingsAdminRouter.get(
   "/",

@@ -10,9 +10,11 @@ import {
   MapPin,
   X,
 } from "lucide-react";
+import { getMeBookingReceiptUrl } from "@/api/features/bookings/bookings.service";
 import { useMyBookings } from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   PLAN_META,
   bookingCourtHours,
@@ -404,6 +406,17 @@ function BookingDetailSheet({
     totalPesos: total,
     walletAppliedCents: booking.walletAppliedCents,
   });
+  const [signedReceiptUrl, setSignedReceiptUrl] = useState<
+    string | undefined
+  >();
+  const [receiptLoadFailed, setReceiptLoadFailed] = useState(false);
+  const [receiptPending, setReceiptPending] = useState(() =>
+    Boolean(booking.receiptKey),
+  );
+  const [didRefetch, setDidRefetch] = useState(false);
+  const receiptUrl = booking.receiptKey
+    ? signedReceiptUrl
+    : booking.receiptDataUrl;
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -412,6 +425,63 @@ function BookingDetailSheet({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!booking.receiptKey) return;
+    const controller = new AbortController();
+    void getMeBookingReceiptUrl(booking.id, controller.signal)
+      .then((result) => {
+        setSignedReceiptUrl(result.url);
+        setReceiptLoadFailed(false);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        if (
+          error &&
+          typeof error === "object" &&
+          "name" in error &&
+          error.name === "CanceledError"
+        ) {
+          return;
+        }
+        setSignedReceiptUrl(undefined);
+        setReceiptLoadFailed(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setReceiptPending(false);
+      });
+    return () => controller.abort();
+  }, [booking.id, booking.receiptKey]);
+
+  function refetchReceiptOnce() {
+    if (!booking.receiptKey || didRefetch) return;
+    setDidRefetch(true);
+    setReceiptPending(true);
+    void getMeBookingReceiptUrl(booking.id)
+      .then((result) => {
+        setSignedReceiptUrl(result.url);
+        setReceiptLoadFailed(false);
+      })
+      .catch(() => {
+        setReceiptLoadFailed(true);
+      })
+      .finally(() => {
+        setReceiptPending(false);
+      });
+  }
+
+  const isImage =
+    !!receiptUrl &&
+    (booking.receiptMimeType?.startsWith("image/") ||
+      receiptUrl.startsWith("data:image/") ||
+      /\.(jpe?g|png|webp|gif)$/i.test(booking.receiptName ?? ""));
+  const isPdf =
+    !!receiptUrl &&
+    (booking.receiptMimeType === "application/pdf" ||
+      receiptUrl.startsWith("data:application/pdf") ||
+      /\.pdf$/i.test(booking.receiptName ?? ""));
+  const showReceiptSkeleton =
+    Boolean(booking.receiptKey) && receiptPending && !receiptUrl;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
@@ -523,20 +593,29 @@ function BookingDetailSheet({
             <p className="absolute left-4 top-4 z-10 rounded-full border border-zinc-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
               Payment proof
             </p>
-            {booking.receiptDataUrl &&
-            (booking.receiptMimeType?.startsWith("image/") ||
-              booking.receiptDataUrl.startsWith("data:image/")) ? (
+            {showReceiptSkeleton ? (
+              <div
+                className="flex h-full w-full flex-col items-center justify-center gap-3 p-6"
+                aria-busy="true"
+                aria-label="Loading receipt"
+              >
+                <Skeleton className="h-48 w-full max-w-xs rounded-xl" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            ) : isImage ? (
               <img
-                src={booking.receiptDataUrl}
+                src={receiptUrl}
                 alt={booking.receiptName || "Payment receipt"}
                 className="h-full w-full object-cover object-center"
+                onError={() => {
+                  setReceiptLoadFailed(true);
+                  refetchReceiptOnce();
+                }}
               />
-            ) : booking.receiptDataUrl &&
-              (booking.receiptMimeType === "application/pdf" ||
-                booking.receiptDataUrl.startsWith("data:application/pdf")) ? (
+            ) : isPdf ? (
               <iframe
                 title={booking.receiptName || "Payment receipt"}
-                src={booking.receiptDataUrl}
+                src={receiptUrl}
                 className="h-full w-full border-0 bg-white"
               />
             ) : (
@@ -545,12 +624,20 @@ function BookingDetailSheet({
                   <FileText size={24} aria-hidden />
                 </span>
                 <p className="text-sm font-medium text-zinc-900">
-                  {booking.receiptName || "No receipt attached"}
+                  {booking.receiptKey
+                    ? receiptLoadFailed
+                      ? "Could not load receipt"
+                      : "Loading receipt…"
+                    : booking.receiptName || "No receipt attached"}
                 </p>
                 <p className="max-w-xs text-xs text-zinc-500">
-                  {booking.receiptName
-                    ? "This booking only saved the filename. Upload a new request with a receipt image to see a full-height preview here."
-                    : "No payment proof was attached to this request."}
+                  {booking.receiptKey
+                    ? receiptLoadFailed
+                      ? "Storage may be unset or the signed URL expired."
+                      : "Fetching a short-lived preview link…"
+                    : booking.receiptName
+                      ? "This booking only saved the filename. Upload a new request with a receipt image to see a full-height preview here."
+                      : "No payment proof was attached to this request."}
                 </p>
               </div>
             )}

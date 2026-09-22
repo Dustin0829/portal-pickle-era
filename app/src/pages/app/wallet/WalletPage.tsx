@@ -1,20 +1,23 @@
-import { useRef, useState } from "react";
-import { Upload, Wallet } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FileText, Upload, Wallet, X } from "lucide-react";
 import {
   createWalletTopUpFormSchema,
   type CreateWalletTopUpFormValues,
   type WalletLedgerEntryDto,
   type WalletLedgerType,
+  type WalletTopUpDto,
 } from "@/api/features/wallet/wallet.schema";
 import {
   useCreateMeWalletTopUp,
   useMeWallet,
   useMeWalletTransactions,
 } from "@/api/features/wallet/use-wallet";
+import { getMeWalletTopUpReceiptUrl } from "@/api/features/wallet/wallet.service";
 import { uploadReceiptFile } from "@/api/features/uploads/uploads.service";
 import { PaymentMethodPicker } from "@/components/booking/PaymentMethodCarousel";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useZodForm } from "@/lib/forms/useZodForm";
 import { mapMutationErrorToForm } from "@/lib/forms/mapMutationErrorToForm";
 import {
@@ -96,6 +99,9 @@ export function WalletPage() {
 function WalletTabPanel() {
   const { data, isPending, isError, refetch, error } = useMeWallet();
   const status = getWalletPageStatus({ isPending, isError, data });
+  const [selectedTopUp, setSelectedTopUp] = useState<WalletTopUpDto | null>(
+    null,
+  );
 
   if (status === "loading") {
     return <PortalListSkeleton rows={3} />;
@@ -153,27 +159,40 @@ function WalletTabPanel() {
             {data!.topUps.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-3 border-t border-zinc-100 py-3 first:border-t-0 first:pt-0"
+                className="border-t border-zinc-100 first:border-t-0"
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-900">
-                    {formatCentsAsPesos(item.amountCents)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    {new Date(item.createdAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                    {item.receiptName ? ` · ${item.receiptName}` : ""}
-                  </p>
-                </div>
-                <TopUpStatusBadge status={item.status} />
+                <button
+                  type="button"
+                  onClick={() => setSelectedTopUp(item)}
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left transition first:pt-0 hover:bg-zinc-50/80"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-zinc-900">
+                      {formatCentsAsPesos(item.amountCents)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {new Date(item.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                      {item.receiptName ? ` · ${item.receiptName}` : ""}
+                    </p>
+                  </div>
+                  <TopUpStatusBadge status={item.status} />
+                </button>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {selectedTopUp ? (
+        <TopUpDetailSheet
+          topUp={selectedTopUp}
+          onClose={() => setSelectedTopUp(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -444,5 +463,190 @@ function TopUpStatusBadge({
     >
       {status}
     </span>
+  );
+}
+
+function TopUpDetailSheet({
+  topUp,
+  onClose,
+}: {
+  topUp: WalletTopUpDto;
+  onClose: () => void;
+}) {
+  const [signedReceiptUrl, setSignedReceiptUrl] = useState<
+    string | undefined
+  >();
+  const [receiptLoadFailed, setReceiptLoadFailed] = useState(false);
+  const [receiptPending, setReceiptPending] = useState(() =>
+    Boolean(topUp.receiptKey),
+  );
+  const [didRefetch, setDidRefetch] = useState(false);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!topUp.receiptKey) return;
+    const controller = new AbortController();
+    void getMeWalletTopUpReceiptUrl(topUp.id, controller.signal)
+      .then((result) => {
+        setSignedReceiptUrl(result.url);
+        setReceiptLoadFailed(false);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        if (
+          error &&
+          typeof error === "object" &&
+          "name" in error &&
+          error.name === "CanceledError"
+        ) {
+          return;
+        }
+        setSignedReceiptUrl(undefined);
+        setReceiptLoadFailed(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setReceiptPending(false);
+      });
+    return () => controller.abort();
+  }, [topUp.id, topUp.receiptKey]);
+
+  function refetchReceiptOnce() {
+    if (!topUp.receiptKey || didRefetch) return;
+    setDidRefetch(true);
+    setReceiptPending(true);
+    void getMeWalletTopUpReceiptUrl(topUp.id)
+      .then((result) => {
+        setSignedReceiptUrl(result.url);
+        setReceiptLoadFailed(false);
+      })
+      .catch(() => {
+        setReceiptLoadFailed(true);
+      })
+      .finally(() => {
+        setReceiptPending(false);
+      });
+  }
+
+  const receiptUrl = signedReceiptUrl;
+  const isImage =
+    !!receiptUrl &&
+    (topUp.receiptMimeType?.startsWith("image/") ||
+      /\.(jpe?g|png|webp|gif)$/i.test(topUp.receiptName ?? ""));
+  const isPdf =
+    !!receiptUrl &&
+    (topUp.receiptMimeType === "application/pdf" ||
+      /\.pdf$/i.test(topUp.receiptName ?? ""));
+  const showReceiptSkeleton =
+    Boolean(topUp.receiptKey) && receiptPending && !receiptUrl;
+  const submittedAt = new Date(topUp.createdAt).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40"
+        aria-label="Close top-up details"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wallet-top-up-detail-title"
+        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-zinc-200/80 bg-white shadow-2xl sm:rounded-3xl"
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-yellow">
+              Top-up details
+            </p>
+            <h2
+              id="wallet-top-up-detail-title"
+              className="mt-1 text-lg font-semibold text-zinc-900"
+            >
+              {formatCentsAsPesos(topUp.amountCents)}
+            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <TopUpStatusBadge status={topUp.status} />
+              <span className="text-xs text-zinc-500">{submittedAt}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 place-items-center rounded-xl border border-zinc-200 text-zinc-500 transition hover:border-yellow hover:text-yellow"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <h3 className="mb-3 text-sm font-semibold text-zinc-900">
+            Payment receipt
+          </h3>
+          <div className="flex min-h-[280px] flex-col items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+            {showReceiptSkeleton ? (
+              <div
+                className="flex h-full w-full flex-col items-center justify-center gap-3 p-6"
+                aria-busy="true"
+                aria-label="Loading receipt"
+              >
+                <Skeleton className="h-48 w-full max-w-xs rounded-xl" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            ) : isImage ? (
+              <img
+                src={receiptUrl}
+                alt={topUp.receiptName || "Payment receipt"}
+                className="h-full max-h-[420px] w-full object-contain object-center"
+                onError={() => {
+                  setReceiptLoadFailed(true);
+                  refetchReceiptOnce();
+                }}
+              />
+            ) : isPdf ? (
+              <iframe
+                title={topUp.receiptName || "Payment receipt"}
+                src={receiptUrl}
+                className="h-full min-h-[360px] w-full border-0 bg-white"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+                <span className="grid size-12 place-items-center rounded-xl bg-yellow/15 text-yellow">
+                  <FileText size={22} aria-hidden />
+                </span>
+                <p className="max-w-xs text-sm font-medium text-zinc-800">
+                  {topUp.receiptKey
+                    ? receiptLoadFailed
+                      ? "Could not load receipt"
+                      : "Loading receipt…"
+                    : topUp.receiptName || "No receipt attached"}
+                </p>
+                <p className="max-w-xs text-[11px] leading-relaxed text-zinc-500">
+                  {topUp.receiptKey
+                    ? receiptLoadFailed
+                      ? "Storage may be unset or the signed URL expired."
+                      : "Fetching a short-lived preview link…"
+                    : topUp.receiptName
+                      ? "Only the filename was saved for this top-up."
+                      : "No payment proof was attached."}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
