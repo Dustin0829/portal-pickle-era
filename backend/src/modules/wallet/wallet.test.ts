@@ -58,13 +58,32 @@ test("manual credit schema: positive amount within max, requires userId", () => 
     createAdminManualCreditBodySchema.safeParse({
       userId: "user_1",
       amountCents: 10_000,
+      paymentChannel: "cash",
     }).success,
     true,
   );
   assert.equal(
     createAdminManualCreditBodySchema.safeParse({
       userId: "user_1",
+      amountCents: 10_000,
+      paymentChannel: "bank",
+      paymentMethodLabel: "GCash",
+    }).success,
+    true,
+  );
+  assert.equal(
+    createAdminManualCreditBodySchema.safeParse({
+      userId: "user_1",
+      amountCents: 10_000,
+      paymentChannel: "bank",
+    }).success,
+    false,
+  );
+  assert.equal(
+    createAdminManualCreditBodySchema.safeParse({
+      userId: "user_1",
       amountCents: 0,
+      paymentChannel: "cash",
     }).success,
     false,
   );
@@ -72,12 +91,14 @@ test("manual credit schema: positive amount within max, requires userId", () => 
     createAdminManualCreditBodySchema.safeParse({
       userId: "user_1",
       amountCents: MAX_TOP_UP_AMOUNT_CENTS + 1,
+      paymentChannel: "cash",
     }).success,
     false,
   );
   assert.equal(
     createAdminManualCreditBodySchema.safeParse({
       amountCents: 10_000,
+      paymentChannel: "cash",
     }).success,
     false,
   );
