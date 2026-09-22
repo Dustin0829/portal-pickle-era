@@ -33,6 +33,11 @@ type CourtCalendarProps = {
   bookings: BookingRequest[];
   /** When true, schedule is informational only (no booking from slots). */
   readOnly?: boolean;
+  /**
+   * Admin calendar: day sheet lists that day's bookings only (no open-hours
+   * picker or walk-in footer). Player calendar should omit this.
+   */
+  bookingsOnly?: boolean;
   /** Player pay vs admin walk-in copy. Used when `onBookSlot` is set. */
   bookIntent?: "pay" | "walk-in";
   /** Keep the day schedule open after confirming selected hours. */
@@ -128,6 +133,7 @@ export function CourtDayGrid({
   onDateChange,
   bookings,
   readOnly = true,
+  bookingsOnly = false,
   bookIntent = "pay",
   keepOpenOnBook = false,
   onBookSlot,
@@ -137,7 +143,7 @@ export function CourtDayGrid({
   const weekRows = Math.max(cells.length / 7, 1);
   const todayKey = toIsoDate(new Date());
   const countsByDate = new Map<string, number>();
-  const canBook = Boolean(onBookSlot) && !readOnly;
+  const canBook = Boolean(onBookSlot) && !readOnly && !bookingsOnly;
   const isWalkIn = bookIntent === "walk-in";
 
   for (const booking of activeBookings(bookings)) {
@@ -182,12 +188,14 @@ export function CourtDayGrid({
       </div>
 
       <p className="shrink-0 text-xs text-zinc-500">
-        {canBook
-          ? isWalkIn
-            ? "Click a day, select open hours, then add a walk-in."
-            : "Click a day, select one or more open hours, then pay."
-          : "Click a day for taken / available times"}
-        {readOnly ? " · read-only" : ""}.
+        {bookingsOnly
+          ? "Click a day to see that day's bookings. Walk-in is on Admin Bookings."
+          : canBook
+            ? isWalkIn
+              ? "Click a day, select open hours, then add a walk-in."
+              : "Click a day, select one or more open hours, then pay."
+            : "Click a day for taken / available times"}
+        {!bookingsOnly && readOnly ? " · read-only" : ""}.
       </p>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
@@ -265,22 +273,30 @@ export function CourtDayGrid({
       </div>
 
       {modalOpen ? (
-        <DayScheduleModal
-          date={date}
-          bookings={bookings}
-          readOnly={readOnly}
-          canBook={canBook}
-          bookIntent={bookIntent}
-          onBookSlot={
-            onBookSlot
-              ? (input) => {
-                  if (!keepOpenOnBook) setModalOpen(false);
-                  onBookSlot(input);
-                }
-              : undefined
-          }
-          onClose={() => setModalOpen(false)}
-        />
+        bookingsOnly ? (
+          <DayBookingsOnlyModal
+            date={date}
+            bookings={bookings}
+            onClose={() => setModalOpen(false)}
+          />
+        ) : (
+          <DayScheduleModal
+            date={date}
+            bookings={bookings}
+            readOnly={readOnly}
+            canBook={canBook}
+            bookIntent={bookIntent}
+            onBookSlot={
+              onBookSlot
+                ? (input) => {
+                    if (!keepOpenOnBook) setModalOpen(false);
+                    onBookSlot(input);
+                  }
+                : undefined
+            }
+            onClose={() => setModalOpen(false)}
+          />
+        )
       ) : null}
     </div>
   );
@@ -672,6 +688,112 @@ function DayScheduleModal({
               All times are in Philippine Standard Time (PHT).
             </p>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DayBookingsOnlyModal({
+  date,
+  bookings,
+  onClose,
+}: {
+  date: string;
+  bookings: BookingRequest[];
+  onClose: () => void;
+}) {
+  const dayBookings = useMemo(
+    () => bookingsForDate(bookings, date),
+    [bookings, date],
+  );
+  const scheduleLabel = parseIsoDate(date).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40"
+        aria-label="Close day bookings"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="day-bookings-title"
+        className="relative z-10 flex max-h-[90svh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-zinc-200/80 bg-white shadow-2xl sm:rounded-3xl"
+        data-lenis-prevent
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 sm:px-6 sm:py-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-amber-100">
+              <CalendarDays size={18} className="text-zinc-900" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                Day bookings
+              </p>
+              <h2
+                id="day-bookings-title"
+                className="mt-1 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl"
+              >
+                {scheduleLabel}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                {dayBookings.length} booking
+                {dayBookings.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-500 transition hover:border-zinc-300 hover:text-zinc-800"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          {dayBookings.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 px-4 py-6 text-sm text-zinc-500">
+              No bookings for this day. Walk-in create is on Admin Bookings.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {dayBookings.map((booking) => (
+                <DayBookingRow key={booking.id} booking={booking} />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center border-t border-zinc-100 px-5 py-3.5 sm:px-6">
+          <p className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
+            <Info size={13} className="shrink-0" aria-hidden />
+            All times are in Philippine Standard Time (PHT).
+          </p>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ import {
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
   patchBookingResponseSchema,
+  listUsersQuerySchema,
 } from "./bookings.schema.js";
 import {
   aggregateOpenPlayCounts,
@@ -36,6 +37,12 @@ test("opening date floor helper", () => {
   assert.equal(isBeforeOpeningDate("2026-10-04", OPENING_DATE), true);
   assert.equal(isBeforeOpeningDate("2026-10-05", OPENING_DATE), false);
   assert.equal(isBeforeOpeningDate("2026-11-01", OPENING_DATE), false);
+});
+
+test("list users query accepts search min 2", () => {
+  assert.equal(listUsersQuerySchema.safeParse({ search: "a" }).success, false);
+  assert.equal(listUsersQuerySchema.safeParse({ search: "ab" }).success, true);
+  assert.equal(listUsersQuerySchema.safeParse({}).success, true);
 });
 
 test("slotsOverlap detects shared ids", () => {

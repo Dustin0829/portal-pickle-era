@@ -26,12 +26,12 @@ const items = [
 
 export function AdminPortalLayout() {
   return (
-    <ProtectedRoute requireRole="admin">
-      <PortalChrome title="Facility admin" items={items} homeTo="/admin">
+    <PortalChrome title="Facility admin" items={items} homeTo="/admin">
+      <ProtectedRoute requireRole="admin">
         <Suspense fallback={<PortalRouteFallback />}>
           <Outlet />
         </Suspense>
-      </PortalChrome>
-    </ProtectedRoute>
+      </ProtectedRoute>
+    </PortalChrome>
   );
 }

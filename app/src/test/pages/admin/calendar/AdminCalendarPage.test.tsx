@@ -4,20 +4,41 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CourtDayGrid } from "@/components/portal/CourtDayGrid";
 import { AdminCalendarPage } from "@/pages/admin/calendar/AdminCalendarPage";
 import { renderWithProviders } from "@/test/helpers/renderWithProviders";
+import type { BookingRequest } from "@/lib/booking/booking";
 
-const createAdminBooking = vi.fn();
 const refetch = vi.fn();
 
 vi.mock("@/api/features/bookings/bookings.service", () => ({
-  createAdminBooking: (...args: unknown[]) => createAdminBooking(...args),
+  createAdminBooking: vi.fn(),
   listOccupancy: vi.fn(async () => []),
   listOpenPlaySessions: vi.fn(async () => []),
 }));
 
 vi.mock("@/api/features/bookings/use-bookings", () => ({
   useAdminBookings: () => ({
-    data: { items: [] },
-    isLoading: false,
+    data: {
+      items: [
+        {
+          id: "b-1",
+          plan: "court",
+          date: "2026-10-15",
+          courtId: "in-1",
+          slotIds: ["08:00"],
+          name: "Alex Rivera",
+          email: "alex@example.com",
+          userId: "u-1",
+          referenceId: "REF-1",
+          receiptName: null,
+          receiptKey: null,
+          receiptMimeType: null,
+          status: "approved",
+          createdAt: "2026-10-15T00:00:00.000Z",
+          updatedAt: "2026-10-15T00:00:00.000Z",
+        },
+      ],
+    },
+    isPending: false,
+    isError: false,
     refetch,
   }),
   useOccupancy: () => ({ data: [], isLoading: false }),
@@ -40,123 +61,119 @@ vi.mock("@/api/features/auth/auth.service", () => ({
   patchMe: vi.fn(),
 }));
 
-describe("AdminCalendarPage walk-in booking", () => {
+const sampleBooking: BookingRequest = {
+  id: "b-1",
+  plan: "court",
+  date: "2026-10-15",
+  courtId: "in-1",
+  slotIds: ["08:00"],
+  name: "Alex Rivera",
+  email: "alex@example.com",
+  referenceId: "REF-1",
+  receiptName: "",
+  status: "approved",
+  createdAt: "2026-10-15T00:00:00.000Z",
+};
+
+describe("AdminCalendarPage day bookings only", () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
-    createAdminBooking.mockReset();
     refetch.mockReset();
   });
 
   beforeEach(() => {
     localStorage.clear();
-    createAdminBooking.mockResolvedValue({
-      id: "b-walkin",
-      plan: "court",
-      date: "2026-09-15",
-      courtId: "in-1",
-      slotIds: ["06:00"],
-      name: "Walk-in Guest",
-      email: "walk-in@pickleera.local",
-      userId: null,
-      referenceId: "WALK-IN",
-      receiptName: "Walk-in / cash",
-      receiptKey: null,
-      receiptMimeType: null,
-      status: "approved",
-      createdAt: "2026-09-15T00:00:00.000Z",
-      updatedAt: "2026-09-15T00:00:00.000Z",
-    });
   });
 
-  it("lets admin book a walk-in from an open hour on the day schedule", async () => {
+  it("opens a day sheet with that day's bookings and no walk-in path", async () => {
     const user = userEvent.setup();
-    const onBookSlot = vi.fn();
+
+    renderWithProviders(
+      <CourtDayGrid
+        date="2026-10-15"
+        onDateChange={vi.fn()}
+        bookings={[sampleBooking]}
+        bookingsOnly
+      />,
+    );
+
+    expect(
+      screen.getByText(/walk-in is on admin bookings/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByText("15"));
+
+    expect(
+      screen.getByRole("heading", { name: /thursday, october 15, 2026/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Alex Rivera", { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/court 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/approved/i)).toBeInTheDocument();
+
+    expect(screen.queryByText(/open hours/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /book walk-in/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /8:00 AM – 9:00 AM/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows empty state without open-hour or walk-in actions", async () => {
+    const user = userEvent.setup();
 
     renderWithProviders(
       <CourtDayGrid
         date="2026-10-14"
         onDateChange={vi.fn()}
         bookings={[]}
-        readOnly={false}
-        bookIntent="walk-in"
-        onBookSlot={onBookSlot}
+        bookingsOnly
       />,
     );
 
-    expect(
-      screen.getByText(/select open hours, then add a walk-in/i),
-    ).toBeInTheDocument();
-
     await user.click(screen.getByText("14"));
 
+    expect(screen.getByText(/no bookings for this day/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /wednesday, october 14, 2026/i }),
+      screen.getByText(/walk-in create is on admin bookings/i),
     ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "8:00 AM – 9:00 AM" }));
-    await user.click(screen.getByRole("button", { name: /book walk-in/i }));
-
-    expect(onBookSlot).toHaveBeenCalledWith({
-      date: "2026-10-14",
-      courtId: "in-1",
-      slotIds: ["08:00"],
-    });
+    expect(screen.queryByText(/open hours/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /book walk-in/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("creates an approved walk-in from the admin calendar day schedule", async () => {
+  it("admin calendar page points walk-in to bookings and lists day bookings", async () => {
     const user = userEvent.setup();
-    createAdminBooking.mockResolvedValue({
-      id: "b-walkin",
-      plan: "court",
-      date: "2026-10-15",
-      courtId: "in-1",
-      slotIds: ["06:00"],
-      name: "Walk-in Guest",
-      email: "walk-in@pickleera.local",
-      userId: null,
-      referenceId: "WALK-IN",
-      receiptName: "Walk-in / cash",
-      receiptKey: null,
-      receiptMimeType: null,
-      status: "approved",
-      createdAt: "2026-10-15T00:00:00.000Z",
-      updatedAt: "2026-10-15T00:00:00.000Z",
-    });
 
     renderWithProviders(<AdminCalendarPage />);
 
-    // Jump from "today" toward October opening month if needed.
+    expect(
+      screen.getByText(/walk-in create is on admin bookings/i),
+    ).toBeInTheDocument();
+
     for (let i = 0; i < 3; i += 1) {
-      const heading = screen.queryByRole("heading", {
-        name: /october/i,
-      });
+      const heading = screen.queryByText(/october/i);
       if (heading) break;
       await user.click(screen.getByRole("button", { name: "Next month" }));
     }
 
     await user.click(screen.getByText("15"));
 
-    const openHour = screen.getByRole("button", { name: "6:00 AM – 7:00 AM" });
-    await user.click(openHour);
-    await user.click(screen.getByRole("button", { name: /book walk-in/i }));
-
-    expect(
-      screen.getByRole("heading", { name: /walk-in booking/i }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
-    await user.type(screen.getByPlaceholderText("Full name"), "Walk-in Guest");
-    await user.click(screen.getByRole("button", { name: /create booking/i }));
-
-    await waitFor(() => {
-      expect(createAdminBooking).toHaveBeenCalled();
-    });
     await waitFor(() => {
       expect(
-        screen.queryByRole("heading", { name: /walk-in booking/i }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("heading", { name: /thursday, october 15, 2026/i }),
+      ).toBeInTheDocument();
     });
-    expect(refetch).toHaveBeenCalled();
+    expect(
+      screen.getByText("Alex Rivera", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /walk-in booking/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/open hours/i)).not.toBeInTheDocument();
   });
 });

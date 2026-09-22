@@ -158,6 +158,7 @@ export const bookingReceiptUrlResponseSchema = z.object({
 
 export const listUsersQuerySchema = paginatedQuerySchema.extend({
   role: z.enum(["student", "admin"]).optional().default("student"),
+  search: z.string().trim().min(2).max(100).optional(),
 });
 
 export type CourtSlot = z.infer<typeof courtSlotSchema>;

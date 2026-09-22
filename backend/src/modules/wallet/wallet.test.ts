@@ -4,6 +4,7 @@ import { ConflictError, UnauthorizedError } from "../../lib/errors.js";
 import { assertPendingTransitionApplied, toWalletTopUpDto } from "./wallet.mapper.js";
 import {
   MAX_TOP_UP_AMOUNT_CENTS,
+  createAdminManualCreditBodySchema,
   createWalletTopUpBodySchema,
   listMyWalletTransactionsQuerySchema,
   patchTopUpBodySchema,
@@ -49,6 +50,36 @@ test("create top-up schema: pending amount must be positive and within max", () 
       receiptKey: "uploads/abc.png",
     }).success,
     true,
+  );
+});
+
+test("manual credit schema: positive amount within max, requires userId", () => {
+  assert.equal(
+    createAdminManualCreditBodySchema.safeParse({
+      userId: "user_1",
+      amountCents: 10_000,
+    }).success,
+    true,
+  );
+  assert.equal(
+    createAdminManualCreditBodySchema.safeParse({
+      userId: "user_1",
+      amountCents: 0,
+    }).success,
+    false,
+  );
+  assert.equal(
+    createAdminManualCreditBodySchema.safeParse({
+      userId: "user_1",
+      amountCents: MAX_TOP_UP_AMOUNT_CENTS + 1,
+    }).success,
+    false,
+  );
+  assert.equal(
+    createAdminManualCreditBodySchema.safeParse({
+      amountCents: 10_000,
+    }).success,
+    false,
   );
 });
 

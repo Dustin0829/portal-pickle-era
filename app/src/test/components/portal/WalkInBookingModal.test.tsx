@@ -82,7 +82,7 @@ describe("WalkInBookingModal", () => {
 
     expect(screen.queryByPlaceholderText("Full name")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /create booking/i }),
+      screen.queryByRole("button", { name: /paid via cash/i }),
     ).not.toBeInTheDocument();
 
     const confirm = screen.getByRole("button", { name: /^confirm$/i });
@@ -92,9 +92,8 @@ describe("WalkInBookingModal", () => {
 
     expect(screen.getByPlaceholderText("Full name")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("player@email.com")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("WALK-IN")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /create booking/i }),
+      screen.getByRole("button", { name: /paid via cash/i }),
     ).toBeInTheDocument();
   });
 
@@ -111,7 +110,36 @@ describe("WalkInBookingModal", () => {
     expect(screen.getByRole("button", { name: /^confirm$/i })).toBeDisabled();
   });
 
-  it("saves an approved booking after Confirm then Create", async () => {
+  it("shows facility payment methods and Paid via cash with no credits UI", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <WalkInBookingModal
+        initial={{
+          plan: "court",
+          date: "2026-10-05",
+          courtId: "in-1",
+          slotIds: ["08:00"],
+        }}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    expect(screen.getByText(/facility payment methods/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/no portal account or credits/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/pay with credits/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/wallet/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /paid via cash/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("creates an approved walk-in via Paid via cash", async () => {
     const user = userEvent.setup();
     const onCreated = vi.fn();
     const onClose = vi.fn();
@@ -131,7 +159,7 @@ describe("WalkInBookingModal", () => {
 
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));
     await user.type(screen.getByPlaceholderText("Full name"), "Kai Mendoza");
-    await user.click(screen.getByRole("button", { name: /create booking/i }));
+    await user.click(screen.getByRole("button", { name: /paid via cash/i }));
 
     await waitFor(() => {
       expect(createAdminBooking).toHaveBeenCalledTimes(1);
@@ -142,6 +170,8 @@ describe("WalkInBookingModal", () => {
         date: "2026-10-05",
         courtSlots: [{ courtId: "in-1", slotIds: ["08:00"] }],
         name: "Kai Mendoza",
+        referenceId: "WALK-IN",
+        receiptName: "Walk-in / cash",
       }),
     );
     expect(onCreated).toHaveBeenCalledTimes(1);
@@ -152,6 +182,50 @@ describe("WalkInBookingModal", () => {
       status: "approved",
       referenceId: "WALK-IN",
       receiptName: "Walk-in / cash",
+    });
+  });
+
+  it("still allows Paid via cash when no payment methods are configured", async () => {
+    const user = userEvent.setup();
+    const emptySettings = seedFacilitySettings({ paymentMethods: [] });
+    const { getFacilitySettings } =
+      await import("@/api/features/facility-settings/facility-settings.service");
+    vi.mocked(getFacilitySettings).mockResolvedValue(emptySettings);
+
+    renderWithProviders(
+      <WalkInBookingModal
+        initial={{
+          plan: "court",
+          date: "2026-10-05",
+          courtId: "in-1",
+          slotIds: ["08:00"],
+        }}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/no payment methods configured/i),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: /paid via cash/i }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("Full name"), "Cash Guest");
+    await user.click(screen.getByRole("button", { name: /paid via cash/i }));
+
+    await waitFor(() => {
+      expect(createAdminBooking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Cash Guest",
+          receiptName: "Walk-in / cash",
+        }),
+      );
     });
   });
 

@@ -136,6 +136,7 @@ export const patchBookingResponseSchema = bookingDtoSchema.extend({
 export const listUsersQuerySchema = paginatedQuerySchema.extend({
   role: z.enum(["student", "admin"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  search: z.string().trim().min(2).max(100).optional(),
 });
 
 export type BookingDto = z.infer<typeof bookingDtoSchema>;

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Banknote, Check, X } from "lucide-react";
 import {
   createAdminBooking,
   listOccupancy,
@@ -27,6 +27,9 @@ import {
   type UnifiedBookingSelection,
 } from "@/lib/booking/unifiedBookingSelection";
 import { UnifiedBookingSchedule } from "@/components/booking/UnifiedBookingSchedule";
+import { PaymentMethodPicker } from "@/components/booking/PaymentMethodCarousel";
+import type { FacilityPaymentMethod } from "@/lib/booking/paymentMethods";
+import { usePaymentMethods } from "@/lib/wallet/paymentSettings";
 
 export type WalkInBookingDefaults = {
   plan?: BookablePlan;
@@ -36,6 +39,7 @@ export type WalkInBookingDefaults = {
 };
 
 type Step = "schedule" | "details";
+type SettlePath = "cash" | "method";
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -88,7 +92,8 @@ export function WalkInBookingModal({
   });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [referenceId, setReferenceId] = useState("WALK-IN");
+  const [activeMethod, setActiveMethod] =
+    useState<FacilityPaymentMethod | null>(null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [slotStatusByKey, setSlotStatusByKey] = useState<
@@ -105,6 +110,7 @@ export function WalkInBookingModal({
   const [capacityLoading, setCapacityLoading] = useState(false);
   const [capacityError, setCapacityError] = useState("");
 
+  const paymentMethods = usePaymentMethods();
   const plan = selection.plan;
   const openPlaySlots = useOpenPlaySlots();
   const hours = totalSelectedCourtHours(selection);
@@ -119,7 +125,7 @@ export function WalkInBookingModal({
     Boolean(occupancyError) ||
     Boolean(capacityError);
   const canConfirm = Boolean(confirmed) && !scheduleBlocked;
-  const canSubmit =
+  const canSettle =
     step === "details" &&
     name.trim().length > 0 &&
     Boolean(confirmed) &&
@@ -219,15 +225,23 @@ export function WalkInBookingModal({
     setStep("details");
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function settleWalkIn(path: SettlePath) {
     if (step !== "details") return;
     setError("");
     const payload = toConfirmSelection(date, selection);
-    if (!canSubmit || !payload) {
+    if (!canSettle || !payload) {
       setError("Name and a schedule selection are required.");
       return;
     }
+    if (path === "method" && !activeMethod) {
+      setError("Select a payment method, or use Paid via cash.");
+      return;
+    }
+
+    const referenceId =
+      path === "cash" ? "WALK-IN" : `WALK-IN · ${activeMethod!.label}`;
+    const receiptName =
+      path === "cash" ? "Walk-in / cash" : `Walk-in / ${activeMethod!.label}`;
 
     setPending(true);
     try {
@@ -248,8 +262,8 @@ export function WalkInBookingModal({
             }),
         name: name.trim(),
         email: email.trim().toLowerCase() || "walk-in@pickleera.local",
-        referenceId: referenceId.trim() || "WALK-IN",
-        receiptName: "Walk-in / cash",
+        referenceId,
+        receiptName,
       });
       onCreated(bookingDtoToRequest(dto));
     } catch (caught) {
@@ -257,6 +271,10 @@ export function WalkInBookingModal({
     } finally {
       setPending(false);
     }
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
   }
 
   return (
@@ -271,7 +289,7 @@ export function WalkInBookingModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="walk-in-booking-title"
-        onSubmit={(event) => void onSubmit(event)}
+        onSubmit={onSubmit}
         className="relative z-10 flex max-h-[min(94svh,920px)] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-zinc-300 bg-[#f5f0e8] shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-white px-5 py-4">
@@ -330,8 +348,8 @@ export function WalkInBookingModal({
                     : ""}
                 </p>
                 <p className="mt-0.5">
-                  {date} · ₱{total.toLocaleString("en-PH")} · marked approved on
-                  create
+                  {date} · ₱{total.toLocaleString("en-PH")} · guest desk settle
+                  · marked approved on create
                 </p>
               </div>
 
@@ -362,16 +380,23 @@ export function WalkInBookingModal({
                 />
               </label>
 
-              <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                  Reference
-                </span>
-                <input
-                  value={referenceId}
-                  onChange={(event) => setReferenceId(event.target.value)}
-                  className="mt-1.5 h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-yellow"
-                />
-              </label>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Facility payment methods
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Guests have no portal account or credits. Show a digital
+                  method or settle cash at the desk.
+                </p>
+                <div className="mt-3">
+                  <PaymentMethodPicker
+                    methods={paymentMethods}
+                    amountHint={`₱${total.toLocaleString("en-PH")}`}
+                    variant="light"
+                    onActiveChange={setActiveMethod}
+                  />
+                </div>
+              </div>
 
               {error ? (
                 <p className="text-sm text-maroon" role="alert">
@@ -382,7 +407,7 @@ export function WalkInBookingModal({
           ) : null}
         </div>
 
-        <div className="flex gap-2 border-t border-zinc-200 bg-white px-5 py-4">
+        <div className="flex flex-wrap gap-2 border-t border-zinc-200 bg-white px-5 py-4">
           {step === "schedule" ? (
             <>
               <button
@@ -414,13 +439,25 @@ export function WalkInBookingModal({
                 Back
               </button>
               <button
-                type="submit"
-                disabled={!canSubmit || pending}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-yellow text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:opacity-50"
+                type="button"
+                disabled={!canSettle || pending}
+                onClick={() => void settleWalkIn("cash")}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 border border-zinc-200 bg-white text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-800 transition hover:border-yellow hover:text-zinc-900 disabled:opacity-50"
               >
-                <Check size={14} aria-hidden />
-                {pending ? "Creating…" : "Create booking"}
+                <Banknote size={14} aria-hidden />
+                {pending ? "Creating…" : "Paid via cash"}
               </button>
+              {activeMethod ? (
+                <button
+                  type="button"
+                  disabled={!canSettle || pending}
+                  onClick={() => void settleWalkIn("method")}
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-yellow text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-zinc-900 hover:text-yellow disabled:opacity-50"
+                >
+                  <Check size={14} aria-hidden />
+                  {pending ? "Creating…" : `Confirm · ${activeMethod.label}`}
+                </button>
+              ) : null}
             </>
           )}
         </div>

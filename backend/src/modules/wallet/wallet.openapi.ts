@@ -6,7 +6,11 @@ import {
 } from "../../lib/openapi-helpers.js";
 import { paginatedItemsSchema } from "../../lib/pagination.schema.js";
 import {
+  adminManualCreditResponseSchema,
+  adminUserIdParamsSchema,
+  adminWalletProfileDtoSchema,
   adminWalletTopUpDtoSchema,
+  createAdminManualCreditBodySchema,
   createWalletTopUpBodySchema,
   listAdminTopUpsQuerySchema,
   listMyWalletTransactionsQuerySchema,
@@ -24,6 +28,8 @@ export function registerWalletOpenApi(registry: OpenAPIRegistry) {
   registry.register("WalletLedgerEntry", walletLedgerEntryDtoSchema);
   registry.register("AdminWalletTopUp", adminWalletTopUpDtoSchema);
   registry.register("WalletReceiptUrl", walletReceiptUrlResponseSchema);
+  registry.register("AdminWalletProfile", adminWalletProfileDtoSchema);
+  registry.register("AdminManualCredit", adminManualCreditResponseSchema);
 
   registry.registerPath({
     method: "get",
@@ -74,6 +80,44 @@ export function registerWalletOpenApi(registry: OpenAPIRegistry) {
       201: {
         description: "Created pending wallet top-up",
         content: { "application/json": { schema: successResponseSchema(walletTopUpDtoSchema) } },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/admin/wallet/manual-credits",
+    operationId: "postAdminWalletManualCredit",
+    tags: ["Wallet"],
+    request: {
+      body: {
+        content: { "application/json": { schema: createAdminManualCreditBodySchema } },
+      },
+    },
+    responses: {
+      201: {
+        description: "Immediate admin desk credit (no pending top-up row)",
+        content: {
+          "application/json": { schema: successResponseSchema(adminManualCreditResponseSchema) },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/admin/wallet/users/{userId}/profile",
+    operationId: "getAdminWalletUserProfile",
+    tags: ["Wallet"],
+    request: { params: adminUserIdParamsSchema },
+    responses: {
+      200: {
+        description: "Student player wallet profile for manual top-up",
+        content: {
+          "application/json": { schema: successResponseSchema(adminWalletProfileDtoSchema) },
+        },
       },
       ...standardErrorResponses,
     },
