@@ -2,6 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        if (location.hostname === "pickleera.co") {
+          location.replace(
+            "https://www.pickleera.co" +
+              location.pathname +
+              location.search +
+              location.hash,
+          );
+        }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pickle Era — Welcome to Your Pickle Era</title>

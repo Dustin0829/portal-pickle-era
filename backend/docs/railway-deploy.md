@@ -27,7 +27,7 @@ Typical Nixpacks / custom:
 | `DATABASE_URL`                                                                          | Railway Postgres connection string                                                                                                                                            |
 | `NODE_ENV`                                                                              | `production`                                                                                                                                                                  |
 | `PORT`                                                                                  | Railway injects; ensure app listens on it                                                                                                                                     |
-| `API_CORS_ORIGIN`                                                                       | Public **web** service origin(s), comma-separated                                                                                                                             |
+| `API_CORS_ORIGIN`                                                                       | Public **web** origin(s), comma-separated. Canonical: `https://www.pickleera.co` (may include apex during cutover)                                                    |
 | `BETTER_AUTH_SECRET`                                                                    | Required in production (session signing)                                                                                                                                      |
 | `BETTER_AUTH_URL`                                                                       | Public API origin, e.g. `https://api.pickleera.co`                                                                                                                            |
 | `AUTH_COOKIE_DOMAIN`                                                                    | Shared cookie domain, e.g. `.pickleera.co`                                                                                                                                    |
@@ -35,7 +35,7 @@ Typical Nixpacks / custom:
 | `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_BUCKET` / `S3_REGION` | Railway Bucket Credentials mapped into the API service (optional; uploads soft-fail when unset)                                                                               |
 | `RESEND_API_KEY`                                                                        | Optional; invite, password-reset, booking approved/rejected, welcome (signup), and password-changed emails are skipped when unset                                             |
 | `EMAIL_FROM`                                                                            | From address for Resend (e.g. `Pickle Era <hello@pickleera.co>`); required with `RESEND_API_KEY` for those transactional emails                                               |
-| `PUBLIC_APP_URL`                                                                        | SPA origin for invite/login/reset/welcome links **and** email logo (`{PUBLIC_APP_URL}/logo.png` from `app/public/logo.png`); falls back to first `API_CORS_ORIGIN` when unset |
+| `PUBLIC_APP_URL`                                                                        | Canonical SPA origin for invite/login/reset/welcome links **and** email logo — production: `https://www.pickleera.co`; falls back to first `API_CORS_ORIGIN` when unset       |
 
 Leave Basic Auth unset only for local/dev. In production without both vars, admin tools (including `GET /admin/waitlist` and `/admin/bookings`) are **not mounted**.
 
@@ -50,8 +50,7 @@ Leave Basic Auth unset only for local/dev. In production without both vars, admi
    - `BUCKET` → `S3_BUCKET`
    - `REGION` → `S3_REGION` (usually `auto`)
 4. Admin inbox uses `GET /admin/bookings/:id/receipt-url` for short-lived preview URLs (bucket stays private)
-5. **CORS (required for browser uploads):** allow `PUT`/`GET` from the web origin(s), e.g. `https://pickleera.co`. Without this, bookings save with `receiptName` only and the admin modal cannot preview the image.
-6. **CORS (required for browser uploads):** allow `PUT`/`GET` from the web origin(s), e.g. `https://pickleera.co`. Without this, bookings save with `receiptName` only and the admin modal cannot preview the image.
+5. **CORS (required for browser uploads):** allow `PUT`/`GET` from the web origin(s), e.g. `https://www.pickleera.co` (canonical) and optionally `https://pickleera.co` during apex→www cutover. Without this, bookings save with `receiptName` only and the admin modal cannot preview the image.
 
 ## Seed (admin / demo users)
 
