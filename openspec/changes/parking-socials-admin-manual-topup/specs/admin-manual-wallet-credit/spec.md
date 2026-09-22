@@ -16,19 +16,11 @@ An authenticated admin on the Top-ups Inbox SHALL be able to start a **manual to
 - **THEN** an empty state is shown and no credit action is available
 
 ### Requirement: Immediate admin credit
-After a player is selected, the admin SHALL be able to enter a positive peso amount (within the same single-top-up maximum used for player GCash top-ups unless design documents a different cap), choose how the guest paid at the desk (**Cash** or **Bank**), and confirm **Add credits**. When **Bank** is selected, the admin SHALL pick one facility payment method (e.g. GCash, Maya, BDO). When **Cash** is selected, no further method list is required. The system SHALL increase that user’s wallet balance in the same transaction as a wallet ledger credit of type `top_up` with `referenceType: admin_manual`, and the ledger reference SHALL encode the payment channel (and bank/e-wallet label when Bank). No GCash receipt upload SHALL be required. The existing pending GCash approve/reject path SHALL remain unchanged.
+After a player is selected, the admin SHALL be able to enter a positive peso amount (within the same single-top-up maximum used for player GCash top-ups unless design documents a different cap) and confirm **Add credits**. The system SHALL increase that user’s wallet balance in the same transaction as a wallet ledger credit of type `top_up` (or a dedicated admin credit type if introduced), with a reference that identifies the manual admin credit. No GCash receipt SHALL be required. The existing pending GCash approve/reject path SHALL remain unchanged.
 
-#### Scenario: Successful credit via cash
-- **WHEN** an admin confirms Add credits with a valid amount and Cash selected
-- **THEN** the player’s balance increases by that amount, a ledger row is written with an admin_manual cash reference, and the UI confirms success
-
-#### Scenario: Successful credit via bank method
-- **WHEN** an admin confirms Add credits with a valid amount, Bank selected, and a facility method (e.g. GCash) chosen
-- **THEN** the player’s balance increases and the ledger reference records that bank/e-wallet label
-
-#### Scenario: Bank without method blocked
-- **WHEN** Bank is selected but no facility method is chosen
-- **THEN** Add credits is rejected with a clear validation error and balance is unchanged
+#### Scenario: Successful credit
+- **WHEN** an admin confirms Add credits with a valid amount for a selected student player
+- **THEN** the player’s balance increases by that amount, a ledger row is written, and the UI confirms success
 
 #### Scenario: Cannot credit admin accounts
 - **WHEN** the selected user is an admin (or non-student)

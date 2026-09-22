@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banknote, Building2, Check, Search, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import { useAdminUsers } from "@/api/features/bookings/use-bookings";
 import type { AuthUserDto } from "@/api/features/auth/auth.schema";
 import {
@@ -8,12 +8,10 @@ import {
 } from "@/api/features/wallet/use-wallet";
 import { createAdminManualCreditFormSchema } from "@/api/features/wallet/wallet.schema";
 import { getUserFacingApiErrorMessage } from "@/api/lib/api-error-message";
-import { usePaymentMethods } from "@/lib/wallet/paymentSettings";
 import { formatCentsAsPesos } from "@/lib/wallet/formatWalletMoney";
 import { cn } from "@/lib/utils";
 
 type Step = "search" | "credit";
-type PayChannel = "bank" | "cash" | null;
 
 type PlayerHit = Pick<AuthUserDto, "id" | "name" | "email">;
 
@@ -23,11 +21,7 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
   const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState<PlayerHit | null>(null);
   const [amountPesos, setAmountPesos] = useState("");
-  const [payChannel, setPayChannel] = useState<PayChannel>(null);
-  const [bankMethodId, setBankMethodId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState("");
-
-  const paymentMethods = usePaymentMethods();
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebounced(query.trim()), 250);
@@ -48,13 +42,6 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
   const credit = useCreateAdminManualCredit();
 
   const players = data?.items ?? [];
-  const selectedBank =
-    paymentMethods.find((m) => m.id === bankMethodId) ?? null;
-
-  function resetPay() {
-    setPayChannel(null);
-    setBankMethodId(null);
-  }
 
   async function onAddCredits() {
     if (!selected) return;
@@ -66,21 +53,10 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
       setFieldError(parsed.error.issues[0]?.message ?? "Enter a valid amount");
       return;
     }
-    if (!payChannel) {
-      setFieldError("Choose Bank or Cash");
-      return;
-    }
-    if (payChannel === "bank" && !selectedBank) {
-      setFieldError("Select which bank or e-wallet was used");
-      return;
-    }
     try {
       await credit.mutateAsync({
         userId: selected.id,
         amountCents: Math.round(parsed.data.amountPesos * 100),
-        paymentChannel: payChannel,
-        paymentMethodLabel:
-          payChannel === "bank" ? selectedBank!.label : undefined,
       });
       onClose();
     } catch (error) {
@@ -100,9 +76,9 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="manual-top-up-title"
-        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-zinc-200/80 bg-white shadow-2xl sm:rounded-2xl"
+        className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-zinc-200/80 bg-white shadow-2xl sm:rounded-2xl"
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 sm:px-5">
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 sm:px-5">
           <h2
             id="manual-top-up-title"
             className="text-lg font-semibold text-zinc-900"
@@ -119,7 +95,7 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-5">
+        <div className="flex flex-col gap-4 p-4 sm:p-5">
           {step === "search" ? (
             <>
               <label className="flex flex-col gap-1.5">
@@ -172,9 +148,6 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
                               name: player.name,
                               email: player.email,
                             });
-                            resetPay();
-                            setAmountPesos("");
-                            setFieldError("");
                             setStep("credit");
                           }}
                         >
@@ -199,7 +172,6 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
                 onClick={() => {
                   setStep("search");
                   setFieldError("");
-                  resetPay();
                 }}
               >
                 ← Back to search
@@ -244,101 +216,13 @@ export function ManualTopUpModal({ onClose }: { onClose: () => void }) {
                   placeholder="500"
                   className={cn(
                     "h-11 rounded-xl border bg-white px-3 text-sm outline-none focus:border-yellow",
-                    fieldError && !payChannel
-                      ? "border-maroon"
-                      : "border-zinc-200",
+                    fieldError ? "border-maroon" : "border-zinc-200",
                   )}
                 />
+                {fieldError ? (
+                  <span className="text-xs text-maroon">{fieldError}</span>
+                ) : null}
               </label>
-
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
-                  How did they pay?
-                </p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Record the desk payment method used for this walk-in credit.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPayChannel("bank");
-                      setBankMethodId(null);
-                      setFieldError("");
-                    }}
-                    className={cn(
-                      "inline-flex h-11 items-center justify-center gap-2 rounded-xl border text-[11px] font-bold uppercase tracking-[0.12em] transition",
-                      payChannel === "bank"
-                        ? "border-yellow bg-yellow/20 text-zinc-900"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:border-yellow",
-                    )}
-                  >
-                    <Building2 size={14} aria-hidden />
-                    Bank
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPayChannel("cash");
-                      setBankMethodId(null);
-                      setFieldError("");
-                    }}
-                    className={cn(
-                      "inline-flex h-11 items-center justify-center gap-2 rounded-xl border text-[11px] font-bold uppercase tracking-[0.12em] transition",
-                      payChannel === "cash"
-                        ? "border-yellow bg-yellow/20 text-zinc-900"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:border-yellow",
-                    )}
-                  >
-                    <Banknote size={14} aria-hidden />
-                    Cash
-                  </button>
-                </div>
-              </div>
-
-              {payChannel === "bank" ? (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
-                    Select bank / e-wallet
-                  </p>
-                  {paymentMethods.length === 0 ? (
-                    <p className="mt-2 text-xs text-zinc-500">
-                      No payment methods in Settings. Add GCash, Maya, BDO, etc.
-                      under Admin Settings, or use Cash.
-                    </p>
-                  ) : (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {paymentMethods.map((method) => {
-                        const active = method.id === bankMethodId;
-                        return (
-                          <button
-                            key={method.id}
-                            type="button"
-                            onClick={() => {
-                              setBankMethodId(method.id);
-                              setFieldError("");
-                            }}
-                            className={cn(
-                              "rounded-xl border px-3 py-2 text-left text-sm transition",
-                              active
-                                ? "border-yellow bg-yellow/15 font-semibold text-zinc-900"
-                                : "border-zinc-200 bg-white text-zinc-700 hover:border-yellow",
-                            )}
-                          >
-                            {method.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              {fieldError ? (
-                <span className="text-xs text-maroon" role="alert">
-                  {fieldError}
-                </span>
-              ) : null}
 
               <button
                 type="button"

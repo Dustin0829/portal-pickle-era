@@ -111,27 +111,12 @@ export const createAdminManualCreditBodySchema = z
   .object({
     userId: z.string().min(1),
     amountCents: z.number().int().positive().max(MAX_TOP_UP_AMOUNT_CENTS),
-    /** Desk settle path: cash at counter, or bank/e-wallet from facility methods. */
-    paymentChannel: z.enum(["cash", "bank"]),
-    /** Required when paymentChannel is bank — e.g. GCash, Maya, BDO. */
-    paymentMethodLabel: z.string().trim().min(1).max(80).optional(),
   })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.paymentChannel === "bank" && !value.paymentMethodLabel) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Select a bank or e-wallet method",
-        path: ["paymentMethodLabel"],
-      });
-    }
-  });
+  .strict();
 
 export const adminManualCreditResponseSchema = z.object({
   balanceAfterCents: z.number().int().nonnegative(),
   referenceId: z.string(),
-  paymentChannel: z.enum(["cash", "bank"]),
-  paymentMethodLabel: z.string().nullable(),
 });
 
 export type WalletDto = z.infer<typeof walletDtoSchema>;
