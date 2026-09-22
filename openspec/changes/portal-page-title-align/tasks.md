@@ -26,5 +26,5 @@ Branch: `feat/portal-page-title-align`
 
 ## 5. Ship
 
-- [ ] 5.1 `/opsx-verify` (in-scope packages)
-- [ ] 5.2 `/opsx-pr` → branch `feat/portal-page-title-align`
+- [x] 5.1 `/opsx-verify` (in-scope packages)
+- [x] 5.2 `/opsx-pr` → branch `feat/portal-page-title-align`
