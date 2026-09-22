@@ -49,5 +49,5 @@ Branch: `feat/parking-socials-admin-manual-topup`
 
 ## 8. Ship
 
-- [ ] 8.1 `/opsx-verify`
-- [ ] 8.2 `/opsx-pr` (one monorepo PR: web + api)
+- [x] 8.1 `/opsx-verify`
+- [x] 8.2 `/opsx-pr` (one monorepo PR: web + api)
