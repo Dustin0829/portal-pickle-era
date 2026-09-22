@@ -102,7 +102,7 @@ export function FoodPage() {
     <div className="min-h-full">
       <AppPageShell width="wide">
         <header className="mb-5 flex flex-col gap-2">
-          <h1 className="display text-[36px] text-zinc-900 sm:text-[44px]">
+          <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
             Food
           </h1>
           <p className="text-sm text-zinc-500">

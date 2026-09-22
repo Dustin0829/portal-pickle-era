@@ -41,7 +41,7 @@ export function WalletPage() {
     <div className="relative min-h-full overflow-hidden">
       <AppPageShell width="wide" className="relative z-10">
         <header className="mb-6 flex flex-col gap-2">
-          <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
+          <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
             Wallet
           </h1>
           <p className="text-sm text-zinc-500">
