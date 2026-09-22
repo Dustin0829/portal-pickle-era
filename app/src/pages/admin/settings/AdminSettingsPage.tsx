@@ -163,7 +163,7 @@ export function AdminSettingsPage() {
     <AppPageShell width="wide">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="display text-[36px] text-zinc-900 sm:text-[44px]">
+          <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
             Settings
           </h1>
           <p className="mt-1 text-sm text-zinc-500">

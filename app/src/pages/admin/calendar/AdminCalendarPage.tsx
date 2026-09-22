@@ -41,7 +41,7 @@ export function AdminCalendarPage() {
         )}
       >
         <header className="mb-3 flex max-w-xl shrink-0 flex-col gap-1">
-          <h1 className="display text-[32px] text-zinc-900 sm:text-[40px]">
+          <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
             Court <span className="text-yellow">calendar</span>
           </h1>
           <p className="text-xs text-zinc-500 sm:text-sm">

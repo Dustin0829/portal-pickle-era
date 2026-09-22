@@ -152,7 +152,7 @@ export function AdminPlayersPage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
               Members & growth
             </p>
-            <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
+            <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
               Players
             </h1>
             <p className="text-sm text-zinc-500">

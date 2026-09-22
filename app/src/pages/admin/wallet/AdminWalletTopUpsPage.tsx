@@ -91,8 +91,8 @@ export function AdminWalletTopUpsPage() {
       <AppPageShell width="wide" className="relative z-10">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
-              Top-ups <span className="text-amber-600">inbox</span>
+            <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
+              Top-ups <span className="text-yellow">inbox</span>
             </h1>
             <p className="text-sm text-zinc-500">
               Review GCash wallet top-ups or add credits at the desk.

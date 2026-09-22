@@ -183,7 +183,7 @@ export function BookingsPage() {
       <AppPageShell width="wide" className="relative z-10">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-col gap-2">
-            <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
+            <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
               My <span className="text-yellow">bookings</span>
             </h1>
             <p className="max-w-lg text-sm text-zinc-500">

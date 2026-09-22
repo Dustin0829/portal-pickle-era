@@ -13,7 +13,7 @@ export function PlayerComingSoon() {
       <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-400">
         Player portal
       </p>
-      <h1 className="display mt-3 text-[42px] text-zinc-900 sm:text-[56px]">
+      <h1 className="display mt-3 text-[28px] text-zinc-900 sm:text-[32px]">
         Coming soon.
       </h1>
       <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-500">

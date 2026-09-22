@@ -57,8 +57,8 @@ export function AdminFoodOrdersPage() {
     <div className="relative min-h-full overflow-hidden">
       <AppPageShell width="wide" className="relative z-10">
         <header className="mb-6 flex flex-col gap-2">
-          <h1 className="display text-[42px] text-zinc-900 sm:text-[52px]">
-            Food <span className="text-amber-600">orders</span>
+          <h1 className="display text-[28px] text-zinc-900 sm:text-[32px]">
+            Food <span className="text-yellow">orders</span>
           </h1>
           <p className="text-sm text-zinc-500">
             Advance café orders from pending → preparing → ready.
