@@ -122,8 +122,19 @@ export const createAdminManualCreditBodySchema = z
   .object({
     userId: z.string().min(1),
     amountCents: z.number().int().min(MIN_TOP_UP_CENTS).max(MAX_TOP_UP_CENTS),
+    paymentChannel: z.enum(["cash", "bank"]),
+    paymentMethodLabel: z.string().trim().min(1).max(80).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.paymentChannel === "bank" && !value.paymentMethodLabel) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select a bank or e-wallet method",
+        path: ["paymentMethodLabel"],
+      });
+    }
+  });
 
 export const createAdminManualCreditFormSchema = z
   .object({
@@ -138,6 +149,8 @@ export const createAdminManualCreditFormSchema = z
 export const adminManualCreditResponseSchema = z.object({
   balanceAfterCents: z.number().int().nonnegative(),
   referenceId: z.string(),
+  paymentChannel: z.enum(["cash", "bank"]),
+  paymentMethodLabel: z.string().nullable(),
 });
 
 export type WalletTopUpStatus = z.infer<typeof walletTopUpStatusSchema>;
