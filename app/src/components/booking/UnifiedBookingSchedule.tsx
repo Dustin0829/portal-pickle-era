@@ -142,13 +142,13 @@ export function UnifiedBookingSchedule({
         compact ? "gap-3" : "gap-0",
       )}
     >
-      <header className="flex items-center gap-3 bg-yellow px-4 py-3 text-black sm:px-5">
+      <header className="flex items-center gap-3 bg-black px-4 py-3 text-white sm:px-5">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label="Back"
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-black/20 text-black transition hover:border-black hover:bg-black/5"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-white/25 text-white transition hover:border-yellow hover:text-yellow"
           >
             <ChevronLeft size={18} />
           </button>
