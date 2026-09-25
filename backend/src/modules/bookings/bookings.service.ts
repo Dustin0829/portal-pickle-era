@@ -44,9 +44,11 @@ import {
   type ListBookingsQuery,
   type ListUsersQuery,
   type OccupancyQuery,
+  type OpenPlayFifoQueueQuery,
   type OpenPlaySessionsQuery,
   type PatchBookingBody,
 } from "./bookings.schema.js";
+import { buildOpenPlayFifoBoard, findOpenPlayFifoMyPosition } from "./open-play-fifo.js";
 
 import { applyWalletDelta, findWalletLedgerByRef } from "../wallet/wallet.service.js";
 import { bookingApproveNeedsDebit, bookingRejectNeedsRefund } from "./bookings.wallet-hold.js";
@@ -697,4 +699,70 @@ async function createBookingRow(input: {
 
     return booking;
   });
+}
+
+async function loadApprovedOpenPlayFifoSeats(query: OpenPlayFifoQueueQuery) {
+  const rows = await prisma.booking.findMany({
+    where: {
+      plan: "open_play",
+      status: "approved",
+      date: query.date,
+      slotIds: { has: query.slotId },
+    },
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      userId: true,
+      email: true,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+
+  return rows.map((row) => ({
+    bookingId: row.id,
+    name: row.name,
+    createdAt: row.createdAt,
+    userId: row.userId,
+    email: row.email,
+  }));
+}
+
+export async function getAdminOpenPlayFifoBoard(query: OpenPlayFifoQueueQuery) {
+  const seats = await loadApprovedOpenPlayFifoSeats(query);
+  return buildOpenPlayFifoBoard({
+    date: query.date,
+    slotId: query.slotId,
+    seats,
+  });
+}
+
+export async function getMyOpenPlayFifoPosition(
+  query: OpenPlayFifoQueueQuery,
+  authUser: AuthUser | undefined,
+) {
+  if (!authUser) {
+    throw new UnauthorizedError();
+  }
+
+  const seats = await loadApprovedOpenPlayFifoSeats(query);
+  const board = buildOpenPlayFifoBoard({
+    date: query.date,
+    slotId: query.slotId,
+    seats,
+  });
+
+  const email = normalizeBookingEmail(authUser.email);
+  const mine = seats.find(
+    (seat) => seat.userId === authUser.id || normalizeBookingEmail(seat.email) === email,
+  );
+  if (!mine) {
+    throw new NotFoundError("Open Play seat not found for this session");
+  }
+
+  const position = findOpenPlayFifoMyPosition(board, mine.bookingId);
+  if (!position) {
+    throw new NotFoundError("Open Play seat not found for this session");
+  }
+  return position;
 }

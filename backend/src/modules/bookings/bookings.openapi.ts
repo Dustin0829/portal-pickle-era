@@ -16,6 +16,9 @@ import {
   listBookingsQuerySchema,
   listUsersQuerySchema,
   occupancyQuerySchema,
+  openPlayFifoBoardSchema,
+  openPlayFifoMyPositionSchema,
+  openPlayFifoQueueQuerySchema,
   openPlaySessionItemSchema,
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
@@ -29,6 +32,8 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
   registry.register("OpenPlaySessionItem", openPlaySessionItemSchema);
   registry.register("BookingReceiptUrl", bookingReceiptUrlResponseSchema);
   registry.register("PatchBookingResponse", patchBookingResponseSchema);
+  registry.register("OpenPlayFifoBoard", openPlayFifoBoardSchema);
+  registry.register("OpenPlayFifoMyPosition", openPlayFifoMyPositionSchema);
 
   registry.registerPath({
     method: "post",
@@ -107,6 +112,25 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
 
   registry.registerPath({
     method: "get",
+    path: "/me/bookings/open-play-queue",
+    operationId: "getMeOpenPlayFifoPosition",
+    tags: ["Bookings"],
+    request: { query: openPlayFifoQueueQuerySchema },
+    responses: {
+      200: {
+        description: "Caller FIFO position for an Open Play session",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(openPlayFifoMyPositionSchema),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
     path: "/me/bookings/{id}/receipt-url",
     operationId: "getMeBookingReceiptUrl",
     tags: ["Bookings"],
@@ -138,6 +162,25 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
         content: {
           "application/json": {
             schema: paginatedSuccessResponseSchema(paginatedItemsSchema(bookingDtoSchema)),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/admin/bookings/open-play-queue",
+    operationId: "getAdminOpenPlayFifoBoard",
+    tags: ["Bookings"],
+    request: { query: openPlayFifoQueueQuerySchema },
+    responses: {
+      200: {
+        description: "Open Play FIFO board for a date and session",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(openPlayFifoBoardSchema),
           },
         },
       },

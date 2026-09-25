@@ -7,6 +7,9 @@ import {
   listBookingsQuerySchema,
   listUsersQuerySchema,
   occupancyQuerySchema,
+  openPlayFifoBoardSchema,
+  openPlayFifoMyPositionSchema,
+  openPlayFifoQueueQuerySchema,
   openPlaySessionItemSchema,
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
@@ -16,6 +19,7 @@ import {
   type ListBookingsQuery,
   type ListUsersQuery,
   type OccupancyQuery,
+  type OpenPlayFifoQueueQuery,
   type OpenPlaySessionsQuery,
   type PatchBookingBody,
 } from "@/api/features/bookings/bookings.schema";
@@ -116,4 +120,28 @@ export async function getMeBookingReceiptUrl(id: string, signal?: AbortSignal) {
     signal,
   });
   return bookingReceiptUrlSchema.parse(data);
+}
+
+export async function getAdminOpenPlayFifoBoard(
+  query: OpenPlayFifoQueueQuery,
+  signal?: AbortSignal,
+) {
+  const params = openPlayFifoQueueQuerySchema.parse(query);
+  const { data } = await api.get("/admin/bookings/open-play-queue", {
+    params,
+    signal,
+  });
+  return openPlayFifoBoardSchema.parse(data);
+}
+
+export async function getMeOpenPlayFifoPosition(
+  query: OpenPlayFifoQueueQuery,
+  signal?: AbortSignal,
+) {
+  const params = openPlayFifoQueueQuerySchema.parse(query);
+  const { data } = await api.get("/me/bookings/open-play-queue", {
+    params,
+    signal,
+  });
+  return openPlayFifoMyPositionSchema.parse(data);
 }

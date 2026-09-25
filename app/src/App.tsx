@@ -14,6 +14,7 @@ import { FoodPage } from "@/pages/app/food/FoodPage";
 import { AdminDashboardPage } from "@/pages/admin/dashboard/AdminDashboardPage";
 import { AdminBookingsPage } from "@/pages/admin/bookings/AdminBookingsPage";
 import { AdminCalendarPage } from "@/pages/admin/calendar/AdminCalendarPage";
+import { AdminOpenPlayFifoPage } from "@/pages/admin/open-play/AdminOpenPlayFifoPage";
 import { AdminPlayersPage } from "@/pages/admin/waitlist/AdminWaitlistPage";
 import { AdminSettingsPage } from "@/pages/admin/settings/AdminSettingsPage";
 import { AdminWalletTopUpsPage } from "@/pages/admin/wallet/AdminWalletTopUpsPage";
@@ -122,6 +123,7 @@ export default function App() {
           <Route path="admin" element={<AdminPortalLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="bookings" element={<AdminBookingsPage />} />
+            <Route path="open-play" element={<AdminOpenPlayFifoPage />} />
             <Route path="top-ups" element={<AdminWalletTopUpsPage />} />
             <Route
               path="food"

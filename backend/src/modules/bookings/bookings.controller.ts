@@ -5,14 +5,17 @@ import type {
   CreatePublicBookingBody,
   ListBookingsQuery,
   ListUsersQuery,
+  OpenPlayFifoQueueQuery,
   OpenPlaySessionsQuery,
   PatchBookingBody,
 } from "./bookings.schema.js";
 import {
   createAdminBooking,
   createPublicBooking,
+  getAdminOpenPlayFifoBoard,
   getBookingReceiptUrl,
   getMyBookingReceiptUrl,
+  getMyOpenPlayFifoPosition,
   listAdminBookings,
   listAdminUsers,
   listMyBookings,
@@ -64,6 +67,19 @@ export async function bookingReceiptUrlController(req: Request, res: Response) {
 export async function myBookingReceiptUrlController(req: Request, res: Response) {
   const result = await getMyBookingReceiptUrl(req.params.id as string, req.authUser);
   return sendSuccess(res, result, "ok", 200);
+}
+
+export async function adminOpenPlayFifoBoardController(req: Request, res: Response) {
+  const board = await getAdminOpenPlayFifoBoard(req.query as unknown as OpenPlayFifoQueueQuery);
+  return sendSuccess(res, board, "ok", 200);
+}
+
+export async function myOpenPlayFifoPositionController(req: Request, res: Response) {
+  const position = await getMyOpenPlayFifoPosition(
+    req.query as unknown as OpenPlayFifoQueueQuery,
+    req.authUser,
+  );
+  return sendSuccess(res, position, "ok", 200);
 }
 
 export async function listAdminUsersController(req: Request, res: Response) {
