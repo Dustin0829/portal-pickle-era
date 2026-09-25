@@ -1569,6 +1569,263 @@
           "preSignup",
           "updatedAt"
         ]
+      },
+      "OpenPlayLiveBoard": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "slotId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "upcoming",
+                  "live",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "date",
+              "slotId",
+              "status"
+            ]
+          },
+          "courts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courtId": {
+                  "type": "string"
+                },
+                "courtLabel": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "available",
+                    "ready",
+                    "playing",
+                    "game_over",
+                    "unavailable"
+                  ]
+                },
+                "game": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "players": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "participantId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "side": {
+                            "type": "string",
+                            "enum": [
+                              "A",
+                              "B"
+                            ]
+                          },
+                          "seatIndex": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                          }
+                        },
+                        "required": [
+                          "participantId",
+                          "name",
+                          "side",
+                          "seatIndex"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "startedAt",
+                    "players"
+                  ]
+                }
+              },
+              "required": [
+                "courtId",
+                "courtLabel",
+                "state",
+                "game"
+              ]
+            }
+          },
+          "upNext": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "participantId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true
+                }
+              },
+              "required": [
+                "participantId",
+                "name",
+                "position"
+              ]
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "bookingId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "booked",
+                    "checked_in",
+                    "no_show",
+                    "left_session"
+                  ]
+                },
+                "checkedInAt": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "bookingId",
+                "name",
+                "status",
+                "checkedInAt"
+              ]
+            }
+          },
+          "checkedInCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "myStatus": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "participantId": {
+                "type": "string"
+              },
+              "participantStatus": {
+                "type": "string",
+                "enum": [
+                  "booked",
+                  "checked_in",
+                  "no_show",
+                  "left_session"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "not_checked_in",
+                  "waiting",
+                  "playing",
+                  "inactive"
+                ]
+              },
+              "queuePosition": {
+                "type": "integer",
+                "nullable": true,
+                "minimum": 0,
+                "exclusiveMinimum": true
+              },
+              "courtId": {
+                "type": "string",
+                "nullable": true
+              },
+              "courtLabel": {
+                "type": "string",
+                "nullable": true
+              },
+              "side": {
+                "type": "string",
+                "nullable": true,
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "gameId": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "participantId",
+              "participantStatus",
+              "state",
+              "queuePosition",
+              "courtId",
+              "courtLabel",
+              "side",
+              "gameId"
+            ]
+          }
+        },
+        "required": [
+          "session",
+          "courts",
+          "upNext",
+          "participants",
+          "checkedInCount",
+          "capacity",
+          "myStatus"
+        ]
       }
     },
     "parameters": {}
@@ -14769,6 +15026,4832 @@
                         "paymentMethods",
                         "preSignup",
                         "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/open-play/session": {
+      "get": {
+        "operationId": "getMeOpenPlayLiveSession",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "slotId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/open-play/games/{gameId}/end": {
+      "post": {
+        "operationId": "postMeOpenPlayLiveGameEnd",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "gameId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/session": {
+      "get": {
+        "operationId": "getAdminOpenPlayLiveSession",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "slotId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchAdminOpenPlayLiveSession",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "slotId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "upcoming",
+                      "live",
+                      "completed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "date",
+                  "slotId",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/participants/{id}/check-in": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveParticipantCheckIn",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/participants/{id}/no-show": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveParticipantNoShow",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/participants/{id}/left": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveParticipantLeft",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/courts/{courtId}/unavailable": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveCourtUnavailable",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "courtId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "slotId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  }
+                },
+                "required": [
+                  "date",
+                  "slotId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/courts/{courtId}/available": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveCourtAvailable",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "courtId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "slotId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  }
+                },
+                "required": [
+                  "date",
+                  "slotId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/courts/{courtId}/start": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveCourtStart",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "courtId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "slotId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "participantIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                },
+                "required": [
+                  "date",
+                  "slotId",
+                  "participantIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/open-play/games/{gameId}/end": {
+      "post": {
+        "operationId": "postAdminOpenPlayLiveGameEnd",
+        "tags": [
+          "OpenPlayLive"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "gameId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live Open Play board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "slotId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "upcoming",
+                                "live",
+                                "completed",
+                                "cancelled"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "date",
+                            "slotId",
+                            "status"
+                          ]
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "courtId": {
+                                "type": "string"
+                              },
+                              "courtLabel": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "available",
+                                  "ready",
+                                  "playing",
+                                  "game_over",
+                                  "unavailable"
+                                ]
+                              },
+                              "game": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "startedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "players": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "participantId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "side": {
+                                          "type": "string",
+                                          "enum": [
+                                            "A",
+                                            "B"
+                                          ]
+                                        },
+                                        "seatIndex": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "participantId",
+                                        "name",
+                                        "side",
+                                        "seatIndex"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "startedAt",
+                                  "players"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "courtId",
+                              "courtLabel",
+                              "state",
+                              "game"
+                            ]
+                          }
+                        },
+                        "upNext": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "participantId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "participantId",
+                              "name",
+                              "position"
+                            ]
+                          }
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "booked",
+                                  "checked_in",
+                                  "no_show",
+                                  "left_session"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingId",
+                              "name",
+                              "status",
+                              "checkedInAt"
+                            ]
+                          }
+                        },
+                        "checkedInCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "capacity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "myStatus": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "participantId": {
+                              "type": "string"
+                            },
+                            "participantStatus": {
+                              "type": "string",
+                              "enum": [
+                                "booked",
+                                "checked_in",
+                                "no_show",
+                                "left_session"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_checked_in",
+                                "waiting",
+                                "playing",
+                                "inactive"
+                              ]
+                            },
+                            "queuePosition": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "courtId": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "courtLabel": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "side": {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [
+                                "A",
+                                "B"
+                              ]
+                            },
+                            "gameId": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "participantId",
+                            "participantStatus",
+                            "state",
+                            "queuePosition",
+                            "courtId",
+                            "courtLabel",
+                            "side",
+                            "gameId"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "session",
+                        "courts",
+                        "upNext",
+                        "participants",
+                        "checkedInCount",
+                        "capacity",
+                        "myStatus"
                       ]
                     }
                   },

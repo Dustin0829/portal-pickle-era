@@ -10,6 +10,10 @@ import {
   usersAdminRouter,
 } from "../modules/bookings/bookings.routes.js";
 import { examplesRouter } from "../modules/examples/examples.routes.js";
+import {
+  openPlayLiveAdminRouter,
+  openPlayLiveMeRouter,
+} from "../modules/open-play-live/open-play-live.routes.js";
 import { healthRouter } from "../modules/health/health.routes.js";
 import { uploadsRouter } from "../modules/uploads/uploads.routes.js";
 import { waitlistAdminRouter, waitlistPublicRouter } from "../modules/waitlist/waitlist.routes.js";
@@ -33,6 +37,7 @@ export function createApiRouter() {
   apiRouter.use("/me/bookings", bookingsMeRouter);
   apiRouter.use("/me/wallet", walletMeRouter);
   apiRouter.use("/me/food", foodMeRouter);
+  apiRouter.use("/me/open-play", openPlayLiveMeRouter);
 
   if (shouldMountAdminTools()) {
     apiRouter.use("/admin/activity-logs", protectAdminTools, activityLogsRouter);
@@ -42,6 +47,7 @@ export function createApiRouter() {
     apiRouter.use("/admin/wallet", protectProductAdmin, walletAdminRouter);
     apiRouter.use("/admin/food", protectProductAdmin, foodAdminRouter);
     apiRouter.use("/admin/facility-settings", protectProductAdmin, facilitySettingsAdminRouter);
+    apiRouter.use("/admin/open-play", protectProductAdmin, openPlayLiveAdminRouter);
   }
 
   return apiRouter;

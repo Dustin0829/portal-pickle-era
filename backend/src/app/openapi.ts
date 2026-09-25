@@ -9,6 +9,7 @@ import { registerAuthOpenApi } from "../modules/auth/auth.openapi.js";
 import { registerBookingsOpenApi } from "../modules/bookings/bookings.openapi.js";
 import { registerExamplesOpenApi } from "../modules/examples/examples.openapi.js";
 import { registerHealthOpenApi } from "../modules/health/health.openapi.js";
+import { registerOpenPlayLiveOpenApi } from "../modules/open-play-live/open-play-live.openapi.js";
 import { registerUploadsOpenApi } from "../modules/uploads/uploads.openapi.js";
 import { registerWaitlistOpenApi } from "../modules/waitlist/waitlist.openapi.js";
 import { registerFoodOpenApi } from "../modules/food/food.openapi.js";
@@ -30,6 +31,7 @@ export function buildOpenApiRegistry() {
   registerWalletOpenApi(registry);
   registerFoodOpenApi(registry);
   registerFacilitySettingsOpenApi(registry);
+  registerOpenPlayLiveOpenApi(registry);
 
   return registry;
 }
