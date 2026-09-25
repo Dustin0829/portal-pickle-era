@@ -145,3 +145,15 @@ export async function getMeOpenPlayFifoPosition(
   });
   return openPlayFifoMyPositionSchema.parse(data);
 }
+
+export async function getMeOpenPlayFifoBoard(
+  query: OpenPlayFifoQueueQuery,
+  signal?: AbortSignal,
+) {
+  const params = openPlayFifoQueueQuerySchema.parse(query);
+  const { data } = await api.get("/me/bookings/open-play-board", {
+    params,
+    signal,
+  });
+  return openPlayFifoBoardSchema.parse(data);
+}

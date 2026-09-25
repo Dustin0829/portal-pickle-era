@@ -4,6 +4,7 @@ import {
   createAdminBooking,
   createPublicBooking,
   getAdminOpenPlayFifoBoard,
+  getMeOpenPlayFifoBoard,
   getMeOpenPlayFifoPosition,
   listAdminBookings,
   listAdminUsers,
@@ -29,6 +30,7 @@ export const adminBookingsQueryKey = ["admin-bookings"] as const;
 export const adminUsersQueryKey = ["admin-users"] as const;
 export const adminOpenPlayFifoQueryKey = ["admin-open-play-fifo"] as const;
 export const meOpenPlayFifoQueryKey = ["me-open-play-fifo"] as const;
+export const meOpenPlayFifoBoardQueryKey = ["me-open-play-fifo-board"] as const;
 
 export function useMyBookings(enabled = true) {
   return useQuery({
@@ -106,6 +108,9 @@ export function usePatchAdminBooking() {
         queryKey: adminOpenPlayFifoQueryKey,
       });
       void queryClient.invalidateQueries({ queryKey: meOpenPlayFifoQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: meOpenPlayFifoBoardQueryKey,
+      });
     },
     onError: (error) => {
       toast.error(getUserFacingApiErrorMessage(error));
@@ -131,6 +136,17 @@ export function useMeOpenPlayFifoPosition(
   return useQuery({
     queryKey: [...meOpenPlayFifoQueryKey, query] as const,
     queryFn: ({ signal }) => getMeOpenPlayFifoPosition(query, signal),
+    enabled: enabled && Boolean(query.date && query.slotId),
+  });
+}
+
+export function useMeOpenPlayFifoBoard(
+  query: OpenPlayFifoQueueQuery,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...meOpenPlayFifoBoardQueryKey, query] as const,
+    queryFn: ({ signal }) => getMeOpenPlayFifoBoard(query, signal),
     enabled: enabled && Boolean(query.date && query.slotId),
   });
 }

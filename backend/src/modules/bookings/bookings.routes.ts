@@ -11,6 +11,7 @@ import {
   adminOpenPlayFifoBoardController,
   myBookingReceiptUrlController,
   myBookingsController,
+  myOpenPlayFifoBoardController,
   myOpenPlayFifoPositionController,
   occupancyController,
   openPlaySessionsController,
@@ -59,6 +60,11 @@ bookingsMeRouter.get(
   "/open-play-queue",
   validateQuery(openPlayFifoQueueQuerySchema),
   asyncHandler(myOpenPlayFifoPositionController),
+);
+bookingsMeRouter.get(
+  "/open-play-board",
+  validateQuery(openPlayFifoQueueQuerySchema),
+  asyncHandler(myOpenPlayFifoBoardController),
 );
 bookingsMeRouter.get(
   "/:id/receipt-url",

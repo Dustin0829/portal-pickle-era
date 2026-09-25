@@ -3,6 +3,7 @@ import {
   CalendarRange,
   Home,
   UserRound,
+  UsersRound,
   UtensilsCrossed,
   Wallet,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import { FOOD_ENABLED } from "@/lib/featureFlags";
 const items = [
   { to: "/app", label: "Overview", end: true, icon: Home },
   { to: "/app/bookings", label: "My bookings", icon: CalendarDays },
+  { to: "/app/open-play", label: "Open Play", icon: UsersRound },
   { to: "/app/calendar", label: "Court calendar", icon: CalendarRange },
   { to: "/app/food", label: "Food", icon: UtensilsCrossed },
   { to: "/app/wallet", label: "Wallet", icon: Wallet },
