@@ -25,4 +25,4 @@ Branch: `feat/open-play-fifo-queue`
 ## 4. Ship
 
 - [x] 4.1 `/opsx-verify` (api + web) + merge-readiness for both packages
-- [ ] 4.2 `/opsx-pr` → branch `feat/open-play-fifo-queue` (API with or before web)
+- [x] 4.2 `/opsx-pr` → branch `feat/open-play-fifo-queue` (API with or before web)
