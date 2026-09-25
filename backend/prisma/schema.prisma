@@ -164,6 +164,135 @@ model Booking {
   @@map("bookings")
 }
 
+enum OpenPlaySessionStatus {
+  upcoming
+  live
+  completed
+  cancelled
+}
+
+enum OpenPlayParticipantStatus {
+  booked
+  checked_in
+  no_show
+  left_session
+}
+
+enum OpenPlayCourtState {
+  available
+  ready
+  playing
+  game_over
+  unavailable
+}
+
+enum OpenPlayGameStatus {
+  playing
+  completed
+}
+
+/** Live Open Play session for one facility date + Open Play session band. */
+model OpenPlaySession {
+  id           String                @id @default(cuid())
+  date         String
+  slotId       String                @map("slot_id")
+  status       OpenPlaySessionStatus @default(upcoming)
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+  participants OpenPlayParticipant[]
+  courts       OpenPlayCourt[]
+  games        OpenPlayGame[]
+  queue        OpenPlayQueueEntry[]
+
+  @@unique([date, slotId])
+  @@index([status])
+  @@map("open_play_sessions")
+}
+
+/** One approved Open Play booking seat inside a live session. */
+model OpenPlayParticipant {
+  id           String                    @id @default(cuid())
+  sessionId    String                    @map("session_id")
+  session      OpenPlaySession           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  bookingId    String                    @map("booking_id")
+  userId       String?                   @map("user_id")
+  name         String
+  email        String
+  status       OpenPlayParticipantStatus @default(booked)
+  checkedInAt  DateTime?                 @map("checked_in_at")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+  seats        OpenPlayGameSeat[]
+  queueEntries OpenPlayQueueEntry[]
+
+  @@unique([sessionId, bookingId])
+  @@index([sessionId, status])
+  @@index([userId])
+  @@map("open_play_participants")
+}
+
+model OpenPlayCourt {
+  id         String             @id @default(cuid())
+  sessionId  String             @map("session_id")
+  session    OpenPlaySession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  courtId    String             @map("court_id")
+  courtLabel String             @map("court_label")
+  state      OpenPlayCourtState @default(available)
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+  games      OpenPlayGame[]
+
+  @@unique([sessionId, courtId])
+  @@map("open_play_courts")
+}
+
+model OpenPlayGame {
+  id            String             @id @default(cuid())
+  sessionId     String             @map("session_id")
+  session       OpenPlaySession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  courtRowId    String             @map("court_row_id")
+  court         OpenPlayCourt      @relation(fields: [courtRowId], references: [id], onDelete: Cascade)
+  status        OpenPlayGameStatus @default(playing)
+  startedAt     DateTime           @default(now()) @map("started_at")
+  endedAt       DateTime?          @map("ended_at")
+  endedByUserId String?            @map("ended_by_user_id")
+  /** "player" | "staff" — who ended the game. */
+  endedByRole   String?            @map("ended_by_role")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  seats         OpenPlayGameSeat[]
+
+  @@index([sessionId, status])
+  @@index([courtRowId, status])
+  @@map("open_play_games")
+}
+
+model OpenPlayGameSeat {
+  id            String              @id @default(cuid())
+  gameId        String              @map("game_id")
+  game          OpenPlayGame        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  participantId String              @map("participant_id")
+  participant   OpenPlayParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  /** "A" | "B" — seats 0-1 are side A, seats 2-3 are side B. */
+  side          String
+  seatIndex     Int                 @map("seat_index")
+
+  @@unique([gameId, seatIndex])
+  @@index([participantId])
+  @@map("open_play_game_seats")
+}
+
+model OpenPlayQueueEntry {
+  id            String              @id @default(cuid())
+  sessionId     String              @map("session_id")
+  session       OpenPlaySession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participantId String              @map("participant_id")
+  participant   OpenPlayParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  position      Int
+
+  @@unique([sessionId, participantId])
+  @@index([sessionId, position])
+  @@map("open_play_queue_entries")
+}
+
 model Wallet {
   id           String   @id @default(cuid())
   userId       String   @unique @map("user_id")
