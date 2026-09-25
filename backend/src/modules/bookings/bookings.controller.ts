@@ -15,6 +15,7 @@ import {
   getAdminOpenPlayFifoBoard,
   getBookingReceiptUrl,
   getMyBookingReceiptUrl,
+  getMyOpenPlayFifoBoard,
   getMyOpenPlayFifoPosition,
   listAdminBookings,
   listAdminUsers,
@@ -80,6 +81,14 @@ export async function myOpenPlayFifoPositionController(req: Request, res: Respon
     req.authUser,
   );
   return sendSuccess(res, position, "ok", 200);
+}
+
+export async function myOpenPlayFifoBoardController(req: Request, res: Response) {
+  const board = await getMyOpenPlayFifoBoard(
+    req.query as unknown as OpenPlayFifoQueueQuery,
+    req.authUser,
+  );
+  return sendSuccess(res, board, "ok", 200);
 }
 
 export async function listAdminUsersController(req: Request, res: Response) {

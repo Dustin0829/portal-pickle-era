@@ -752,10 +752,7 @@ export async function getMyOpenPlayFifoPosition(
     seats,
   });
 
-  const email = normalizeBookingEmail(authUser.email);
-  const mine = seats.find(
-    (seat) => seat.userId === authUser.id || normalizeBookingEmail(seat.email) === email,
-  );
+  const mine = findCallerOpenPlayFifoSeat(seats, authUser);
   if (!mine) {
     throw new NotFoundError("Open Play seat not found for this session");
   }
@@ -765,4 +762,36 @@ export async function getMyOpenPlayFifoPosition(
     throw new NotFoundError("Open Play seat not found for this session");
   }
   return position;
+}
+
+/** Full FIFO board for a session the caller has an approved Open Play seat in (display names only). */
+export async function getMyOpenPlayFifoBoard(
+  query: OpenPlayFifoQueueQuery,
+  authUser: AuthUser | undefined,
+) {
+  if (!authUser) {
+    throw new UnauthorizedError();
+  }
+
+  const seats = await loadApprovedOpenPlayFifoSeats(query);
+  const mine = findCallerOpenPlayFifoSeat(seats, authUser);
+  if (!mine) {
+    throw new NotFoundError("Open Play seat not found for this session");
+  }
+
+  return buildOpenPlayFifoBoard({
+    date: query.date,
+    slotId: query.slotId,
+    seats,
+  });
+}
+
+function findCallerOpenPlayFifoSeat(
+  seats: Awaited<ReturnType<typeof loadApprovedOpenPlayFifoSeats>>,
+  authUser: AuthUser,
+) {
+  const email = normalizeBookingEmail(authUser.email);
+  return seats.find(
+    (seat) => seat.userId === authUser.id || normalizeBookingEmail(seat.email) === email,
+  );
 }

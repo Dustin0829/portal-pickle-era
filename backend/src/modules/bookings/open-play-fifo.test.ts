@@ -110,3 +110,11 @@ test("getMyOpenPlayFifoPosition requires session", async () => {
     (error: unknown) => error instanceof UnauthorizedError && error.statusCode === 401,
   );
 });
+
+test("getMyOpenPlayFifoBoard requires session", async () => {
+  const { getMyOpenPlayFifoBoard } = await import("./bookings.service.js");
+  await assert.rejects(
+    () => getMyOpenPlayFifoBoard({ date: "2026-10-05", slotId: "07:00" }, undefined),
+    (error: unknown) => error instanceof UnauthorizedError && error.statusCode === 401,
+  );
+});
