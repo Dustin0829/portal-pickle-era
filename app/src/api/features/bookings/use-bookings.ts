@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import {
   createAdminBooking,
   createPublicBooking,
+  getAdminOpenPlayFifoBoard,
+  getMeOpenPlayFifoPosition,
   listAdminBookings,
   listAdminUsers,
   listMyBookings,
@@ -15,6 +17,7 @@ import type {
   ListBookingsQuery,
   ListUsersQuery,
   OccupancyQuery,
+  OpenPlayFifoQueueQuery,
   PatchBookingBody,
 } from "@/api/features/bookings/bookings.schema";
 import { isApiValidationError } from "@/api/lib/apply-field-errors-to-form";
@@ -24,6 +27,8 @@ export const myBookingsQueryKey = ["me-bookings"] as const;
 export const occupancyQueryKey = ["bookings-occupancy"] as const;
 export const adminBookingsQueryKey = ["admin-bookings"] as const;
 export const adminUsersQueryKey = ["admin-users"] as const;
+export const adminOpenPlayFifoQueryKey = ["admin-open-play-fifo"] as const;
+export const meOpenPlayFifoQueryKey = ["me-open-play-fifo"] as const;
 
 export function useMyBookings(enabled = true) {
   return useQuery({
@@ -97,9 +102,35 @@ export function usePatchAdminBooking() {
       void queryClient.invalidateQueries({ queryKey: adminBookingsQueryKey });
       void queryClient.invalidateQueries({ queryKey: occupancyQueryKey });
       void queryClient.invalidateQueries({ queryKey: myBookingsQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: adminOpenPlayFifoQueryKey,
+      });
+      void queryClient.invalidateQueries({ queryKey: meOpenPlayFifoQueryKey });
     },
     onError: (error) => {
       toast.error(getUserFacingApiErrorMessage(error));
     },
+  });
+}
+
+export function useAdminOpenPlayFifoBoard(
+  query: OpenPlayFifoQueueQuery,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...adminOpenPlayFifoQueryKey, query] as const,
+    queryFn: ({ signal }) => getAdminOpenPlayFifoBoard(query, signal),
+    enabled: enabled && Boolean(query.date && query.slotId),
+  });
+}
+
+export function useMeOpenPlayFifoPosition(
+  query: OpenPlayFifoQueueQuery,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...meOpenPlayFifoQueryKey, query] as const,
+    queryFn: ({ signal }) => getMeOpenPlayFifoPosition(query, signal),
+    enabled: enabled && Boolean(query.date && query.slotId),
   });
 }

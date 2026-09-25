@@ -122,6 +122,46 @@ export const openPlaySessionsQuerySchema = z
   })
   .strict();
 
+export const openPlayFifoQueueQuerySchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    slotId: z.string().trim().min(1).max(16),
+  })
+  .strict();
+
+export const openPlayFifoPlayerSchema = z.object({
+  bookingId: z.string(),
+  name: z.string(),
+  queueIndex: z.number().int().positive(),
+});
+
+export const openPlayFifoFoursomeSchema = z.object({
+  sideA: z.array(openPlayFifoPlayerSchema).length(2),
+  sideB: z.array(openPlayFifoPlayerSchema).length(2),
+  courtId: z.string().nullable(),
+  courtLabel: z.string().nullable(),
+});
+
+export const openPlayFifoBoardSchema = z.object({
+  date: z.string(),
+  slotId: z.string(),
+  players: z.array(openPlayFifoPlayerSchema),
+  courts: z.array(openPlayFifoFoursomeSchema),
+  nextUp: z.array(openPlayFifoFoursomeSchema),
+  remainder: z.array(openPlayFifoPlayerSchema),
+});
+
+export const openPlayFifoMyPositionSchema = z.object({
+  date: z.string(),
+  slotId: z.string(),
+  bookingId: z.string(),
+  queueIndex: z.number().int().positive(),
+  status: z.enum(["on_court", "next_up", "remainder"]),
+  courtId: z.string().nullable(),
+  courtLabel: z.string().nullable(),
+  side: z.enum(["A", "B"]).nullable(),
+});
+
 export const patchBookingBodySchema = z
   .object({
     status: z.enum(["approved", "rejected"]),
@@ -151,6 +191,14 @@ export type ListBookingsQuery = z.input<typeof listBookingsQuerySchema>;
 export type OccupancyQuery = z.infer<typeof occupancyQuerySchema>;
 export type OpenPlaySessionItem = z.infer<typeof openPlaySessionItemSchema>;
 export type OpenPlaySessionsQuery = z.infer<typeof openPlaySessionsQuerySchema>;
+export type OpenPlayFifoQueueQuery = z.infer<
+  typeof openPlayFifoQueueQuerySchema
+>;
+export type OpenPlayFifoBoard = z.infer<typeof openPlayFifoBoardSchema>;
+export type OpenPlayFifoFoursome = z.infer<typeof openPlayFifoFoursomeSchema>;
+export type OpenPlayFifoMyPosition = z.infer<
+  typeof openPlayFifoMyPositionSchema
+>;
 export type PatchBookingBody = z.infer<typeof patchBookingBodySchema>;
 export type PatchBookingResponse = z.infer<typeof patchBookingResponseSchema>;
 export type ListUsersQuery = z.input<typeof listUsersQuerySchema>;

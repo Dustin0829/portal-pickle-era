@@ -8,10 +8,14 @@ import {
   Clock3,
   FileText,
   MapPin,
+  Users,
   X,
 } from "lucide-react";
 import { getMeBookingReceiptUrl } from "@/api/features/bookings/bookings.service";
-import { useMyBookings } from "@/api/features/bookings/use-bookings";
+import {
+  useMeOpenPlayFifoPosition,
+  useMyBookings,
+} from "@/api/features/bookings/use-bookings";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PortalListSkeleton } from "@/components/portal/portal-skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -406,6 +410,15 @@ function BookingDetailSheet({
     totalPesos: total,
     walletAppliedCents: booking.walletAppliedCents,
   });
+  const openPlaySlotId =
+    booking.plan === "open-play" ? (booking.slotIds[0] ?? "") : "";
+  const { data: fifoPosition, isPending: fifoPending } =
+    useMeOpenPlayFifoPosition(
+      { date: booking.date, slotId: openPlaySlotId },
+      booking.plan === "open-play" &&
+        booking.status === "approved" &&
+        Boolean(openPlaySlotId),
+    );
   const [signedReceiptUrl, setSignedReceiptUrl] = useState<
     string | undefined
   >();
@@ -546,6 +559,23 @@ function BookingDetailSheet({
                 label="Reference ID"
                 value={booking.referenceId || "—"}
               />
+              {booking.plan === "open-play" && booking.status === "approved" ? (
+                <DetailRow
+                  icon={<Users size={16} />}
+                  label="Queue place"
+                  value={
+                    fifoPending
+                      ? "Loading…"
+                      : fifoPosition
+                        ? fifoPosition.status === "on_court"
+                          ? `#${fifoPosition.queueIndex} · ${fifoPosition.courtLabel ?? "Court"} · Side ${fifoPosition.side}`
+                          : fifoPosition.status === "next_up"
+                            ? `#${fifoPosition.queueIndex} · Next up · Side ${fifoPosition.side}`
+                            : `#${fifoPosition.queueIndex} · Waiting for a foursome`
+                        : "Not on this session board"
+                  }
+                />
+              ) : null}
             </dl>
 
             <div className="mt-auto border-t border-zinc-200 pt-4">

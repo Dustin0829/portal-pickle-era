@@ -5,6 +5,7 @@ import {
   Settings,
   Users,
   UtensilsCrossed,
+  UsersRound,
   Wallet,
 } from "lucide-react";
 import { Suspense } from "react";
@@ -17,6 +18,7 @@ import { FOOD_ENABLED } from "@/lib/featureFlags";
 const items = [
   { to: "/admin", label: "Dashboard", end: true, icon: LayoutDashboard },
   { to: "/admin/bookings", label: "Bookings", icon: ClipboardList },
+  { to: "/admin/open-play", label: "Open Play", icon: UsersRound },
   { to: "/admin/top-ups", label: "Top-ups", icon: Wallet },
   { to: "/admin/food", label: "Food", icon: UtensilsCrossed },
   { to: "/admin/calendar", label: "Calendar", icon: CalendarRange },

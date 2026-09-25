@@ -683,6 +683,266 @@
           "updatedAt"
         ]
       },
+      "OpenPlayFifoBoard": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "slotId": {
+            "type": "string"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bookingId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "queueIndex": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true
+                }
+              },
+              "required": [
+                "bookingId",
+                "name",
+                "queueIndex"
+              ]
+            }
+          },
+          "courts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sideA": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bookingId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "queueIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                      }
+                    },
+                    "required": [
+                      "bookingId",
+                      "name",
+                      "queueIndex"
+                    ]
+                  }
+                },
+                "sideB": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bookingId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "queueIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                      }
+                    },
+                    "required": [
+                      "bookingId",
+                      "name",
+                      "queueIndex"
+                    ]
+                  }
+                },
+                "courtId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "courtLabel": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "sideA",
+                "sideB",
+                "courtId",
+                "courtLabel"
+              ]
+            }
+          },
+          "nextUp": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sideA": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bookingId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "queueIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                      }
+                    },
+                    "required": [
+                      "bookingId",
+                      "name",
+                      "queueIndex"
+                    ]
+                  }
+                },
+                "sideB": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bookingId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "queueIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                      }
+                    },
+                    "required": [
+                      "bookingId",
+                      "name",
+                      "queueIndex"
+                    ]
+                  }
+                },
+                "courtId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "courtLabel": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "sideA",
+                "sideB",
+                "courtId",
+                "courtLabel"
+              ]
+            }
+          },
+          "remainder": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bookingId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "queueIndex": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true
+                }
+              },
+              "required": [
+                "bookingId",
+                "name",
+                "queueIndex"
+              ]
+            }
+          }
+        },
+        "required": [
+          "date",
+          "slotId",
+          "players",
+          "courts",
+          "nextUp",
+          "remainder"
+        ]
+      },
+      "OpenPlayFifoMyPosition": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "slotId": {
+            "type": "string"
+          },
+          "bookingId": {
+            "type": "string"
+          },
+          "queueIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "on_court",
+              "next_up",
+              "remainder"
+            ]
+          },
+          "courtId": {
+            "type": "string",
+            "nullable": true
+          },
+          "courtLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "side": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "A",
+              "B"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "slotId",
+          "bookingId",
+          "queueIndex",
+          "status",
+          "courtId",
+          "courtLabel",
+          "side"
+        ]
+      },
       "Wallet": {
         "type": "object",
         "properties": {
@@ -6703,6 +6963,239 @@
         }
       }
     },
+    "/me/bookings/open-play-queue": {
+      "get": {
+        "operationId": "getMeOpenPlayFifoPosition",
+        "tags": [
+          "Bookings"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "slotId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Caller FIFO position for an Open Play session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "slotId": {
+                          "type": "string"
+                        },
+                        "bookingId": {
+                          "type": "string"
+                        },
+                        "queueIndex": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "on_court",
+                            "next_up",
+                            "remainder"
+                          ]
+                        },
+                        "courtId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "courtLabel": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "side": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "A",
+                            "B"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "slotId",
+                        "bookingId",
+                        "queueIndex",
+                        "status",
+                        "courtId",
+                        "courtLabel",
+                        "side"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/bookings/{id}/receipt-url": {
       "get": {
         "operationId": "getMeBookingReceiptUrl",
@@ -7582,6 +8075,393 @@
                         "status",
                         "createdAt",
                         "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/bookings/open-play-queue": {
+      "get": {
+        "operationId": "getAdminOpenPlayFifoBoard",
+        "tags": [
+          "Bookings"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "required": true,
+            "name": "slotId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Open Play FIFO board for a date and session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "slotId": {
+                          "type": "string"
+                        },
+                        "players": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "queueIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "bookingId",
+                              "name",
+                              "queueIndex"
+                            ]
+                          }
+                        },
+                        "courts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sideA": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "bookingId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "queueIndex": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true
+                                    }
+                                  },
+                                  "required": [
+                                    "bookingId",
+                                    "name",
+                                    "queueIndex"
+                                  ]
+                                }
+                              },
+                              "sideB": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "bookingId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "queueIndex": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true
+                                    }
+                                  },
+                                  "required": [
+                                    "bookingId",
+                                    "name",
+                                    "queueIndex"
+                                  ]
+                                }
+                              },
+                              "courtId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "courtLabel": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "sideA",
+                              "sideB",
+                              "courtId",
+                              "courtLabel"
+                            ]
+                          }
+                        },
+                        "nextUp": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sideA": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "bookingId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "queueIndex": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true
+                                    }
+                                  },
+                                  "required": [
+                                    "bookingId",
+                                    "name",
+                                    "queueIndex"
+                                  ]
+                                }
+                              },
+                              "sideB": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "bookingId": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "queueIndex": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true
+                                    }
+                                  },
+                                  "required": [
+                                    "bookingId",
+                                    "name",
+                                    "queueIndex"
+                                  ]
+                                }
+                              },
+                              "courtId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "courtLabel": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "sideA",
+                              "sideB",
+                              "courtId",
+                              "courtLabel"
+                            ]
+                          }
+                        },
+                        "remainder": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "bookingId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "queueIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true
+                              }
+                            },
+                            "required": [
+                              "bookingId",
+                              "name",
+                              "queueIndex"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "slotId",
+                        "players",
+                        "courts",
+                        "nextUp",
+                        "remainder"
                       ]
                     }
                   },

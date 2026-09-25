@@ -22,6 +22,11 @@ vi.mock("@/api/features/bookings/use-bookings", () => ({
     isError: false,
   }),
   useCreatePublicBooking: () => ({ mutateAsync: vi.fn() }),
+  useMeOpenPlayFifoPosition: () => ({
+    data: undefined,
+    isPending: false,
+    isError: false,
+  }),
 }));
 
 const authMock = {

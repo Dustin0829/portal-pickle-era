@@ -8,8 +8,10 @@ import {
   bookingReceiptUrlController,
   listAdminBookingsController,
   listAdminUsersController,
+  adminOpenPlayFifoBoardController,
   myBookingReceiptUrlController,
   myBookingsController,
+  myOpenPlayFifoPositionController,
   occupancyController,
   openPlaySessionsController,
   patchBookingController,
@@ -21,6 +23,7 @@ import {
   listBookingsQuerySchema,
   listUsersQuerySchema,
   occupancyQuerySchema,
+  openPlayFifoQueueQuerySchema,
   openPlaySessionsQuerySchema,
   patchBookingBodySchema,
 } from "./bookings.schema.js";
@@ -53,6 +56,11 @@ bookingsPublicRouter.get(
 bookingsMeRouter.use(loadSession, requireSession);
 bookingsMeRouter.get("/", asyncHandler(myBookingsController));
 bookingsMeRouter.get(
+  "/open-play-queue",
+  validateQuery(openPlayFifoQueueQuerySchema),
+  asyncHandler(myOpenPlayFifoPositionController),
+);
+bookingsMeRouter.get(
   "/:id/receipt-url",
   validateParams(bookingIdParamsSchema),
   asyncHandler(myBookingReceiptUrlController),
@@ -62,6 +70,11 @@ bookingsAdminRouter.get(
   "/",
   validateQuery(listBookingsQuerySchema),
   asyncHandler(listAdminBookingsController),
+);
+bookingsAdminRouter.get(
+  "/open-play-queue",
+  validateQuery(openPlayFifoQueueQuerySchema),
+  asyncHandler(adminOpenPlayFifoBoardController),
 );
 bookingsAdminRouter.post(
   "/",
