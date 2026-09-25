@@ -131,6 +131,26 @@ export function registerBookingsOpenApi(registry: OpenAPIRegistry) {
 
   registry.registerPath({
     method: "get",
+    path: "/me/bookings/open-play-board",
+    operationId: "getMeOpenPlayFifoBoard",
+    tags: ["Bookings"],
+    request: { query: openPlayFifoQueueQuerySchema },
+    responses: {
+      200: {
+        description:
+          "Open Play FIFO board for a session the caller has an approved seat in (display names only)",
+        content: {
+          "application/json": {
+            schema: successResponseSchema(openPlayFifoBoardSchema),
+          },
+        },
+      },
+      ...standardErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
     path: "/me/bookings/{id}/receipt-url",
     operationId: "getMeBookingReceiptUrl",
     tags: ["Bookings"],

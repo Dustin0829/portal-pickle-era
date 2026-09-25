@@ -8,6 +8,7 @@ import { HomePage } from "@/pages/home/HomePage";
 import { OverviewPage } from "@/pages/app/overview/OverviewPage";
 import { BookingsPage } from "@/pages/app/bookings/BookingsPage";
 import { CalendarPage } from "@/pages/app/calendar/CalendarPage";
+import { OpenPlayPage } from "@/pages/app/open-play/OpenPlayPage";
 import { ProfilePage } from "@/pages/app/profile/ProfilePage";
 import { WalletPage } from "@/pages/app/wallet/WalletPage";
 import { FoodPage } from "@/pages/app/food/FoodPage";
@@ -109,6 +110,7 @@ export default function App() {
           <Route path="app" element={<StudentPortalLayout />}>
             <Route index element={<OverviewPage />} />
             <Route path="bookings" element={<BookingsPage />} />
+            <Route path="open-play" element={<OpenPlayPage />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="wallet" element={<WalletPage />} />
             <Route

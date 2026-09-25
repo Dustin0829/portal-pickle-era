@@ -5,6 +5,7 @@ The booking API SHALL expose:
 
 1. Admin: `GET` (admin auth) for Open Play FIFO board by `date` + session `slotId`, returning the computed board DTO (ordered players, foursomes/sides, court assignments, next-up, remainder).
 2. Player: authenticated `GET` for the caller’s position in that session’s board when they own an approved Open Play booking for it.
+3. Player: authenticated `GET` for the full FIFO board (display names only) when the caller owns an approved Open Play booking for that session.
 
 Existing create, occupancy, capacity, and approve/reject contracts MUST remain unchanged. Pending Open Play bookings MUST continue to count toward seat capacity but MUST NOT appear on the play board until approved.
 
@@ -15,6 +16,10 @@ Existing create, occupancy, capacity, and approve/reject contracts MUST remain u
 #### Scenario: Player position endpoint
 - **WHEN** an authenticated player with an approved Open Play booking in that session requests their position
 - **THEN** the system returns their queue index and assignment/waiting status
+
+#### Scenario: Player board endpoint
+- **WHEN** an authenticated player with an approved Open Play booking in that session requests the board
+- **THEN** the system returns the computed FIFO board with display names only
 
 #### Scenario: Capacity unchanged
 - **WHEN** Open Play seat capacity is evaluated on create

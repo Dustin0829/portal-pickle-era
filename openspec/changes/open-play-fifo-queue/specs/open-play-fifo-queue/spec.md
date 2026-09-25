@@ -74,6 +74,17 @@ The facility admin portal SHALL provide a board view for a selected date and Ope
 - **WHEN** an admin selects a date and Open Play session with approved bookings
 - **THEN** they see court assignments and the ordered next-up / remainder lists
 
+### Requirement: Player portal Open Play tab
+The player portal SHALL include an Open Play tab. WHEN the signed-in player has no approved Open Play booking, the tab MUST display “No schedule for open play”. WHEN they have at least one approved Open Play booking for a session, the tab MUST show that session’s FIFO rotation board (courts, sides, next-up, remainder) using display names only.
+
+#### Scenario: No Open Play schedule
+- **WHEN** a player opens the Open Play tab with no approved Open Play booking
+- **THEN** they see “No schedule for open play”
+
+#### Scenario: Rotation with approved seat
+- **WHEN** a player with an approved Open Play booking opens the Open Play tab
+- **THEN** they see the session rotation board for that booking’s date and session
+
 ### Requirement: Player portal shows own place
 When a player views an approved Open Play booking for a session that has a FIFO board, the portal SHALL show their queue position and court/side or waiting status without requiring a hard refresh after approve (query invalidation or refetch on open).
 
